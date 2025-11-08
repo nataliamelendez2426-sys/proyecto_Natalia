@@ -45,6 +45,8 @@ mail.init_app(app)
 # ------------------ DB ------------------ #
 db.init_app(app)
 
+with app.app_context():
+    db.create_all()
 # ------------------ FLASK LOGIN ------------------ #
 login_manager = LoginManager()
 login_manager.login_view = "auth.login"
