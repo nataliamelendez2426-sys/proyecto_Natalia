@@ -3,173 +3,123 @@
 {% block content %}
 <style>
   .detalle-empleado {
-      background: #fefefe;
+      background: #f9f9f9;
       padding: 2rem;
       border-radius: 15px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
       margin-bottom: 2rem;
-      font-family: Arial, sans-serif;
   }
 
-  h2 { color: #28a745; font-weight: 700; margin-bottom: 1.5rem; font-size: 1.8rem; }
-  h4 { color: #157145; margin-top: 2rem; margin-bottom: 1rem; font-size: 1.2rem; }
+  h2 { color: #28a745; font-weight: bold; margin-bottom: 1.5rem; }
+  h4 { color: #157145; margin-top: 2rem; margin-bottom: 1rem; }
 
   ul.info-general { list-style: none; padding-left: 0; margin-bottom: 2rem; }
-  ul.info-general li {
-      background: #d1faff;
-      padding: 0.7rem 1rem;
-      margin-bottom: 0.5rem;
-      border-radius: 10px;
-      font-weight: 500;
-      font-size: 0.95rem;
-  }
+  ul.info-general li { background: #d1faff; padding: 0.6rem 1rem; margin-bottom: 0.5rem; border-radius: 10px; font-weight: 500; }
 
-  #filtroPedidos {
-      width: 100%;
-      padding: 0.5rem 0.7rem;
-      margin-bottom: 1rem;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 0.95rem;
-      box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
-  }
+  table.table { width: 100%; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-top: 1rem; }
+  table.table th { background: #28a745; color: white; text-align: center; padding: 0.5rem; }
+  table.table td { text-align: center; vertical-align: middle; padding: 0.5rem; }
 
-  table.table {
-      width: 100%;
-      background: white;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-      margin-top: 0.5rem;
-      border-collapse: collapse;
+  .btn-secondary, .btn-primary, .btn-success { 
+      margin-top: 1rem; 
+      padding: 0.6rem 1.2rem; 
+      border-radius: 50px; 
+      font-weight: 600; 
+      transition: 0.3s; 
+      border: none;
   }
-
-  table.table th, table.table td {
-      text-align: center;
-      vertical-align: middle;
-      padding: 0.6rem 0.8rem;
-      font-size: 0.9rem;
-      border-bottom: 1px solid #e0e0e0;
-  }
-
-  table.table th {
-      background: #28a745;
-      color: white;
-      font-weight: 600;
-  }
-
-  table.table tr:nth-child(even) {
-      background: #f9f9f9;
-  }
-
-  .btn-secondary, .btn-primary {
-      margin-top: 1rem;
-      padding: 0.5rem 1.2rem;
-      border-radius: 50px;
-      font-weight: 600;
-      font-size: 0.95rem;
-      transition: 0.3s;
-  }
-
   .btn-secondary:hover { background: #157145; color: white; transform: scale(1.05); }
   .btn-primary:hover { background: #28a745; color: white; transform: scale(1.05); }
+  .btn-success:hover { background: #218838; color: white; transform: scale(1.05); }
 
-  .resumen-mes {
-      background: #e6f7f1;
-      padding: 1rem 1.2rem;
-      border-radius: 10px;
-      margin-top: 1rem;
-  }
-  .resumen-mes p {
-      margin-bottom: 0.5rem;
-      font-weight: 500;
-      font-size: 1rem;
-  }
+  .resumen-mes { background: #e6f7f1; padding: 1rem; border-radius: 10px; margin-top: 1rem; }
+  .resumen-mes p { margin-bottom: 0.5rem; font-weight: 500; font-size: 1.1rem; }
 
-  input[type=number] {
-      width: 90px;
-      padding: 0.35rem;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      text-align: center;
-      font-size: 0.95rem;
-  }
+  input[type=number] { width: 80px; padding: 0.3rem; border-radius: 5px; border: 1px solid #ccc; text-align: center; }
+  #filtroPedidos { width: 100%; padding: 0.5rem; margin-bottom: 1rem; border-radius: 5px; border: 1px solid #ccc; }
 </style>
 
-<div class="detalle-empleado">
-    <h2>Detalle de {{ empleado.Nombre }} {{ empleado.Apellido }}</h2>
+<div class="container mt-4">
+  <div class="detalle-empleado">
+      <h2>Detalle de {{ empleado.Nombre }} {{ empleado.Apellido }}</h2>
 
-    <h4>Información General</h4>
-    <ul class="info-general">
-        <li><strong>Correo:</strong> {{ empleado.Correo }}</li>
-        <li><strong>Teléfono:</strong> {{ empleado.Telefono }}</li>
-        <li><strong>Rol:</strong> {{ empleado.Rol }}</li>
-    </ul>
+      <h4>Información General</h4>
+      <ul class="info-general">
+          <li><strong>Correo:</strong> {{ empleado.Correo }}</li>
+          <li><strong>Teléfono:</strong> {{ empleado.Telefono }}</li>
+          <li><strong>Rol:</strong> {{ empleado.Rol }}</li>
+      </ul>
 
-    <h4>Pedidos realizados</h4>
-    <input type="text" id="filtroPedidos" onkeyup="filtrarPedidos()" placeholder="Buscar por ID, Estado o Hora Llegada...">
-    <table class="table" id="tablaPedidos">
-        <thead>
-            <tr>
-                <th>ID Pedido</th>
-                <th>Estado</th>
-                <th>Hora Llegada</th>
-                <th>Productos</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for pedido in pedidos %}
-                <tr>
-                    <td>{{ pedido.ID_Pedido }}</td>
-                    <td>{{ pedido.Estado }}</td>
-                    <td>{{ pedido.HoraLlegada.strftime("%Y-%m-%d %H:%M") if pedido.HoraLlegada else '-' }}</td>
-                    <td>
-                        <ul style="list-style:none; padding-left:0; margin:0;">
-                            {% for detalle in pedido.detalles_pedido %}
-                                <li>{{ detalle.Cantidad }} x {{ detalle.producto.NombreProducto if detalle.producto else 'Producto eliminado' }}</li>
-                            {% endfor %}
-                        </ul>
-                    </td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+      <h4>Pedidos realizados</h4>
+      <input type="text" id="filtroPedidos" onkeyup="filtrarPedidos()" placeholder="Buscar por ID, Estado o Hora...">
+      <button class="btn btn-success mb-2" onclick="exportarPDF()">Exportar a PDF</button>
+      <table class="table" id="tablaPedidos">
+          <thead>
+              <tr>
+                  <th>ID Pedido</th>
+                  <th>Estado</th>
+                  <th>Hora Llegada</th>
+                  <th>Productos</th>
+              </tr>
+          </thead>
+          <tbody>
+              {% for pedido in pedidos %}
+                  <tr>
+                      <td>{{ pedido.ID_Pedido }}</td>
+                      <td>{{ pedido.Estado }}</td>
+                      <td>{{ pedido.HoraLlegada.strftime("%Y-%m-%d %H:%M") if pedido.HoraLlegada else '-' }}</td>
+                      <td>
+                          <ul style="list-style:none; padding-left:0;">
+                              {% for detalle in pedido.detalles_pedido %}
+                                  <li>{{ detalle.Cantidad }} x {{ detalle.producto.NombreProducto if detalle.producto else 'Producto eliminado' }}</li>
+                              {% endfor %}
+                          </ul>
+                      </td>
+                  </tr>
+              {% endfor %}
+          </tbody>
+      </table>
 
-    <h4>Horas trabajadas</h4>
-    <p><strong>Total Horas:</strong> 48 h</p>
-    <p><strong>Horas Extra:</strong> {{ (horas_diurnas or 0) + (horas_nocturnas or 0) }} h</p>
+      <h4>Horas trabajadas</h4>
+      <p><strong>Total Horas:</strong> 48 h</p>
+      <p><strong>Horas Extra:</strong> {{ (horas_diurnas or 0) + (horas_nocturnas or 0) }} h</p>
 
-    <h4>Ingresar horas diurnas y nocturnas</h4>
-    <form method="POST" action="{{ url_for('admin.detalle_empleado', id_empleado=empleado.ID_Usuario) }}">
-        <label>Horas Extras Diurnas: <input type="number" name="horas_diurnas" value="{{ horas_diurnas or 0 }}" min="0"></label>
-        &nbsp;&nbsp;
-        <label>Horas Extras Nocturnas: <input type="number" name="horas_nocturnas" value="{{ horas_nocturnas or 0 }}" min="0"></label>
-        &nbsp;&nbsp;
-        <button type="submit" class="btn btn-primary">Actualizar</button>
-    </form>
+      <h4>Ingresar horas diurnas y nocturnas</h4>
+      <form method="POST" action="{{ url_for('admin.detalle_empleado', id_empleado=empleado.ID_Usuario) }}">
+          <label>Horas Extras Diurnas: <input type="number" name="horas_diurnas" value="{{ horas_diurnas or 0 }}" min="0"></label>
+          &nbsp;&nbsp;
+          <label>Horas Extras Nocturnas: <input type="number" name="horas_nocturnas" value="{{ horas_nocturnas or 0 }}" min="0"></label>
+          &nbsp;&nbsp;
+          <button type="submit" class="btn btn-primary">Actualizar</button>
+      </form>
 
-    <h4>Pagos y Resumen Mensual</h4>
-    <div class="resumen-mes">
-        {% set pago_base = 1423500 %}
-        {% set auxilio_transporte = 200000 %}
-        {% set pago_hora_diurna = 8088 %}
-        {% set pago_hora_nocturna = 11323 %}
+      <h4>Pagos y Resumen Mensual</h4>
+      <div class="resumen-mes">
+          {% set pago_base = 1423500 %}
+          {% set auxilio_transporte = 200000 %}
+          {% set pago_hora_diurna = 8088 %}
+          {% set pago_hora_nocturna = 11323 %}
 
-        {% set total_diurnas = (horas_diurnas or 0) * pago_hora_diurna %}
-        {% set total_nocturnas = (horas_nocturnas or 0) * pago_hora_nocturna %}
-        {% set total_horas_extra_valor = total_diurnas + total_nocturnas %}
-        {% set total_mes = pago_base + auxilio_transporte + total_horas_extra_valor %}
+          {% set total_diurnas = (horas_diurnas or 0) * pago_hora_diurna %}
+          {% set total_nocturnas = (horas_nocturnas or 0) * pago_hora_nocturna %}
+          {% set total_horas_extra_valor = total_diurnas + total_nocturnas %}
+          {% set total_mes = pago_base + auxilio_transporte + total_horas_extra_valor %}
 
-        <p>Pago base del mes: ${{ "{:,.0f}".format(pago_base) }} COP</p>
-        <p>Auxilio de transporte: ${{ "{:,.0f}".format(auxilio_transporte) }} COP</p>
-        <p>Pago por horas diurnas: ${{ "{:,.0f}".format(total_diurnas) }} COP</p>
-        <p>Pago por horas nocturnas: ${{ "{:,.0f}".format(total_nocturnas) }} COP</p>
-        <hr>
-        <p><strong>Total estimado a recibir este mes: ${{ "{:,.0f}".format(total_mes) }} COP</strong></p>
-    </div>
+          <p>Pago base del mes: ${{ "{:,.0f}".format(pago_base) }} COP</p>
+          <p>Auxilio de transporte: ${{ "{:,.0f}".format(auxilio_transporte) }} COP</p>
+          <p>Pago por horas diurnas: ${{ "{:,.0f}".format(total_diurnas) }} COP</p>
+          <p>Pago por horas nocturnas: ${{ "{:,.0f}".format(total_nocturnas) }} COP</p>
+          <hr>
+          <p><strong>Total estimado a recibir este mes: ${{ "{:,.0f}".format(total_mes) }} COP</strong></p>
+      </div>
 
-    <a href="{{ url_for('admin.lista_empleados') }}" class="btn btn-secondary">Volver</a>
+      <a href="{{ url_for('admin.lista_empleados') }}" class="btn btn-secondary">Volver</a>
+  </div>
 </div>
+
+<!-- Librerías para PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
 <script>
 function filtrarPedidos() {
@@ -184,9 +134,46 @@ function filtrarPedidos() {
         var tdHora = tr[i].getElementsByTagName("td")[2];
         if (tdId && tdEstado && tdHora) {
             var texto = tdId.textContent + " " + tdEstado.textContent + " " + tdHora.textContent;
-            tr[i].style.display = texto.toLowerCase().includes(filter) ? "" : "none";
+            tr[i].style.display = texto.toLowerCase().indexOf(filter) > -1 ? "" : "none";
         }
     }
+}
+
+function exportarPDF() {
+    const { jsPDF } = window.jspdf;
+    var doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text("Pedidos de {{ empleado.Nombre }} {{ empleado.Apellido }}", 14, 20);
+
+    var data = [];
+    var table = document.getElementById("tablaPedidos");
+    var trs = table.querySelectorAll("tbody tr");
+
+    trs.forEach(function(tr) {
+        if(tr.style.display !== "none") { // Solo filas visibles
+            var row = [];
+            tr.querySelectorAll("td").forEach(function(td) {
+                row.push(td.innerText.replace(/\n/g, ', '));
+            });
+            data.push(row);
+        }
+    });
+
+    var columns = [];
+    table.querySelectorAll("thead th").forEach(function(th) {
+        columns.push(th.innerText);
+    });
+
+    doc.autoTable({
+        head: [columns],
+        body: data,
+        startY: 30,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [40, 167, 69], textColor: 255 }
+    });
+
+    doc.save('pedidos_{{ empleado.Nombre }}_{{ empleado.Apellido }}.pdf');
 }
 </script>
 {% endblock %}

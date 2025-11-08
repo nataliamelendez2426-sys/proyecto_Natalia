@@ -64,6 +64,14 @@
       color: white;
   }
 
+  #filtroEmpleados {
+      width: 100%;
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+  }
+
   @media(max-width:768px) {
       table.table thead th, table.table tbody td {
           font-size: 0.85rem;
@@ -79,7 +87,11 @@
 <div class="container my-5">
     <div class="tabla-empleados">
         <h2>Lista de Empleados</h2>
-        <table class="table table-striped">
+
+        <input type="text" id="filtroEmpleados" onkeyup="filtrarEmpleados()" placeholder="Buscar por nombre, correo o rol...">
+        <button class="btn btn-success mb-2" onclick="exportarPDF()">Exportar a PDF</button>
+
+        <table class="table table-striped" id="tablaEmpleados">
             <thead>
                 <tr>
                     <th>Nombre</th>
@@ -103,4 +115,63 @@
         </table>
     </div>
 </div>
+
+<!-- Librerías para PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+<script>
+function filtrarEmpleados() {
+    var input = document.getElementById("filtroEmpleados");
+    var filter = input.value.toLowerCase();
+    var table = document.getElementById("tablaEmpleados");
+    var tr = table.getElementsByTagName("tr");
+
+    for (var i = 1; i < tr.length; i++) { // saltamos encabezado
+        var tdNombre = tr[i].getElementsByTagName("td")[0];
+        var tdCorreo = tr[i].getElementsByTagName("td")[1];
+        var tdRol = tr[i].getElementsByTagName("td")[2];
+        if(tdNombre && tdCorreo && tdRol) {
+            var texto = tdNombre.textContent + " " + tdCorreo.textContent + " " + tdRol.textContent;
+            tr[i].style.display = texto.toLowerCase().indexOf(filter) > -1 ? "" : "none";
+        }
+    }
+}
+
+function exportarPDF() {
+    const { jsPDF } = window.jspdf;
+    var doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text("Lista de Empleados", 14, 20);
+
+    var data = [];
+    var table = document.getElementById("tablaEmpleados");
+    var trs = table.querySelectorAll("tbody tr");
+
+    trs.forEach(function(tr) {
+        if(tr.style.display !== "none") {
+            var row = [];
+            tr.querySelectorAll("td").forEach(function(td, index) {
+                if(index < 3) { // ignorar columna de acciones
+                    row.push(td.innerText);
+                }
+            });
+            data.push(row);
+        }
+    });
+
+    var columns = ["Nombre", "Correo", "Rol"];
+
+    doc.autoTable({
+        head: [columns],
+        body: data,
+        startY: 30,
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [40, 167, 69], textColor: 255 }
+    });
+
+    doc.save('empleados.pdf');
+}
+</script>
 {% endblock %}
