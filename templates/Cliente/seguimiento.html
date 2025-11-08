@@ -5,9 +5,6 @@
 {% block extra_css %}
 <style>
 :root {
-  --celeste-claro: #e7fcff;
-  --celeste: #d1faff;
-  --azul-gris: #d1faffe; 
   --verde: #57a773;
   --verde-oscuro: #157145;
 }
@@ -22,9 +19,10 @@
   background: white;
   border-radius: 10px;
   box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-  padding: 2rem;
+  padding: 2rem 1.5rem;
   width: 100%;
-  max-width: 600px;
+  max-width: 400px;
+  text-align: center;
   position: relative;
   z-index: 1;
 }
@@ -32,34 +30,11 @@
 .tracking-panel h2 {
   margin-top: 0;
   color: var(--verde-oscuro);
-  font-size: 1.6rem;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
-.tracking-data-block {
-  margin: 1.5rem 0;
-  border-top: 1px solid #eee;
-  padding-top: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.tracking-product-img {
-  height: 200px;
-  width: 100%;
-  object-fit: cover;
-  border-radius: 10px 10px 0 0;
-}
-
-.tracking-info p {
-  margin: 0.3rem 0;
-  font-size: 0.95rem;
-}
-
-/* === Barra de progreso === */
+/* Barra de progreso */
 .tracking-progress-bar {
   display: flex;
   justify-content: space-between;
@@ -119,6 +94,11 @@
   color: var(--verde-oscuro); 
 }
 
+.tracking-info p {
+  margin: 0.3rem 0;
+  font-size: 0.95rem;
+}
+
 @media (max-width: 576px) {
   .tracking-panel {
     padding: 1.5rem;
@@ -137,28 +117,32 @@
 {% block content %}
 <div class="tracking-container">
   <div class="tracking-panel">
-    <h2>Actualizaciones sobre tu pedido</h2>
+    <h2>Seguimiento de tu pedido</h2>
 
-    <div class="tracking-data-block">
-      <img src="{{ url_for('static', filename=pedido.ImagenProducto or 'img/catalogo.png') }}" 
-           alt="Producto pedido" class="tracking-product-img">
-
-      <div class="tracking-info">
-        <p><strong>ID Pedido:</strong> #{{ pedido.ID_Pedido }}</p>
-        <p><strong>Transportista:</strong> 
-            {% if pedido.transportista %}
-                {{ pedido.transportista.Nombre }} {{ pedido.transportista.Apellido }}
-            {% else %}
-                Sin asignar
-            {% endif %}
-        </p>
-      </div>
+    <!-- Imagen estilo mini-card centrada -->
+    <div style="width:120px; height:120px; border:1px solid #ddd; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; margin:0 auto 15px;">
+      <img src="{{ url_for('static', filename=pedido.ImagenProducto if pedido.ImagenProducto else 'img/catalogo.png') }}" 
+           alt="Producto pedido" 
+           style="max-width:100%; max-height:100%; object-fit:cover;">
     </div>
 
+    <!-- Información del pedido -->
+    <div class="tracking-info">
+      <p><strong>ID Pedido:</strong> #{{ pedido.ID_Pedido }}</p>
+      <p><strong>Transportista:</strong> 
+          {% if pedido.transportista %}
+              {{ pedido.transportista.Nombre }} {{ pedido.transportista.Apellido }}
+          {% else %}
+              Sin asignar
+          {% endif %}
+      </p>
+    </div>
+
+    <!-- Barra de progreso -->
     {% set estados = ['en proceso', 'en despacho', 'en ruta', 'entregado'] %}
     {% set estado_actual_index = estados.index(pedido.Estado) if pedido.Estado in estados else -1 %}
 
-    <div class="tracking-progress-bar" id="barraProgresoCliente">
+    <div class="tracking-progress-bar">
       {% for i in range(4) %}
         <div class="tracking-step {% if estado_actual_index >= i %}active{% endif %}">
           <div class="circle">{{ i + 1 }}</div>
@@ -173,7 +157,8 @@
       {% endfor %}
     </div>
 
-    <div class="tracking-status-message" id="mensajeCliente">
+    <!-- Mensaje de estado -->
+    <div class="tracking-status-message">
       Estado actual:
       {% if pedido.Estado == 'en proceso' %} En proceso
       {% elif pedido.Estado == 'en despacho' %} En despacho
