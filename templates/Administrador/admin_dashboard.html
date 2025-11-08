@@ -241,10 +241,46 @@
 </a>
 
 <style>
+/* Botón Recursos Humanos */
+#botonRecursosHumanos {
+    position: fixed;
+    bottom: 100px; /* Más arriba que el de soporte técnico */
+    right: 30px;
+    background: linear-gradient(135deg, #57a773, #28a745);
+    color: white;
+    border-radius: 50px;
+    padding: 14px 22px;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    transition: transform 0.3s, background 0.3s, box-shadow 0.3s;
+    z-index: 1000;
+}
+
+#botonRecursosHumanos i {
+    font-size: 1.3rem;
+}
+
+#botonRecursosHumanos:hover {
+    background: linear-gradient(135deg, #28a745, #157145);
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 12px 25px rgba(0,0,0,0.35);
+}
+
+#botonRecursosHumanos:active {
+    transform: translateY(0px) scale(0.97);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.25);
+}
+
+/* Botón Soporte Técnico */
 #botonSoporte {
     position: fixed;
-    bottom: 25px;
-    right: 25px;
+    bottom: 30px; /* Debajo del de Recursos Humanos */
+    right: 30px;
     background: #007bff;
     color: white;
     border-radius: 50px;
@@ -257,14 +293,13 @@
     gap: 10px;
     text-decoration: none;
     transition: background 0.3s, transform 0.2s;
-    z-index: 9999;
+    z-index: 999;
 }
 
 #botonSoporte i {
     font-size: 1.2rem;
 }
 
-/* Hover y click */
 #botonSoporte:hover {
     background: #0056b3;
     transform: scale(1.05);
@@ -273,6 +308,7 @@
 #botonSoporte:active {
     transform: scale(0.95);
 }
+
 </style>
 
 
