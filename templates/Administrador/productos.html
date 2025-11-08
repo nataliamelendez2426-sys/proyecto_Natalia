@@ -95,7 +95,10 @@
                  style="height:200px; object-fit:cover; border-radius:10px 10px 0 0;">
             <h5>{{ producto.NombreProducto|default('Producto sin nombre') }}</h5>
             <p>Stock: {{ producto.Stock|default(0) }}</p>
-            <p>Precio: ${{ "{:,.2f}".format(producto.Precio|default(0.0)) }}</p>
+            <p class="card-text">
+            ${{ '%.2f'|format(producto.PrecioUnidad|default(0.0)|float) }}
+            </p>
+
             <a href="{{ url_for('admin.editar_producto', id_producto=producto.ID_Producto|default(0)) }}" class="btn-edit">Editar</a>
         </div>
         {% else %}
