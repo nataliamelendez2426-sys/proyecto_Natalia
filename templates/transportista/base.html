@@ -1,0 +1,11 @@
+{% extends "common/base.html" %}
+
+{% block navbar %}
+    {% include "Common/partials/navbar_transportista.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% block transportista_content %}{% endblock %}
+</div>
+{% endblock %}

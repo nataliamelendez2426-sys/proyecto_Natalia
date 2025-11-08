@@ -1,10 +1,6 @@
-{% extends "common/base.html" %}
+{% extends "transportista/base.html" %}
 
-{% block navbar %}
-  {% include "common/partials/navbar_transpoinsta.html" %}
-{% endblock %}
-
-{% block content %}
+{% block transportista_content %}
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/calendario.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
@@ -40,7 +36,6 @@
         </div>
     </div>
 </div>
-
 
 <div id="registroFotograficoModal" class="modal">
     <div class="modal-content">
@@ -95,6 +90,5 @@
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales-all.min.js"></script>
 <script src="{{ url_for('static', filename='js/calendario.js') }}"></script>
-
 
 {% endblock %}

@@ -1,163 +1,133 @@
-{% extends "common/base.html" %}
-{% block title %}Seguimiento de Pedido{% endblock %}
+{% extends "transportista/base.html" %}
 
-{% block extra_css %}
-<style>
-:root {
-  --celeste-claro: #e7fcff;
-  --celeste: #d1faff;
-  --azul-gris: #d1faffe;
-  --verde: #57a773;
-  --verde-oscuro: #157145;
-}
-
-.tracking-container {
-  display: flex;
-  justify-content: center;
-  padding: 2rem 1rem;
-}
-
-.tracking-panel {
-  background: var(--celeste-claro);
-  border-radius: 10px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-  padding: 2rem;
-  width: 100%;
-  max-width: 650px;
-  border: 2px solid var(--verde);
-}
-
-.tracking-panel h2 {
-  color: var(--verde-oscuro);
-  font-size: 1.6rem;
-  text-align: center;
-  margin-bottom: 1.5rem;
-}
-
-.tracking-data-block {
-  background-color: var(--celeste);
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 20px;
-  line-height: 1.5;
-}
-
-.tracking-data-block p {
-  margin: 5px 0;
-  color: #333;
-}
-
-select, textarea {
-  width: 100%;
-  padding: 8px;
-  border-radius: 6px;
-  border: 1px solid var(--verde);
-  font-size: 1rem;
-  background-color: #fff;
-}
-
-button {
-  padding: 10px;
-  background-color: var(--verde);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-button:hover {
-  background-color: var(--verde-oscuro);
-}
-
-.info {
-  background-color: var(--azul-gris);
-  padding: 10px;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  color: #333;
-  text-align: center;
-}
-
-#firmaCanvas {
-  border: 2px dashed var(--verde);
-  width: 100%;
-  height: 150px;
-  border-radius: 10px;
-  background-color: #fff;
-  cursor: crosshair;
-}
-
-.firma-btns {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 10px;
-}
-</style>
-{% endblock %}
-
-{% block navbar %}
-  {% include "common/partials/navbar_transpoinsta.html" %}
-{% endblock %}
-
-{% block content %}
-<div class="tracking-container">
-  <div class="tracking-panel">
-    <h2>Seguimiento en tiempo real</h2>
-
-    <div class="tracking-data-block">
-      <p><strong>ID Pedido:</strong> #{{ pedido.ID_Pedido }}</p>
-      <p><strong>Cliente:</strong> {{ pedido.usuario.Nombre }} {{ pedido.usuario.Apellido }}</p>
-      <p><strong>Dirección:</strong> {{ pedido.usuario.Direccion }}</p>
-      <p><strong>Producto:</strong> {{ pedido.NomArticulo }}</p>
-      <p><strong>Tipo de pago:</strong> {{ pedido.TipoPago }}</p>
-    </div>
-
-    <form id="estadoForm"
-          action="{{ url_for('transportista.actualizar_estado', id_pedido=pedido.ID_Pedido) }}"
-          method="POST">
-
-      <select name="estado" id="estado">
-        <option value="pendiente" {% if pedido.Estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
-        <option value="en proceso" {% if pedido.Estado == 'en proceso' %}selected{% endif %}>En proceso</option>
-        <option value="en reparto" {% if pedido.Estado == 'en reparto' %}selected{% endif %}>En reparto</option>
-        <option value="entregado" {% if pedido.Estado == 'entregado' %}selected{% endif %}>Entregado</option>
-      </select>
-
-      <!-- Opciones al marcar "entregado" -->
-      <div id="entregadoOpciones" style="display: none; margin-top: 15px;">
-        <p><strong>Confirmar entrega:</strong></p>
-        <button type="button" onclick="mostrarFirma()">🖊 Capturar firma del cliente</button>
-        <button type="button" onclick="enviarCorreo()">📧 Enviar correo de confirmación</button>
-      </div>
-
-      <!-- Firma del cliente -->
-      <div id="firmaSection" style="display: none; margin-top: 15px;">
-        <p><strong>Firma del cliente:</strong></p>
-        <canvas id="firmaCanvas"></canvas>
-        <input type="hidden" name="firma" id="firmaInput">
-        <div class="firma-btns">
-          <button type="button" onclick="limpiarFirma()">🧹 Limpiar</button>
+{% block transportista_content %}
+<div class="container-fluid mt-3">
+    <div class="card border-0 shadow-sm" style="background-color: #f8f9fa;">
+        <div class="card-header bg-success text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Seguimiento del Pedido #{{ pedido.ID_Pedido }}</h5>
+                <a href="{{ url_for('transportista.dashboard') }}" class="btn btn-light btn-sm">
+                    <i class="bi bi-arrow-left"></i> Volver
+                </a>
+            </div>
         </div>
-      </div>
 
-      <button id="btnActualizar" type="submit" style="margin-top: 15px;">Actualizar</button>
-    </form>
+        <div class="card-body">
+            <div class="tracking-container">
+                <div class="tracking-panel">
+                    <h2>Seguimiento en tiempo real</h2>
 
-    <div class="info mt-3">
-      Cambia el estado actual solo para avanzar en el proceso. No se puede volver atrás.
+                    <div class="tracking-data-block">
+                        <p><strong>ID Pedido:</strong> #{{ pedido.ID_Pedido }}</p>
+                        <p><strong>Cliente:</strong> {{ pedido.usuario.Nombre }} {{ pedido.usuario.Apellido }}</p>
+                        
+                        <!-- Sección Productos -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h6>Productos</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    {% for detalle in pedido.detalles_pedido %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100">
+                                            <img src="{{ url_for('static', filename=detalle.producto.ImagenPrincipal) }}" 
+                                                 class="card-img-top" 
+                                                 alt="{{ detalle.producto.NombreProducto }}"
+                                                 style="max-height: 200px; object-fit: contain">
+                                            <div class="card-body">
+                                                <h6>{{ detalle.producto.NombreProducto }}</h6>
+                                                <p>Cantidad: {{ detalle.Cantidad }}</p>
+                                                <p>Precio: ${{ "{:,.0f}".format(detalle.PrecioUnidad) }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sección Historial -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h6>Historial de Estados</h6>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group">
+                                    {% for cambio in pedido.historial_estados|sort(attribute='Fecha', reverse=true) %}
+                                    <li class="list-group-item">
+                                        {{ cambio.Estado }} - 
+                                        {{ cambio.Fecha.strftime('%d/%m/%Y %H:%M') }}
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Dirección sin mapa -->
+                        <div class="alert alert-info">
+                            <strong>Dirección de entrega:</strong> {{ pedido.Destino or 'No especificada' }}
+                        </div>
+
+                        <p class="mt-3"><strong>Tipo de pago:</strong> {{ pedido.pagos[0].MetodoPago if pedido.pagos else 'Por confirmar' }}</p>
+                        <p><strong>Estado:</strong> 
+                            <span class="badge 
+                                {% if pedido.Estado == 'pendiente' %}bg-secondary
+                                {% elif pedido.Estado == 'en proceso' %}bg-warning text-dark
+                                {% elif pedido.Estado == 'en reparto' %}bg-primary
+                                {% else %}bg-success{% endif %}">
+                                {{ pedido.Estado }}
+                            </span>
+                        </p>
+                    </div>
+
+                    <form id="estadoForm"
+                          action="{{ url_for('transportista.actualizar_estado', id_pedido=pedido.ID_Pedido) }}"
+                          method="POST">
+
+                        <select name="estado" id="estado">
+                            <option value="pendiente" {% if pedido.Estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                            <option value="en proceso" {% if pedido.Estado == 'en proceso' %}selected{% endif %}>En proceso</option>
+                            <option value="en reparto" {% if pedido.Estado == 'en reparto' %}selected{% endif %}>En reparto</option>
+                            <option value="entregado" {% if pedido.Estado == 'entregado' %}selected{% endif %}>Entregado</option>
+                        </select>
+
+                        <!-- Opciones al marcar "entregado" -->
+                        <div id="entregadoOpciones" style="display: none; margin-top: 15px;">
+                            <p><strong>Confirmar entrega:</strong></p>
+                            <button type="button" onclick="mostrarFirma()">🖊 Capturar firma del cliente</button>
+                            <button type="button" onclick="enviarCorreo()">📧 Enviar correo de confirmación</button>
+                        </div>
+
+                        <!-- Firma del cliente -->
+                        <div id="firmaSection" style="display: none; margin-top: 15px;">
+                            <p><strong>Firma del cliente:</strong></p>
+                            <canvas id="firmaCanvas"></canvas>
+                            <input type="hidden" name="firma" id="firmaInput">
+                            <div class="firma-btns">
+                                <button type="button" onclick="limpiarFirma()">🧹 Limpiar</button>
+                            </div>
+                        </div>
+
+                        <button id="btnActualizar" type="submit" style="margin-top: 15px;">Actualizar</button>
+                    </form>
+
+                    <div class="info mt-3">
+                        Cambia el estado actual solo para avanzar en el proceso. No se puede volver atrás.
+                    </div>
+
+                    <hr>
+
+                    <div style="text-align:center;">
+                        <a href="{{ url_for('transportista.get_registro_fotografico', pedido_id=pedido.ID_Pedido) }}"
+                           class="btn btn-outline-primary btn-sm">
+                            📷 Ver registro fotográfico
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-
-    <hr>
-
-    <div style="text-align:center;">
-      <a href="{{ url_for('transportista.get_registro_fotografico', pedido_id=pedido.ID_Pedido) }}"
-         class="btn btn-outline-primary btn-sm">
-        📷 Ver registro fotográfico
-      </a>
-    </div>
-  </div>
 </div>
 
 <script>
@@ -173,29 +143,29 @@ let dibujando = false;
 
 // Mostrar opciones cuando se selecciona "Entregado"
 estadoSelect.addEventListener("change", () => {
-  if (estadoSelect.value === "entregado") {
-    entregadoOpciones.style.display = "block";
-  } else {
-    entregadoOpciones.style.display = "none";
-    firmaSection.style.display = "none";
-  }
+    if (estadoSelect.value === "entregado") {
+        entregadoOpciones.style.display = "block";
+    } else {
+        entregadoOpciones.style.display = "none";
+        firmaSection.style.display = "none";
+    }
 });
 
 // Mostrar la sección de firma
 function mostrarFirma() {
-  firmaSection.style.display = "block";
-  entregadoOpciones.style.display = "none";
+    firmaSection.style.display = "block";
+    entregadoOpciones.style.display = "none";
 }
 
 // ✅ Enviar correo de confirmación sin mostrar error falso
 function enviarCorreo() {
-  fetch(`{{ url_for('transportista.enviar_confirmacion', id_pedido=pedido.ID_Pedido) }}`, {
-    method: "POST",
-    headers: { "X-Requested-With": "XMLHttpRequest" }
-  })
-  .then(res => res.json())
-  .then(data => alert(data.message))
-  .catch(() => alert("⚠️ No se pudo conectar con el servidor."));
+    fetch(`{{ url_for('transportista.enviar_confirmacion', id_pedido=pedido.ID_Pedido) }}`, {
+        method: "POST",
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+    .then(res => res.json())
+    .then(data => alert(data.message))
+    .catch(() => alert("⚠️ No se pudo conectar con el servidor."));
 }
 
 // ------------------ FIRMA ------------------
@@ -205,21 +175,21 @@ canvas.addEventListener("mouseout", () => dibujando = false);
 canvas.addEventListener("mousemove", dibujar);
 
 function dibujar(e) {
-  if (!dibujando) return;
-  const rect = canvas.getBoundingClientRect();
-  ctx.lineWidth = 2;
-  ctx.lineCap = "round";
-  ctx.strokeStyle = "#157145";
-  ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-  document.getElementById("firmaInput").value = canvas.toDataURL();
+    if (!dibujando) return;
+    const rect = canvas.getBoundingClientRect();
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#157145";
+    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    document.getElementById("firmaInput").value = canvas.toDataURL();
 }
 
 function limpiarFirma() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  document.getElementById("firmaInput").value = "";
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    document.getElementById("firmaInput").value = "";
 }
 </script>
 {% endblock %}

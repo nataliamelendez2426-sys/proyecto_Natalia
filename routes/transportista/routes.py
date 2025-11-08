@@ -25,9 +25,9 @@ from . import transportista
 # ---------- DASHBOARD ----------
 @transportista.route("/")
 @login_required
-@role_required("transportista")
 def dashboard():
-    return render_template("transportista/transportista_dashboard.html")
+    pedidos = Pedido.query.filter_by(ID_Empleado=current_user.ID_Usuario).all()
+    return render_template('transportista/dashboard.html', pedidos=pedidos)
 
 # ---------- CALENDARIO ----------
 
@@ -199,18 +199,16 @@ def get_registro_fotografico(pedido_id):
 
 @transportista.route('/pedidos')
 @login_required
-@role_required('transportista')  
-def ver_pedidos_transportista():
-   
-    pedidos = Pedido.query.filter_by(ID_Empleado=current_user.ID_Usuario).all()
-    return render_template('transportista/pedidos.html', pedidos=pedidos)
+def pedidos():
+    return redirect(url_for('transportista.dashboard'))
 
-@transportista.route("/seguimiento/<int:pedido_id>")
+@transportista.route("/seguimiento/<int:id_pedido>")
 @login_required
-@role_required('transportista')
-def seguimiento_pedido(pedido_id):
-    pedido = Pedido.query.get_or_404(pedido_id)
-    return render_template("transportista/seguimiento.html", pedido=pedido)
+def seguimiento(id_pedido):
+    pedido = Pedido.query.get_or_404(id_pedido)
+    if pedido.ID_Empleado != current_user.ID_Usuario:
+        abort(403)
+    return render_template('transportista/seguimiento.html', pedido=pedido)
 
 
 @transportista.route("/actualizar_estado/<int:id_pedido>", methods=["POST"])
@@ -227,7 +225,7 @@ def actualizar_estado(id_pedido):
 
     if nuevo_idx < actual_idx:
         flash("⚠️ No puedes regresar a un estado anterior.", "warning")
-        return redirect(url_for("transportista.seguimiento_pedido", pedido_id=id_pedido))
+        return redirect(url_for("transportista.seguimiento", id_pedido=id_pedido))
 
     pedido.Estado = nuevo_estado
     pedido.UltimaActualizacion = datetime.now()
@@ -243,7 +241,7 @@ def actualizar_estado(id_pedido):
 
     db.session.commit()
     flash("✅ Estado actualizado correctamente.", "success")
-    return redirect(url_for("transportista.seguimiento_pedido", pedido_id=id_pedido))
+    return redirect(url_for("transportista.seguimiento", id_pedido=id_pedido))
 
 
 # ---------- Enviar confirmación por correo ----------
