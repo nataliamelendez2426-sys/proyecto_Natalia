@@ -411,87 +411,57 @@ def login_required_json(f):
         return f(*args, **kwargs)
     return decorated_function
 
-@cliente.route('/checkout', methods=['GET', 'POST'])
-@login_required_json
+@cliente.route('/checkout', methods=['POST'])
+@login_required
 def checkout():
     try:
         if not request.is_json:
             return jsonify({"success": False, "mensaje": "Se esperaba JSON"}), 400
-
+        
         data = request.get_json()
-        direccion_id = data.get('direccion')
         carrito = data.get('carrito', [])
-        metodo_pago = data.get('metodo')
+        direccion = data.get('direccion') or "Sin dirección"
+        metodo = data.get('metodo') or "efectivo"
 
         if not carrito:
-            return jsonify({"success": False, "mensaje": "El carrito está vacío."})
+            return jsonify({"success": False, "mensaje": "El carrito está vacío."}), 400
 
         # Crear pedido
         pedido = Pedido(
-            ID_Usuario=current_user.id,
-            Destino=f"Dirección con ID {direccion_id}",
+            NombreComprador=current_user.Nombre,
+            Destino=direccion,
             Estado="pendiente",
             FechaPedido=date.today(),
-            MetodoPago=metodo_pago
+            ID_Usuario=current_user.id
         )
         db.session.add(pedido)
         db.session.commit()
 
-        # Guardar detalles
+        # Guardar detalles del pedido
         for item in carrito:
             detalle = Detalle_Pedido(
                 ID_Pedido=pedido.ID_Pedido,
-                ID_Producto=item.get('id', 0),
-                Cantidad=item.get('cantidad', 1)
+                ID_Producto=item['id'],
+                Cantidad=item.get('cantidad',1)
             )
             db.session.add(detalle)
         db.session.commit()
 
-        # Enviar correo
-        total = sum(item.get('precio',0)*item.get('cantidad',1) for item in carrito)
-        link_pdf = url_for('cliente.ver_pedido_pdf', id_pedido=pedido.ID_Pedido, _external=True)
-
-        msg = Message(
-            subject=f"Detalle de tu pedido #{pedido.ID_Pedido}",
-            sender='tuemail@dominio.com',
-            recipients=[current_user.Email]
+        # Registrar el pago
+        pago = Pagos(
+            MetodoPago=metodo,
+            Monto=sum([i['precio']*i.get('cantidad',1) for i in carrito]),
+            ID_Pedido=pedido.ID_Pedido
         )
-        msg.html = f"""
-        <p>Hola {current_user.Nombre},</p>
-        <p>Gracias por tu compra. Aquí tienes la información de tu pedido:</p>
-        <ul>
-            <li>ID Pedido: {pedido.ID_Pedido}</li>
-            <li>Dirección: {pedido.Destino}</li>
-            <li>Método de pago: {metodo_pago}</li>
-            <li>Total: ${total:.2f}</li>
-        </ul>
-        <p><a href="{link_pdf}" style="background-color:#57a773;color:white;padding:10px 20px;border-radius:5px;text-decoration:none;">Exportar PDF</a></p>
-        """
-        try:
-            mail.send(msg)
-        except Exception as e:
-            current_app.logger.error(f"Error enviando correo: {e}")
+        db.session.add(pago)
+        db.session.commit()
 
         return jsonify({"success": True, "mensaje": "Pago procesado correctamente."})
 
     except Exception as e:
-        current_app.logger.error(f"Error en checkout: {e}")
-        return jsonify({"success": False, "mensaje": "Ocurrió un error en el servidor."}), 500
-
-
-@cliente.route('/finalizar-compra', methods=['POST'])
-@login_required
-def finalizar_compra():
-    nombre = request.form.get('nombre')
-    direccion_id = request.form.get('select-direccion')
-    metodo_pago = request.form.get('pago')
-    numero_tarjeta = request.form.get('numero-tarjeta')
-    numero_celular = request.form.get('numero-celular')
-
-
-    flash(f'✅ Pago con {metodo_pago} realizado correctamente', 'success')
-    return redirect(url_for('catalogo'))
-
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "mensaje": str(e)}), 500
 
 # ---------- SEGUIMIENTO ----------
 
