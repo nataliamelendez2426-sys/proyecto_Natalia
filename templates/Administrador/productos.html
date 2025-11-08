@@ -1,74 +1,49 @@
 {% extends "common/base.html" %}
 
 {% block navbar %}
-  {% include "common/partials/navbar_admin.html" %}
+  {% include "common/partials/navbar_cliente.html" %}
 {% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
 
 <style>
-/* Contenedor de productos */
-.productos-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px,1fr));
-    gap: 1.5rem;
-    margin: 2rem 0;
+/* === Contenedor principal === */
+.container {
+    margin-top: 40px;
+    margin-bottom: 40px;
 }
 
-/* Tarjeta de producto */
-.producto-card {
-    background: #fff;
-    border-radius: 15px;
-    overflow: hidden;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+/* === Título === */
+h2 {
+    color: #198754;
+    font-weight: bold;
     text-align: center;
-    padding: 1rem;
-    transition: transform 0.3s, box-shadow 0.3s;
-}
-.producto-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+    margin-bottom: 25px;
+    letter-spacing: 1px;
 }
 
-/* Botón editar */
-.btn-edit {
-    display: inline-block;
-    margin-top: 0.5rem;
-    padding: 0.4rem 1rem;
-    background: #28a745;
-    color: white;
-    border-radius: 50px;
-    text-decoration: none;
-    font-weight: 600;
-    transition: 0.3s;
-}
-.btn-edit:hover {
-    background: #157145;
-    transform: scale(1.05);
-}
-
-/* Botón añadir producto */
+/* === Botón agregar === */
 #btnAgregarProducto {
-    display: inline-block;
-    margin: 1rem 0;
-    padding: 0.6rem 1.5rem;
-    background: #007bff;
+    background: #198754;
     color: white;
+    border: none;
     border-radius: 50px;
+    padding: 10px 25px;
+    font-size: 1rem;
     font-weight: 600;
-    cursor: pointer;
-    transition: 0.3s;
+    transition: all 0.3s ease;
 }
 #btnAgregarProducto:hover {
-    background: #0056b3;
+    background: #157347;
     transform: scale(1.05);
 }
 
-/* Formulario agregar producto */
+/* === Formulario agregar producto === */
 #formAgregarProducto {
     display: none;
     margin-top: 2rem;
+    margin-bottom: 2rem;
     opacity: 0;
     transition: opacity 0.5s ease;
 }
@@ -76,39 +51,123 @@
     display: block;
     opacity: 1;
 }
+
+/* === Contenedor de tarjetas === */
+.productos-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+/* === Tarjeta del producto === */
+.producto-card {
+    background: #ffffff;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0, 128, 0, 0.15);
+    text-align: center;
+    padding: 1.2rem;
+    transition: transform 0.3s, box-shadow 0.3s;
+    border-top: 4px solid #198754;
+}
+
+.producto-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 15px 25px rgba(0, 128, 0, 0.2);
+}
+
+/* === Imagen del producto === */
+.producto-card img {
+    width: 100%;
+    height: 190px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+
+/* === Información del producto === */
+.producto-card h5 {
+    color: #198754;
+    font-weight: 700;
+    margin: 0.5rem 0;
+}
+
+.producto-card p {
+    margin: 0.25rem 0;
+    font-size: 0.95rem;
+    color: #444;
+}
+
+.producto-card strong {
+    color: #1b4d1b;
+}
+
+/* === Botón editar === */
+.btn-edit {
+    display: inline-block;
+    margin-top: 0.6rem;
+    padding: 0.45rem 1.2rem;
+    background: #198754;
+    color: white;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: 0.3s;
+}
+.btn-edit:hover {
+    background: #145c3e;
+    transform: scale(1.05);
+}
+
+/* === Responsividad === */
+@media (max-width: 600px) {
+    .producto-card {
+        padding: 1rem;
+    }
+    h2 {
+        font-size: 1.4rem;
+    }
+}
 </style>
 
 <div class="container">
-    <h2 class="text-center mt-4">Productos</h2>
+    <h2>Gestión de Productos</h2>
 
-    <div class="text-center">
-        <button id="btnAgregarProducto" aria-label="Abrir formulario para añadir producto">Añadir Producto</button>
+    <div class="text-center mb-4">
+        <button id="btnAgregarProducto" aria-label="Abrir formulario para añadir producto">
+            Añadir Producto
+        </button>
     </div>
 
-    <!-- Contenedor de productos -->
+    <!-- 🔹 Formulario agregar producto (AHORA ENCIMA DE LA LISTA) -->
+    <div id="formAgregarProducto">
+        {% include 'administrador/agregar_producto.html' %}
+    </div>
+
+    <!-- 🔹 Contenedor de productos -->
     <div class="productos-container">
         {% for producto in productos %}
         <div class="producto-card">
             <img src="{{ url_for('static', filename=producto.ImagenPrincipal or 'img/catalogo.png') }}" 
-                 alt="{{ producto.NombreProducto|default('Producto sin nombre') }}"
-                 class="card-img-top"
-                 style="height:200px; object-fit:cover; border-radius:10px 10px 0 0;">
-            <h5>{{ producto.NombreProducto|default('Producto sin nombre') }}</h5>
-            <p>Stock: {{ producto.Stock|default(0) }}</p>
-            <p class="card-text">
-            ${{ '%.2f'|format(producto.PrecioUnidad|default(0.0)|float) }}
-            </p>
+                 alt="{{ producto.NombreProducto or 'Producto sin nombre' }}">
+            
+            <h5>{{ producto.NombreProducto or 'Producto sin nombre' }}</h5>
 
-            <a href="{{ url_for('admin.editar_producto', id_producto=producto.ID_Producto|default(0)) }}" class="btn-edit">Editar</a>
+            <p><strong>Descripción:</strong> {{ producto.Descripcion or 'Sin descripción' }}</p>
+            <p><strong>Material:</strong> {{ producto.Material or 'No especificado' }}</p>
+            <p><strong>Color:</strong> {{ producto.Color or 'No especificado' }}</p>
+            <p><strong>Proveedor:</strong> {{ producto.proveedor.NombreProveedor if producto.proveedor else 'Sin proveedor' }}</p>
+            <p><strong>Categoría:</strong> {{ producto.categoria.NombreCategoria if producto.categoria else 'Sin categoría' }}</p>
+            <p><strong>Stock:</strong> {{ producto.Stock or 0 }}</p>
+            <p><strong>Precio:</strong> ${{ '%.2f'|format(producto.PrecioUnidad or 0.0) }}</p>
+
+            <a href="{{ url_for('admin.editar_producto', id_producto=producto.ID_Producto) }}" class="btn-edit">
+                Editar
+            </a>
         </div>
         {% else %}
         <p class="text-center mt-3">No hay productos disponibles.</p>
         {% endfor %}
-    </div>
-
-    <!-- Formulario agregar producto -->
-    <div id="formAgregarProducto">
-        {% include 'administrador/agregar_producto.html' %}
     </div>
 </div>
 
@@ -118,7 +177,9 @@ const formAgregar = document.getElementById('formAgregarProducto');
 
 btnAgregar.addEventListener('click', () => {
     formAgregar.classList.toggle('mostrar');
-    btnAgregar.textContent = formAgregar.classList.contains('mostrar') ? 'Cerrar Formulario' : 'Añadir Producto';
+    btnAgregar.textContent = formAgregar.classList.contains('mostrar')
+        ? '✖ Cerrar Formulario'
+        : 'Añadir Producto';
 });
 </script>
 
