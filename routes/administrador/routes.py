@@ -30,6 +30,8 @@ def dashboard():
 @login_required
 @role_required("admin")
 def gestion_roles():
+    roles_disponibles = ["admin", "cliente", "instalador", "transportista"]
+
     if request.method == "POST":
         user_id = request.form.get("user_id")
         nuevo_rol = request.form.get("rol")
@@ -45,9 +47,29 @@ def gestion_roles():
         flash(f"✅ Rol de {usuario.Nombre} actualizado a {nuevo_rol}", "success")
         return redirect(url_for("admin.gestion_roles"))
 
-    usuarios = Usuario.query.all()
-    roles_disponibles = ["admin", "cliente", "instalador", "transportista"]
-    return render_template("administrador/gestion_roles.html", usuarios=usuarios, roles=roles_disponibles)
+    # --- FILTRO ---
+    q = request.args.get("q", "").strip()
+    rol_filter = request.args.get("rol_filter", "").strip()
+
+    usuarios_query = Usuario.query
+    if q:
+        usuarios_query = usuarios_query.filter(
+            (Usuario.Nombre.ilike(f"%{q}%")) |
+            (Usuario.Correo.ilike(f"%{q}%"))
+        )
+    if rol_filter:
+        usuarios_query = usuarios_query.filter_by(Rol=rol_filter)
+
+    usuarios = usuarios_query.all()
+    # -----------------
+
+    return render_template(
+        "administrador/gestion_roles.html",
+        usuarios=usuarios,
+        roles=roles_disponibles,
+        rol_filter=rol_filter,
+        q=q
+    )
 
 # ---------- CAMBIAR_ROL ----------
 @admin.route("/cambiar_rol/<int:user_id>", methods=["POST"])
