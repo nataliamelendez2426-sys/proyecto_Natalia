@@ -5,9 +5,6 @@
 {% block extra_css %}
 <style>
 :root {
-  --celeste-claro: #e7fcff;
-  --celeste: #d1faff;
-  --azul-gris: #d1faffe; 
   --verde: #57a773;
   --verde-oscuro: #157145;
 }
@@ -25,45 +22,33 @@
   padding: 2rem;
   width: 100%;
   max-width: 600px;
-  position: relative;
-  z-index: 1;
+  text-align: center;
 }
 
 .tracking-panel h2 {
   margin-top: 0;
   color: var(--verde-oscuro);
   font-size: 1.6rem;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.tracking-data-block {
-  margin: 1.5rem 0;
-  border-top: 1px solid #eee;
-  padding-top: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .tracking-product-img {
   width: 80px;
   height: 80px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid #ddd;
-  background-color: #f8f8f8; /* fondo gris */
+  background-color: #f8f8f8;
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
+  margin: 0 auto 10px;
 }
 
 .tracking-product-img img {
   width: 100%;
   height: 100%;
-  object-fit: contain; /* asegura que no se corte la imagen */
-  display: block;
+  object-fit: contain;  /* Evita que la imagen se corte */
 }
 
 .tracking-info p {
@@ -71,7 +56,6 @@
   font-size: 0.95rem;
 }
 
-/* Barra de progreso */
 .tracking-progress-bar {
   display: flex;
   justify-content: space-between;
@@ -130,19 +114,6 @@
   margin-top: 1rem;
   color: var(--verde-oscuro); 
 }
-
-@media (max-width: 576px) {
-  .tracking-panel {
-    padding: 1.5rem;
-  }
-  .tracking-step p {
-    font-size: 0.75rem;
-  }
-  .tracking-product-img {
-    width: 60px;
-    height: 60px;
-  }
-}
 </style>
 {% endblock %}
 
@@ -153,49 +124,59 @@
 {% block content %}
 <div class="tracking-container">
   <div class="tracking-panel">
-    <h2>Actualizaciones sobre tu pedido</h2>
+    <h2>Seguimiento de tu pedido</h2>
 
-    <div class="tracking-data-block">
-      <div class="tracking-product-img">
-        <img src="{{ url_for('static', filename=pedido.ImagenProducto or 'img/catalogo.png') }}" alt="Producto pedido">
-      </div>
-      <div class="tracking-info">
-        <p><strong>ID Pedido:</strong> #{{ pedido.ID_Pedido }}</p>
-        <p><strong>Transportista:</strong> 
-          {% if pedido.transportista %}
-              {{ pedido.transportista.Nombre }} {{ pedido.transportista.Apellido }}
-          {% else %}
-              Sin asignar
-          {% endif %}
-        </p>
-      </div>
+    <!-- Productos del pedido -->
+    <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:5px;">
+      {% for detalle in pedido.detalles_pedido %}
+        {% set producto = detalle.producto %}
+        {% if producto %}
+          <div style="text-align:center; font-size:0.8rem;">
+            <div class="tracking-product-img">
+              <img src="{{ url_for('static', filename=producto.ImagenPrincipal or 'img/catalogo.png') }}" 
+                   alt="{{ producto.NombreProducto }}">
+            </div>
+            {{ producto.NombreProducto }}
+          </div>
+        {% endif %}
+      {% endfor %}
     </div>
 
+    <!-- Información del pedido -->
+    <div class="tracking-info" style="margin-top:15px;">
+      <p><strong>ID Pedido:</strong> #{{ pedido.ID_Pedido }}</p>
+     <p><strong>Transportista:</strong>
+      {% if transportista %}
+        {{ transportista.Nombre }} {{ transportista.Apellido }}
+      {% else %}
+        Sin asignar
+      {% endif %}
+    </p>
+
+    </div>
+
+    <!-- Barra de progreso -->
     {% set estados = ['en proceso', 'en despacho', 'en ruta', 'entregado'] %}
     {% set estado_actual_index = estados.index(pedido.Estado | lower) if (pedido.Estado | lower) in estados else -1 %}
 
-    <div class="tracking-progress-bar" id="barraProgresoCliente">
+    <div class="tracking-progress-bar">
       {% for i in range(4) %}
         <div class="tracking-step {% if estado_actual_index >= i %}active{% endif %}">
           <div class="circle">{{ i + 1 }}</div>
           {% set texto_paso = estados[i] | replace('_',' ') | capitalize %}
-          {% if texto_paso == 'En ruta' %}{% set texto_paso = 'En Ruta' %}
-          {% elif texto_paso == 'En despacho' %}{% set texto_paso = 'En Despacho' %}
-          {% elif texto_paso == 'En proceso' %}{% set texto_paso = 'En Proceso' %}
-          {% elif texto_paso == 'Entregado' %}{% set texto_paso = 'Entregado' %}
-          {% endif %}
           <p>{{ texto_paso }}</p>
         </div>
       {% endfor %}
     </div>
 
-    <div class="tracking-status-message" id="mensajeCliente">
+    <!-- Estado actual -->
+    <div class="tracking-status-message">
       Estado actual:
       {% if pedido.Estado == 'en proceso' %} En proceso
       {% elif pedido.Estado == 'en despacho' %} En despacho
       {% elif pedido.Estado == 'en ruta' %} En ruta de entrega
-      {% elif pedido.Estado == 'entregado' %}Entregado
-      {% else %}Pendiente{% endif %}
+      {% elif pedido.Estado == 'entregado' %} Entregado
+      {% else %} Pendiente {% endif %}
     </div>
   </div>
 </div>

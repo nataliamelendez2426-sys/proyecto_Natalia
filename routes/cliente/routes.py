@@ -478,14 +478,17 @@ def finalizar_compra():
 @login_required
 def seguimiento_cliente(id_pedido):
     pedido = Pedido.query.get_or_404(id_pedido)
-    
-    if pedido.usuario.ID_Usuario != current_user.id and current_user.Rol not in ['admin', 'transportista']:
+
+    if pedido.ID_Usuario != current_user.id and current_user.Rol not in ['admin', 'transportista']:
         return "Acceso denegado ❌", 403
 
-    # Retornamos el template con los datos del pedido
+ 
+    transportista = pedido.empleado  
+
     return render_template(
         'cliente/seguimiento.html',
-        pedido=pedido
+        pedido=pedido,
+        transportista=transportista
     )
 
 
