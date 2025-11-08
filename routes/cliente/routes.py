@@ -477,21 +477,27 @@ def finalizar_compra():
 @cliente.route('/seguimiento/<int:id_pedido>')
 @login_required
 def seguimiento_cliente(id_pedido):
-    
     pedido = Pedido.query.get_or_404(id_pedido)
 
+    # DEBUG temporal — imprime los IDs en la consola del servidor
+    print("🔎 Pedido pertenece al usuario:", pedido.usuario.ID_Usuario)
+    print("👤 Usuario logueado:", current_user.id)
+    print("🎭 Rol del usuario:", current_user.Rol)
 
-    if pedido.usuario.id != current_user.id: 
+    if pedido.usuario.ID_Usuario != current_user.id and current_user.Rol != 'admin':
         return "Acceso denegado ❌", 403
 
     return render_template('cliente/seguimiento.html', pedido=pedido)
+
+
+
 
 @cliente.route('/como_encontrar_pedido/<int:id_pedido>')
 @login_required
 def como_encontrar_pedido(id_pedido):
     pedido = Pedido.query.get_or_404(id_pedido)
 
-    # Validar que solo el cliente dueño del pedido pueda acceder
+  
     if pedido.usuario.ID_Usuario != current_user.id and current_user.Rol not in ['admin', 'transportista']:
         return "Acceso denegado ❌", 403
 
