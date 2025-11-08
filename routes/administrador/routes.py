@@ -12,7 +12,7 @@ from basedatos.notificaciones import crear_notificacion
 from werkzeug.utils import secure_filename
 from sqlalchemy import func
 
-
+UPLOAD_FOLDER = 'static/uploads/productos'
 
 reviews = []
 
@@ -394,18 +394,45 @@ def editar_producto(id_producto):
     producto = Producto.query.get_or_404(id_producto)
 
     if request.method == 'POST':
-        producto.NombreProducto = request.form['nombre']
-        producto.Stock = request.form['stock']
-        producto.Precio = request.form['precio']
-        db.session.commit()
-        flash('Producto actualizado', 'success')
-        return redirect(url_for('admin.lista_productos'))
+        try:
+            # Datos del formulario
+            producto.NombreProducto = request.form['nombre']
+            producto.Stock = int(request.form['stock'])
+            producto.PrecioUnidad = float(request.form['precio'])
+            producto.Material = request.form.get('material', '')
+            producto.Color = request.form.get('color', '')
+            producto.Descripcion = request.form.get('descripcion', '')
+            producto.ID_Proveedor = int(request.form['proveedor'])
+            producto.ID_Categoria = int(request.form['categoria'])
 
+            # Imagen (opcional)
+            if 'imagen' in request.files:
+                imagen = request.files['imagen']
+                if imagen and imagen.filename != '':
+                    filename = secure_filename(imagen.filename)
+                    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                    imagen_path = os.path.join(UPLOAD_FOLDER, filename)
+                    imagen.save(imagen_path)
+                    producto.ImagenPrincipal = f'uploads/productos/{filename}'
+
+            db.session.commit()
+            flash('✅ Producto actualizado correctamente', 'success')
+            return redirect(url_for('admin.lista_productos'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'❌ Error al actualizar el producto: {e}', 'danger')
+
+    # Datos para el formulario
     proveedores = Proveedor.query.all()
     categorias = Categorias.query.all()
-    return render_template('administrador/editar_producto.html', producto=producto,
-                           proveedores=proveedores, categorias=categorias)
 
+    return render_template(
+        'administrador/editar_producto.html',
+        producto=producto,
+        proveedores=proveedores,
+        categorias=categorias
+    )
 
 # ---------- RESEÑAS ----------
 
