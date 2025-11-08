@@ -247,7 +247,6 @@ def actualizar_estado(id_pedido):
 
 
 # ---------- Enviar confirmación por correo ----------
-
 @transportista.route("/enviar_confirmacion/<int:id_pedido>", methods=["GET", "POST"])
 @login_required
 @role_required('transportista')
@@ -256,7 +255,13 @@ def enviar_confirmacion(id_pedido):
     cliente = pedido.usuario
     transportista = current_user  
 
-   
+    # 🔹 Cambiar estado a "entregado" automáticamente
+    if pedido.Estado != "entregado":
+        pedido.Estado = "entregado"
+        pedido.UltimaActualizacion = datetime.now()
+        db.session.commit()  # Guardar el cambio en la base de datos
+
+    # Links para el correo
     link_rastrear = url_for(
         "cliente.seguimiento_cliente",
         id_pedido=pedido.ID_Pedido,
@@ -305,14 +310,8 @@ def enviar_confirmacion(id_pedido):
     """
 
     mail.send(msg)
-    flash("✅ Correo de confirmación enviado correctamente al cliente.", "success")
+    flash("✅ Correo de confirmación enviado y pedido marcado como entregado.", "success")
     return redirect(url_for("transportista.ver_pedidos_transportista"))
-
-
-
-
-
-
 
 # ---------- Confirmar entrega desde el correo ----------
 
