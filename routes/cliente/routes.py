@@ -1,5 +1,5 @@
 from flask_login import current_user
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session , current_app
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from basedatos.models import db, Usuario, Notificaciones, Direccion, Calendario,Pedido, Producto, Resena, Detalle_Pedido, Pagos,Mensaje,Garantia ,GarantiaArchivo
@@ -11,6 +11,7 @@ from sqlalchemy import text
 from flask_mail import Message
 from flask import url_for
 from basedatos.decoradores import mail
+from functools import wraps
 
 
 favoritos_usuario = set() 
@@ -402,60 +403,81 @@ def mensajes_cliente_ajax():
 def ver_carrito():
     return render_template('Cliente/carrito.html')
 
-@cliente.route('/checkout', methods=['POST'])
-@login_required
+def login_required_json(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return jsonify({"success": False, "mensaje": "Usuario no autenticado"}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+@cliente.route('/checkout', methods=['GET', 'POST'])
+@login_required_json
 def checkout():
-    data = request.get_json()
-    direccion_id = data.get('direccion')
-    carrito = data.get('carrito', [])
-    metodo_pago = data.get('metodo')
+    try:
+        if not request.is_json:
+            return jsonify({"success": False, "mensaje": "Se esperaba JSON"}), 400
 
-    if not carrito:
-        return jsonify({"success": False, "mensaje": "El carrito está vacío."})
+        data = request.get_json()
+        direccion_id = data.get('direccion')
+        carrito = data.get('carrito', [])
+        metodo_pago = data.get('metodo')
 
-    # 1. Guardar pedido en la base de datos
-    pedido = Pedido(
-        ID_Usuario=current_user.id,
-        Destino="Dirección seleccionada o calculada",
-        Estado="pendiente",
-        FechaPedido=date.today(),
-        # aquí podrías agregar más campos como método de pago
-    )
-    db.session.add(pedido)
-    db.session.commit()
+        if not carrito:
+            return jsonify({"success": False, "mensaje": "El carrito está vacío."})
 
-    # 2. Guardar detalles del pedido
-    for item in carrito:
-        detalle = Detalle_Pedido(
-            ID_Pedido=pedido.ID_Pedido,
-            ID_Producto=item['id'],
-            Cantidad=item.get('cantidad', 1)
+        # Crear pedido
+        pedido = Pedido(
+            ID_Usuario=current_user.id,
+            Destino=f"Dirección con ID {direccion_id}",
+            Estado="pendiente",
+            FechaPedido=date.today(),
+            MetodoPago=metodo_pago
         )
-        db.session.add(detalle)
-    db.session.commit()
+        db.session.add(pedido)
+        db.session.commit()
 
-    # 3. Enviar correo con información del pedido
-    link_pdf = url_for('cliente.ver_pedido_pdf', id_pedido=pedido.ID_Pedido, _external=True)
-    msg = Message(
-        subject=f"Detalle de tu pedido #{pedido.ID_Pedido}",
-        sender='tuemail@dominio.com',
-        recipients=[current_user.Email]
-    )
-    msg.html = f"""
-    <p>Hola {current_user.Nombre},</p>
-    <p>Gracias por tu compra. Aquí tienes la información de tu pedido:</p>
-    <ul>
-        <li>ID Pedido: {pedido.ID_Pedido}</li>
-        <li>Dirección: {pedido.Destino}</li>
-        <li>Método de pago: {metodo_pago}</li>
-        <li>Total: ${sum([i['precio']*i.get('cantidad',1) for i in carrito]):.2f}</li>
-    </ul>
-    <p>Para descargar el PDF de tu pedido, haz clic en el siguiente botón:</p>
-    <p><a href="{link_pdf}" style="background-color:#57a773;color:white;padding:10px 20px;border-radius:5px;text-decoration:none;">Exportar PDF</a></p>
-    """
-    mail.send(msg)
+        # Guardar detalles
+        for item in carrito:
+            detalle = Detalle_Pedido(
+                ID_Pedido=pedido.ID_Pedido,
+                ID_Producto=item.get('id', 0),
+                Cantidad=item.get('cantidad', 1)
+            )
+            db.session.add(detalle)
+        db.session.commit()
 
-    return jsonify({"success": True, "mensaje": "Pago procesado correctamente."})
+        # Enviar correo
+        total = sum(item.get('precio',0)*item.get('cantidad',1) for item in carrito)
+        link_pdf = url_for('cliente.ver_pedido_pdf', id_pedido=pedido.ID_Pedido, _external=True)
+
+        msg = Message(
+            subject=f"Detalle de tu pedido #{pedido.ID_Pedido}",
+            sender='tuemail@dominio.com',
+            recipients=[current_user.Email]
+        )
+        msg.html = f"""
+        <p>Hola {current_user.Nombre},</p>
+        <p>Gracias por tu compra. Aquí tienes la información de tu pedido:</p>
+        <ul>
+            <li>ID Pedido: {pedido.ID_Pedido}</li>
+            <li>Dirección: {pedido.Destino}</li>
+            <li>Método de pago: {metodo_pago}</li>
+            <li>Total: ${total:.2f}</li>
+        </ul>
+        <p><a href="{link_pdf}" style="background-color:#57a773;color:white;padding:10px 20px;border-radius:5px;text-decoration:none;">Exportar PDF</a></p>
+        """
+        try:
+            mail.send(msg)
+        except Exception as e:
+            current_app.logger.error(f"Error enviando correo: {e}")
+
+        return jsonify({"success": True, "mensaje": "Pago procesado correctamente."})
+
+    except Exception as e:
+        current_app.logger.error(f"Error en checkout: {e}")
+        return jsonify({"success": False, "mensaje": "Ocurrió un error en el servidor."}), 500
+
 
 @cliente.route('/finalizar-compra', methods=['POST'])
 @login_required

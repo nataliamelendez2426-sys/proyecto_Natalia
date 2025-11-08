@@ -16,115 +16,45 @@
   --text-dark: #1b3e2b;         
   --shadow-light: rgba(0, 0, 0, 0.05);
   --shadow-medium: rgba(0, 0, 0, 0.12);
-  --badge-light: #e7fcff;        
-  --badge-dark: #57a773;         
 }
 
-/* General */
-body {
-    background-color: var(--bg-cream);
-    color: var(--text-dark);
-}
-
-/* Card Headers */
-.card-header {
-    font-weight: 600;
-    border-bottom: none;
-}
-.card-header.bg-primary {
-    background-color: var(--primary-green) !important;
-}
-.card-header.bg-success {
-    background-color: var(--secondary-green) !important;
-}
-
-/* Cards */
-.card {
-    border-radius: 12px;
-    box-shadow: 0 4px 10px var(--shadow-light);
-}
-
-/* Botones */
-.btn-success {
-    background-color: var(--secondary-green);
-    border-color: var(--secondary-green);
-}
-.btn-success:hover {
-    background-color: var(--accent-green);
-    border-color: var(--accent-green);
-}
-.btn-danger {
-    background-color: #dc3545;
-}
-.btn-danger:hover {
-    background-color: #b02a37;
-}
-
-/* Inputs */
-.form-control, .form-select {
-    border-radius: 8px;
-    border: 1px solid var(--secondary-green);
-    box-shadow: none;
-}
-.form-control:focus, .form-select:focus {
-    border-color: var(--accent-green);
-    box-shadow: 0 0 8px rgba(5, 82, 92, 0.3);
-}
-
-/* List Group Resumen */
-.list-group-item {
-    border: none;
-    padding: 0.75rem 1rem;
-}
-.list-group-item.bg-light {
-    background-color: var(--light-green) !important;
-}
-
-/* Modal */
-.modal-content {
-    border-radius: 12px;
-    overflow: hidden;
-}
-.modal-header {
-    font-weight: 600;
-}
-.modal-header.bg-success {
-    background-color: var(--secondary-green) !important;
-}
-#total-modal {
-    color: var(--accent-green);
-}
-
-/* Botón Pagar */
-#btn-pagar {
-    background-color: var(--secondary-green);
-    border-color: var(--secondary-green);
-}
-#btn-pagar:hover {
-    background-color: var(--accent-green);
-    border-color: var(--accent-green);
-}
+body { background-color: var(--bg-cream); color: var(--text-dark); }
+.card-header { font-weight: 600; border-bottom: none; }
+.card-header.bg-primary { background-color: var(--primary-green) !important; }
+.card-header.bg-success { background-color: var(--secondary-green) !important; }
+.card { border-radius: 12px; box-shadow: 0 4px 10px var(--shadow-light); }
+.btn-success { background-color: var(--secondary-green); border-color: var(--secondary-green); }
+.btn-success:hover { background-color: var(--accent-green); border-color: var(--accent-green); }
+.form-control, .form-select { border-radius: 8px; border: 1px solid var(--secondary-green); box-shadow: none; }
+.form-control:focus, .form-select:focus { border-color: var(--accent-green); box-shadow: 0 0 8px rgba(5,82,92,0.3); }
+.list-group-item { border: none; padding: 0.75rem 1rem; }
+.list-group-item.bg-light { background-color: var(--light-green) !important; }
+.modal-content { border-radius: 12px; overflow: hidden; }
+.modal-header { font-weight: 600; }
+.modal-header.bg-success { background-color: var(--secondary-green) !important; }
+#total-modal { color: var(--accent-green); }
+#btn-pagar { background-color: var(--secondary-green); border-color: var(--secondary-green); }
+#btn-pagar:hover { background-color: var(--accent-green); border-color: var(--accent-green); }
 </style>
 
 <div class="container mt-5">
-    <h1 class="text-primary mb-5" style="color: var(--primary-green)"><i class="bi bi-credit-card-2-back me-2"></i><b>Finalizar Compra</b>  </h1>
-    
-    <div id="flash-message-container" class="mb-4"></div>
+    <h1 class="text-primary mb-5" style="color: var(--primary-green)">
+        <i class="bi bi-credit-card-2-back me-2"></i><b>Finalizar Compra</b>
+    </h1>
 
     <div class="row">
-       
+        <!-- Formulario de dirección y pago -->
         <div class="col-md-8">
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-primary text-white">
                     <h4 class="mb-0"><i class="bi bi-geo-alt-fill me-2"></i> Dirección de Envío</h4>
                 </div>
                 <div class="card-body">
-                    <form id="checkout-form" method="POST" action="{{ url_for('cliente.finalizar_compra') }}">
+                    <form id="checkout-form">
                         <div class="mb-3">
                             <label for="nombre" class="form-label">Nombre Completo</label>
                             <input type="text" class="form-control" id="nombre" name="nombre" required value="{{ current_user.Nombre }}">
                         </div>
-                        
                         <div class="mb-3">
                             <label for="select-direccion" class="form-label">Seleccionar Dirección Existente</label>
                             <select class="form-select" id="select-direccion" name="direccion" required>
@@ -137,24 +67,14 @@ body {
                         </div>
 
                         <h4 class="mt-4 mb-3"><i class="bi bi-cash-stack me-2"></i> Método de Pago</h4>
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="pago" id="credito" value="credito" checked>
-                                <label class="form-check-label" for="credito">Tarjeta de Crédito / Débito</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="pago" id="nequi" value="nequi">
-                                <label class="form-check-label" for="nequi">Nequi</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="pago" id="daviplata" value="daviplata">
-                                <label class="form-check-label" for="daviplata">Daviplata</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="pago" id="efectivo" value="efectivo">
-                                <label class="form-check-label" for="efectivo">Efectivo contra Entrega</label>
-                            </div>
+                        {% for metodo in ['credito','nequi','daviplata','efectivo'] %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="pago" id="{{ metodo }}" value="{{ metodo }}" {% if metodo=='credito' %}checked{% endif %}>
+                            <label class="form-check-label" for="{{ metodo }}">
+                                {{ metodo|capitalize }}{% if metodo=='credito' %} / Débito{% endif %}
+                            </label>
                         </div>
+                        {% endfor %}
 
                         <div id="datos-tarjeta" class="card p-3 bg-light mt-3 border">
                             <h5>Datos de la Tarjeta</h5>
@@ -172,13 +92,13 @@ body {
                             </div>
                         </div>
 
-                        <input type="hidden" name="carrito_json" id="carrito-json">
+                        <input type="hidden" id="carrito-json">
                     </form>
                 </div>
             </div>
         </div>
 
-        
+        <!-- Resumen del pedido -->
         <div class="col-md-4">
             <div class="card shadow-lg sticky-top" style="top: 20px;">
                 <div class="card-header bg-success text-white">
@@ -194,7 +114,7 @@ body {
                     </ul>
                 </div>
             </div>
-            
+
             <button id="btn-pagar" class="btn btn-success btn-lg w-100 mt-3 shadow-lg">
                 <i class="bi bi-lock-fill me-2"></i> Confirmar y Pagar
             </button>
@@ -202,7 +122,7 @@ body {
     </div>
 </div>
 
-
+<!-- Modal de confirmación -->
 <div class="modal fade" id="modalConfirmacion" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow-lg">
@@ -226,49 +146,45 @@ body {
 document.addEventListener('DOMContentLoaded', () => {
     const carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
     let totalFinal = 0;
-
     const resumen = document.getElementById('resumen-productos');
     const totalEl = document.getElementById('checkout-total');
     const carritoInput = document.getElementById('carrito-json');
 
-    let subtotal = 0;
+    // Mostrar productos y calcular total
     carrito.forEach(item => {
         const cantidad = item.cantidad || 1;
         const precio = item.precio || 0;
-        subtotal += precio * cantidad;
-
+        totalFinal += precio * cantidad;
         const li = document.createElement('li');
         li.className = 'list-group-item d-flex justify-content-between align-items-center';
         li.innerHTML = `${item.nombre} x ${cantidad} <span class="text-secondary">$${(precio*cantidad).toFixed(2)}</span>`;
         resumen.appendChild(li);
     });
-
-    totalFinal = subtotal;
     totalEl.textContent = `$${totalFinal.toFixed(2)}`;
     carritoInput.value = JSON.stringify(carrito);
 
+    // Mostrar/ocultar campos según método de pago
     const datosTarjetaDiv = document.getElementById('datos-tarjeta');
     const datosDigitalesDiv = document.getElementById('datos-digitales');
     const toggleInputs = () => {
         const metodo = document.querySelector('input[name="pago"]:checked').value;
         datosTarjetaDiv.style.display = metodo === 'credito' ? 'block' : 'none';
-        datosDigitalesDiv.style.display = (metodo === 'nequi' || metodo === 'daviplata') ? 'block' : 'none';
+        datosDigitalesDiv.style.display = (metodo==='nequi'||metodo==='daviplata') ? 'block' : 'none';
     };
     document.querySelectorAll('input[name="pago"]').forEach(r => r.addEventListener('change', toggleInputs));
     toggleInputs();
 
+    // Botón pagar via fetch JSON
     const btnPagar = document.getElementById('btn-pagar');
     btnPagar.addEventListener('click', async (e) => {
         e.preventDefault();
-        if (carrito.length === 0) {
-            alert("El carrito está vacío.");
-            return;
-        }
+        if (!carrito.length) return alert("El carrito está vacío.");
+
         const direccion = document.getElementById('select-direccion').value;
         const metodo = document.querySelector('input[name="pago"]:checked').value;
 
         btnPagar.disabled = true;
-        btnPagar.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Procesando...';
+        btnPagar.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Procesando...';
 
         try {
             const response = await fetch("{{ url_for('cliente.checkout') }}", {
@@ -282,12 +198,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const modal = new bootstrap.Modal(document.getElementById('modalConfirmacion'));
                 document.getElementById('total-modal').textContent = `Total: $${totalFinal.toFixed(2)}`;
                 modal.show();
-                localStorage.setItem('carrito', '[]');
+                localStorage.setItem('carrito','[]');
             } else {
                 alert(data.mensaje);
             }
-        } catch (error) {
-            alert("Ocurrió un error inesperado: " + error.message);
+        } catch(err) {
+            alert("Ocurrió un error: " + err.message);
         } finally {
             btnPagar.disabled = false;
             btnPagar.innerHTML = '<i class="bi bi-lock-fill me-2"></i> Confirmar y Pagar';
