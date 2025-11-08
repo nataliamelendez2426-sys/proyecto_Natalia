@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from datetime import date,datetime, timedelta
 from flask import current_app
-from basedatos.models import db, Usuario, Notificaciones, Direccion, Producto, Proveedor,Categorias,Resena,Compra,Pedido, Mensaje, Garantia ,Pagos
+from basedatos.models import db, Usuario, Notificaciones, Direccion, Producto, Proveedor,Categorias,Resena,Compra,Pedido, Mensaje, Garantia ,Pagos, Categorias
 from werkzeug.security import generate_password_hash
 from basedatos.decoradores import role_required
 from basedatos.notificaciones import crear_notificacion
@@ -305,6 +305,22 @@ def ver_pedidos():
 
 
 # ---------- AGREGAR PRODUCTO ----------
+@admin.route('/productos', methods=['GET', 'POST'])
+def lista_productos():
+    productos = Producto.query.all()  
+    proveedores = Proveedor.query.all() 
+    categorias = Categorias.query.all()
+
+    if request.method == 'POST':
+      
+        pass
+
+    return render_template(
+        'Administrador/productos.html', 
+        productos=productos, 
+        proveedores=proveedores, 
+        categorias=categorias
+    )
 
 @admin.route('/admin/agregar-producto', methods=['GET', 'POST'])
 def agregar_producto():
@@ -350,6 +366,23 @@ def agregar_producto():
         return redirect(url_for('admin.agregar_producto'))
 
     return render_template('administrador/agregar_producto.html', proveedores=proveedores, categorias=categorias)
+
+@admin.route('/productos/editar/<int:id_producto>', methods=['GET', 'POST'])
+def editar_producto(id_producto):
+    producto = Producto.query.get_or_404(id_producto)
+
+    if request.method == 'POST':
+        producto.NombreProducto = request.form['nombre']
+        producto.Stock = request.form['stock']
+        producto.Precio = request.form['precio']
+        db.session.commit()
+        flash('Producto actualizado', 'success')
+        return redirect(url_for('admin.lista_productos'))
+
+    proveedores = Proveedor.query.all()
+    categorias = Categorias.query.all()
+    return render_template('admin/editar_producto.html', producto=producto,
+                           proveedores=proveedores, categorias=categorias)
 
 
 # ---------- RESEÑAS ----------
@@ -780,7 +813,7 @@ def detalle_empleado(id_empleado):
             flash("Horas inválidas, ingrese números válidos.", "danger")
             return redirect(url_for('admin.detalle_empleado', id_empleado=id_empleado))
 
-        # Guardar horas en el empleado
+       
         empleado.horas_diurnas = horas_diurnas
         empleado.horas_nocturnas = horas_nocturnas
 
@@ -788,12 +821,12 @@ def detalle_empleado(id_empleado):
         flash("Horas actualizadas correctamente.", "success")
         return redirect(url_for('admin.detalle_empleado', id_empleado=id_empleado))
 
-    # Calcular horas extra a partir de los pedidos
+    
     total_horas = 0
     total_horas_extra = 0
     for pedido in pedidos:
         if pedido.HoraLlegada and pedido.FechaEntrega:
-            # Convertir FechaEntrega a datetime si es solo date
+ 
             if isinstance(pedido.FechaEntrega, date) and not isinstance(pedido.FechaEntrega, datetime):
                 fecha_entrega_dt = datetime.combine(pedido.FechaEntrega, datetime.min.time())
             else:
@@ -801,19 +834,19 @@ def detalle_empleado(id_empleado):
 
             horas = (fecha_entrega_dt - pedido.HoraLlegada).total_seconds() / 3600
             total_horas += horas
-            if horas > 8:  # jornada estándar
+            if horas > 8: 
                 total_horas_extra += horas - 8
 
-        # Obtener instalaciones del pedido
+       
         eventos_instalacion = [c for c in pedido.calendario if c.Tipo and c.Tipo.lower() == 'instalacion']
         instalaciones.extend(eventos_instalacion)
 
-    # Guardar las horas calculadas para que persistan
+
     empleado.horas_totales = total_horas
     empleado.horas_extra = total_horas_extra
     db.session.commit()
 
-    # Calcular pagos por mes
+   
     pagos = Pagos.query.join(Pedido).filter(Pedido.ID_Empleado == id_empleado).all()
     pagos_por_mes = {}
     for pago in pagos:

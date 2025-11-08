@@ -1,0 +1,126 @@
+{% extends "common/base.html" %}
+
+{% block navbar %}
+  {% include "common/partials/navbar_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
+
+<style>
+/* Contenedor de productos */
+.productos-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px,1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+/* Tarjeta de producto */
+.producto-card {
+    background: #fff;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    text-align: center;
+    padding: 1rem;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+.producto-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+/* Imagen producto */
+.producto-card img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+}
+
+/* Botón editar */
+.btn-edit {
+    display: inline-block;
+    margin-top: 0.5rem;
+    padding: 0.4rem 1rem;
+    background: #28a745;
+    color: white;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: 0.3s;
+}
+.btn-edit:hover {
+    background: #157145;
+    transform: scale(1.05);
+}
+
+/* Botón añadir producto */
+#btnAñadirProducto {
+    display: inline-block;
+    margin: 1rem 0;
+    padding: 0.6rem 1.5rem;
+    background: #007bff;
+    color: white;
+    border-radius: 50px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+}
+#btnAñadirProducto:hover {
+    background: #0056b3;
+    transform: scale(1.05);
+}
+
+/* Formulario añadir producto oculto por defecto */
+#formAgregarProducto {
+    display: none;
+    margin-top: 2rem;
+}
+</style>
+
+<div class="container">
+    <h2 class="text-center mt-4">Productos</h2>
+
+    <div class="text-center">
+        <button id="btnAñadirProducto">Añadir Producto</button>
+    </div>
+
+    <!-- Contenedor de productos -->
+    <div class="productos-container">
+        {% for producto in productos %}
+        <div class="producto-card">
+            <img src="{{ url_for('static', filename='uploads/' ~ (producto.Imagen|default('placeholder.png'))) }}" 
+                 alt="{{ producto.NombreProducto|default('Producto sin nombre') }}">
+            <h5>{{ producto.NombreProducto|default('Producto sin nombre') }}</h5>
+            <p>Stock: {{ producto.Stock|default(0) }}</p>
+            <p>Precio: ${{ "{:,.2f}".format(producto.Precio|default(0)) }}</p>
+            <a href="{{ url_for('admin.editar_producto', id_producto=producto.ID_Producto|default(0)) }}" class="btn-edit">Editar</a>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Formulario agregar producto -->
+    <div id="formAgregarProducto">
+        {% include 'administrador/agregar_producto.html' %}
+    </div>
+</div>
+
+<script>
+const btnAñadir = document.getElementById('btnAñadirProducto');
+const formAgregar = document.getElementById('formAgregarProducto');
+
+btnAñadir.addEventListener('click', () => {
+    if(formAgregar.style.display === 'none') {
+        formAgregar.style.display = 'block';
+        btnAñadir.textContent = 'Cerrar Formulario';
+    } else {
+        formAgregar.style.display = 'none';
+        btnAñadir.textContent = 'Añadir Producto';
+    }
+});
+</script>
+
+{% endblock %}
