@@ -47,7 +47,6 @@
                 <th>ID Pedido</th>
                 <th>Estado</th>
                 <th>Hora Llegada</th>
-                <th>Fecha de Entrega</th>
                 <th>Productos</th>
             </tr>
         </thead>
@@ -57,7 +56,6 @@
                     <td>{{ pedido.ID_Pedido }}</td>
                     <td>{{ pedido.Estado }}</td>
                     <td>{{ pedido.HoraLlegada.strftime("%Y-%m-%d %H:%M") if pedido.HoraLlegada else '-' }}</td>
-                    <td>{{ pedido.FechaEntrega.strftime("%Y-%m-%d") if pedido.FechaEntrega else '-' }}</td>
                     <td>
                         <ul style="list-style:none; padding-left:0;">
                             {% for detalle in pedido.detalles_pedido %}
