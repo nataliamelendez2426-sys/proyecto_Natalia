@@ -64,7 +64,7 @@ button[type="submit"]:hover {
 <div class="form-wrapper">
   <div class="form-card">
     <h1>Agregar Producto</h1>
-    <form method="POST" enctype="multipart/form-data">
+    <form method="POST" action="{{ url_for('admin.agregar_producto') }}" enctype="multipart/form-data">
       <label>Imagen principal:</label>
       <input type="file" name="imagen_principal" class="form-input" accept="image/*">
 
@@ -73,6 +73,9 @@ button[type="submit"]:hover {
 
       <label>Stock:</label>
       <input type="number" name="stock" class="form-input" required>
+
+      <label>Material:</label>
+      <input type="text" name="material" class="form-input">
 
       <label>Precio:</label>
       <input type="number" step="0.01" name="precio" class="form-input" required>
