@@ -19,7 +19,7 @@
 }
 
 .tracking-panel {
-  background: white; /* se mantiene igual */
+  background: white;
   border-radius: 10px;
   box-shadow: 0 4px 10px rgba(0,0,0,0.05);
   padding: 2rem;
@@ -31,7 +31,7 @@
 
 .tracking-panel h2 {
   margin-top: 0;
-  color: var(--verde-oscuro); /* cambiamos del azul oscuro a verde oscuro */
+  color: var(--verde-oscuro);
   font-size: 1.6rem;
   display: flex;
   align-items: center;
@@ -48,11 +48,10 @@
 }
 
 .tracking-product-img {
-  width: 70px;
-  height: 70px;
+  height: 200px;
+  width: 100%;
   object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid #ddd;
+  border-radius: 10px 10px 0 0;
 }
 
 .tracking-info p {
@@ -76,7 +75,7 @@
   left: 8%;
   width: 84%;
   height: 5px;
-  background: #ddd; /* se mantiene igual */
+  background: #ddd;
   z-index: 0;
 }
 
@@ -103,7 +102,7 @@
 }
 
 .tracking-step.active .circle {
-  background: var(--verde); /* círculo activo en verde */
+  background: var(--verde);
 }
 
 .tracking-step p {
@@ -131,7 +130,6 @@
 </style>
 {% endblock %}
 
-
 {% block navbar %}
   {% include "common/partials/navbar_cliente.html" %}
 {% endblock %}
@@ -142,12 +140,18 @@
     <h2>Actualizaciones sobre tu pedido</h2>
 
     <div class="tracking-data-block">
-      <img src="{% if pedido.ImagenProducto %}{{ url_for('static', filename=pedido.ImagenProducto) }}{% else %}{{ url_for('static', filename='img/no-image.jpg') }}{% endif %}" 
+      <img src="{{ url_for('static', filename=pedido.ImagenProducto or 'img/catalogo.png') }}" 
            alt="Producto pedido" class="tracking-product-img">
 
       <div class="tracking-info">
         <p><strong>ID Pedido:</strong> #{{ pedido.ID_Pedido }}</p>
-        <p><strong>Transportista:</strong> {{ pedido.TransportistaNombre }}</p>
+        <p><strong>Transportista:</strong> 
+            {% if pedido.transportista %}
+                {{ pedido.transportista.Nombre }} {{ pedido.transportista.Apellido }}
+            {% else %}
+                Sin asignar
+            {% endif %}
+        </p>
       </div>
     </div>
 
@@ -174,8 +178,8 @@
       {% if pedido.Estado == 'en proceso' %} En proceso
       {% elif pedido.Estado == 'en despacho' %} En despacho
       {% elif pedido.Estado == 'en ruta' %} En ruta de entrega
-      {% elif pedido.Estado == 'entregado' %}Entregado
-      {% else %}Pendiente{% endif %}
+      {% elif pedido.Estado == 'entregado' %} Entregado
+      {% else %} Pendiente {% endif %}
     </div>
   </div>
 </div>
