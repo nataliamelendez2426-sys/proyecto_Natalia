@@ -8,7 +8,9 @@ from basedatos.notificaciones import crear_notificacion
 from datetime import date,datetime
 from flask import render_template
 from sqlalchemy import text
-
+from flask_mail import Message
+from flask import url_for
+from basedatos.decoradores import mail
 
 
 favoritos_usuario = set() 
@@ -400,64 +402,60 @@ def mensajes_cliente_ajax():
 def ver_carrito():
     return render_template('Cliente/carrito.html')
 
-@cliente.route('/checkout', methods=['GET', 'POST'])
+@cliente.route('/checkout', methods=['POST'])
 @login_required
 def checkout():
-    if request.method == 'POST':
-        data = request.json
-        carrito = data.get('carrito', [])
-        direccion_id = data.get('direccion')
+    data = request.get_json()
+    direccion_id = data.get('direccion')
+    carrito = data.get('carrito', [])
+    metodo_pago = data.get('metodo')
 
-        if not carrito:
-            return jsonify({"success": False, "mensaje": "El carrito está vacío."})
+    if not carrito:
+        return jsonify({"success": False, "mensaje": "El carrito está vacío."})
 
-        direccion_obj = Direccion.query.get(direccion_id)
-        if not direccion_obj:
-            return jsonify({"success": False, "mensaje": "Dirección no válida."})
+    # 1. Guardar pedido en la base de datos
+    pedido = Pedido(
+        ID_Usuario=current_user.id,
+        Destino="Dirección seleccionada o calculada",
+        Estado="pendiente",
+        FechaPedido=date.today(),
+        # aquí podrías agregar más campos como método de pago
+    )
+    db.session.add(pedido)
+    db.session.commit()
 
-        try:
-        
-            pedido = Pedido(
-                NombreComprador=current_user.Nombre,
-                Estado='pendiente',
-                FechaPedido=date.today(),
-                Destino=f"{direccion_obj.Direccion}, {direccion_obj.Barrio}, {direccion_obj.Ciudad}",
-                ID_Usuario=current_user.ID_Usuario
-            )
-            db.session.add(pedido)
-            db.session.flush() 
+    # 2. Guardar detalles del pedido
+    for item in carrito:
+        detalle = Detalle_Pedido(
+            ID_Pedido=pedido.ID_Pedido,
+            ID_Producto=item['id'],
+            Cantidad=item.get('cantidad', 1)
+        )
+        db.session.add(detalle)
+    db.session.commit()
 
-            for item in carrito:
-                producto_id = item.get('id_producto') or item.get('ID_Producto') or item.get('id')
-                producto = Producto.query.get(producto_id)
-                if not producto:
-                    continue
+    # 3. Enviar correo con información del pedido
+    link_pdf = url_for('cliente.ver_pedido_pdf', id_pedido=pedido.ID_Pedido, _external=True)
+    msg = Message(
+        subject=f"Detalle de tu pedido #{pedido.ID_Pedido}",
+        sender='tuemail@dominio.com',
+        recipients=[current_user.Email]
+    )
+    msg.html = f"""
+    <p>Hola {current_user.Nombre},</p>
+    <p>Gracias por tu compra. Aquí tienes la información de tu pedido:</p>
+    <ul>
+        <li>ID Pedido: {pedido.ID_Pedido}</li>
+        <li>Dirección: {pedido.Destino}</li>
+        <li>Método de pago: {metodo_pago}</li>
+        <li>Total: ${sum([i['precio']*i.get('cantidad',1) for i in carrito]):.2f}</li>
+    </ul>
+    <p>Para descargar el PDF de tu pedido, haz clic en el siguiente botón:</p>
+    <p><a href="{link_pdf}" style="background-color:#57a773;color:white;padding:10px 20px;border-radius:5px;text-decoration:none;">Exportar PDF</a></p>
+    """
+    mail.send(msg)
 
-                if producto.Stock < item['cantidad']:
-                    db.session.rollback()
-                    return jsonify({"success": False, "mensaje": f"No hay suficiente stock de {producto.NombreProducto}."})
-
-                detalle = Detalle_Pedido(
-                    ID_Pedido=pedido.ID_Pedido,
-                    ID_Producto=producto.ID_Producto,
-                    Cantidad=item['cantidad'],
-                    PrecioUnidad=producto.PrecioUnidad
-                )
-                db.session.add(detalle)
-
-              
-                producto.Stock -= item['cantidad']
-
-            db.session.commit()
-            return jsonify({"success": True, "mensaje": "Pedido confirmado correctamente."})
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"success": False, "mensaje": f"Ocurrió un error: {str(e)}"})
-
-   
-    direcciones = Direccion.query.filter_by(ID_Usuario=current_user.ID_Usuario).all()
-    return render_template('Cliente/pagos.html', direcciones=direcciones)
-
+    return jsonify({"success": True, "mensaje": "Pago procesado correctamente."})
 
 @cliente.route('/finalizar-compra', methods=['POST'])
 @login_required
@@ -471,6 +469,7 @@ def finalizar_compra():
 
     flash(f'✅ Pago con {metodo_pago} realizado correctamente', 'success')
     return redirect(url_for('catalogo'))
+
 
 # ---------- SEGUIMIENTO ----------
 
