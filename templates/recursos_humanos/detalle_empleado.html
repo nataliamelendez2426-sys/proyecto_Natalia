@@ -71,14 +71,14 @@
     </table>
 
     <h4>Horas trabajadas</h4>
-    <p><strong>Total Horas:</strong> {{ total_horas }} h</p>
-    <p><strong>Horas Extra:</strong> {{ total_horas_extra }} h</p>
+    <p><strong>Total Horas:</strong> 48 h</p>
+    <p><strong>Horas Extra:</strong> {{ (horas_diurnas or 0) + (horas_nocturnas or 0) }} h</p>
 
     <h4>Ingresar horas diurnas y nocturnas</h4>
     <form method="POST" action="{{ url_for('admin.detalle_empleado', id_empleado=empleado.ID_Usuario) }}">
-        <label>Horas Diurnas: <input type="number" name="horas_diurnas" value="{{ horas_diurnas or 0 }}" min="0"></label>
+        <label>Horas Extras Diurnas: <input type="number" name="horas_diurnas" value="{{ horas_diurnas or 0 }}" min="0"></label>
         &nbsp;&nbsp;
-        <label>Horas Nocturnas: <input type="number" name="horas_nocturnas" value="{{ horas_nocturnas or 0 }}" min="0"></label>
+        <label>Horas Extras Nocturnas: <input type="number" name="horas_nocturnas" value="{{ horas_nocturnas or 0 }}" min="0"></label>
         &nbsp;&nbsp;
         <button type="submit" class="btn btn-primary">Actualizar</button>
     </form>
@@ -87,18 +87,16 @@
     <div class="resumen-mes">
         {% set pago_base = 1423500 %}
         {% set auxilio_transporte = 200000 %}
-        {% set valor_hora_extra = 15000 %}
         {% set pago_hora_diurna = 8088 %}
         {% set pago_hora_nocturna = 11323 %}
 
         {% set total_diurnas = (horas_diurnas or 0) * pago_hora_diurna %}
         {% set total_nocturnas = (horas_nocturnas or 0) * pago_hora_nocturna %}
-        {% set total_horas_extra_valor = (total_horas_extra or 0) * valor_hora_extra %}
-        {% set total_mes = pago_base + auxilio_transporte + total_horas_extra_valor + total_diurnas + total_nocturnas %}
+        {% set total_horas_extra_valor = total_diurnas + total_nocturnas %}
+        {% set total_mes = pago_base + auxilio_transporte + total_horas_extra_valor %}
 
         <p>Pago base del mes: ${{ "{:,.0f}".format(pago_base) }} COP</p>
         <p>Auxilio de transporte: ${{ "{:,.0f}".format(auxilio_transporte) }} COP</p>
-        <p>Pago por horas extra: ${{ "{:,.0f}".format(total_horas_extra_valor) }} COP</p>
         <p>Pago por horas diurnas: ${{ "{:,.0f}".format(total_diurnas) }} COP</p>
         <p>Pago por horas nocturnas: ${{ "{:,.0f}".format(total_nocturnas) }} COP</p>
         <hr>
