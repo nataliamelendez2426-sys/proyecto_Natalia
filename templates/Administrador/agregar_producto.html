@@ -174,19 +174,14 @@ button[type="submit"]:hover { background-color: var(--verde-oscuro); }
 }
 </style>
 
-<!-- Mostrar productos -->
-<div class="product-container">
-  {% for producto in productos %}
-    <div class="product-card">
-      <img src="{{ url_for('static', filename='uploads/' ~ (producto.imagen_principal if producto.imagen_principal else 'placeholder.png')) }}" alt="{{ producto.nombre|default('Producto') }}">
-      <div class="info">
-        <h5>{{ producto.nombre|default('Producto sin nombre') }}</h5>
-        <p>Stock: {{ producto.stock|default(0) }}</p>
-        <p>Precio: ${{ "{:,.2f}".format(producto.precio|default(0)) }}</p>
-        <a href="{{ url_for('admin.editar_producto', id_producto=producto.ID_Producto) }}" class="btn-edit">Editar</a>
-      </div>
-    </div>
-  {% endfor %}
+<div class="card">
+  <img src="{{ url_for('static', filename='uploads/' ~ (producto.ImagenPrincipal or 'catalogo.png')) }}" class="card-img-top" alt="Imagen de {{ producto.NombreProducto | default('Producto') }}">
+  <div class="card-body">
+    <h5 class="card-title">{{ producto.NombreProducto | default('Producto sin nombre') }}</h5>
+    <p class="card-text">Stock: {{ producto.Stock | default(0) }}</p>
+    <p class="card-text">Precio: ${{ "{:,.2f}".format(producto.Precio | default(0)) }}</p>
+    <a href="{{ url_for('admin.editar_producto', id_producto=producto.ID_Producto) }}" class="btn-edit">Editar</a>
+  </div>
 </div>
 
 <!-- Botón añadir producto -->
