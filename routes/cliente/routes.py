@@ -486,6 +486,17 @@ def seguimiento_cliente(id_pedido):
 
     return render_template('cliente/seguimiento.html', pedido=pedido)
 
+@cliente.route('/como_encontrar_pedido/<int:id_pedido>')
+@login_required
+def como_encontrar_pedido(id_pedido):
+    pedido = Pedido.query.get_or_404(id_pedido)
+
+    if pedido.usuario.id != current_user.id:
+        return "Acceso denegado ❌", 403
+
+    return render_template('cliente/como_encontrar_pedido.html', pedido=pedido)
+
+
 
 @cliente.route("/confirmar_entrega/<int:pedido_id>")
 def confirmar_entrega(pedido_id):
