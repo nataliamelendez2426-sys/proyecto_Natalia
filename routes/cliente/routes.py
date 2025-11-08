@@ -491,10 +491,13 @@ def seguimiento_cliente(id_pedido):
 def como_encontrar_pedido(id_pedido):
     pedido = Pedido.query.get_or_404(id_pedido)
 
-    if pedido.usuario.id != current_user.id:
+    # Validar que solo el cliente dueño del pedido pueda acceder
+    if pedido.usuario.ID_Usuario != current_user.id and current_user.Rol not in ['admin', 'transportista']:
         return "Acceso denegado ❌", 403
 
     return render_template('cliente/como_encontrar_pedido.html', pedido=pedido)
+
+
 
 
 
