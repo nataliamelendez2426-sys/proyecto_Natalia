@@ -28,7 +28,7 @@
 }
 .producto-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.2);
 }
 
 /* Imagen producto */
@@ -74,10 +74,16 @@
     transform: scale(1.05);
 }
 
-/* Formulario añadir producto oculto por defecto */
+/* Formulario agregar producto */
 #formAgregarProducto {
     display: none;
     margin-top: 2rem;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+#formAgregarProducto.mostrar {
+    display: block;
+    opacity: 1;
 }
 </style>
 
@@ -99,6 +105,8 @@
             <p>Precio: ${{ "{:,.2f}".format(producto.Precio|default(0)) }}</p>
             <a href="{{ url_for('admin.editar_producto', id_producto=producto.ID_Producto|default(0)) }}" class="btn-edit">Editar</a>
         </div>
+        {% else %}
+        <p class="text-center mt-3">No hay productos disponibles.</p>
         {% endfor %}
     </div>
 
@@ -113,13 +121,8 @@ const btnAñadir = document.getElementById('btnAñadirProducto');
 const formAgregar = document.getElementById('formAgregarProducto');
 
 btnAñadir.addEventListener('click', () => {
-    if(formAgregar.style.display === 'none') {
-        formAgregar.style.display = 'block';
-        btnAñadir.textContent = 'Cerrar Formulario';
-    } else {
-        formAgregar.style.display = 'none';
-        btnAñadir.textContent = 'Añadir Producto';
-    }
+    formAgregar.classList.toggle('mostrar');
+    btnAñadir.textContent = formAgregar.classList.contains('mostrar') ? 'Cerrar Formulario' : 'Añadir Producto';
 });
 </script>
 
