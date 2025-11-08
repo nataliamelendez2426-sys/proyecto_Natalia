@@ -1,0 +1,31 @@
+{% extends "common/base.html" %}
+
+{% block content %}
+<div id="pedido-para-pdf">
+    <h2>Pedido #{{ pedido.ID_Pedido }}</h2>
+    <p><strong>Cliente:</strong> {{ pedido.usuario.Nombre }}</p>
+    <p><strong>Dirección:</strong> {{ pedido.Destino }}</p>
+    <p><strong>Método de pago:</strong> {{ pedido.MetodoPago if pedido.MetodoPago else 'No definido' }}</p>
+    <hr>
+    <h3>Productos:</h3>
+    <ul>
+        {% for detalle in pedido.detalles_pedido %}
+        <li>{{ detalle.producto.NombreProducto }} x {{ detalle.Cantidad }} - ${{ (detalle.producto.PrecioUnidad*detalle.Cantidad)|round(2) }}</li>
+        {% endfor %}
+    </ul>
+    <hr>
+    <p><strong>Total:</strong> ${{ pedido.Total if pedido.Total else '0.00' }}</p>
+</div>
+
+<button id="btn-exportar-pdf" class="btn btn-success mt-3">
+    Exportar PDF
+</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+document.getElementById("btn-exportar-pdf").addEventListener("click", function() {
+    const element = document.getElementById("pedido-para-pdf");
+    html2pdf().from(element).save(`pedido_{{ pedido.ID_Pedido }}.pdf`);
+});
+</script>
+{% endblock %}

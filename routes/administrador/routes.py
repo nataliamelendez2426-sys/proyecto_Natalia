@@ -5,14 +5,14 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from datetime import date,datetime, timedelta
 from flask import current_app
-from basedatos.models import db, Usuario, Notificaciones, Direccion, Producto, Proveedor,Categorias,Resena,Compra,Pedido, Mensaje, Garantia ,Pagos
+from basedatos.models import db, Usuario, Notificaciones, Direccion, Producto, Proveedor,Categorias,Resena,Compra,Pedido, Mensaje, Garantia ,Pagos, Categorias
 from werkzeug.security import generate_password_hash
 from basedatos.decoradores import role_required
 from basedatos.notificaciones import crear_notificacion
 from werkzeug.utils import secure_filename
 from sqlalchemy import func
 
-
+UPLOAD_FOLDER = 'static/uploads/productos'
 
 reviews = []
 
@@ -30,6 +30,8 @@ def dashboard():
 @login_required
 @role_required("admin")
 def gestion_roles():
+    roles_disponibles = ["admin", "cliente", "instalador", "transportista"]
+
     if request.method == "POST":
         user_id = request.form.get("user_id")
         nuevo_rol = request.form.get("rol")
@@ -45,9 +47,29 @@ def gestion_roles():
         flash(f"✅ Rol de {usuario.Nombre} actualizado a {nuevo_rol}", "success")
         return redirect(url_for("admin.gestion_roles"))
 
-    usuarios = Usuario.query.all()
-    roles_disponibles = ["admin", "cliente", "instalador", "transportista"]
-    return render_template("administrador/gestion_roles.html", usuarios=usuarios, roles=roles_disponibles)
+    # --- FILTRO ---
+    q = request.args.get("q", "").strip()
+    rol_filter = request.args.get("rol_filter", "").strip()
+
+    usuarios_query = Usuario.query
+    if q:
+        usuarios_query = usuarios_query.filter(
+            (Usuario.Nombre.ilike(f"%{q}%")) |
+            (Usuario.Correo.ilike(f"%{q}%"))
+        )
+    if rol_filter:
+        usuarios_query = usuarios_query.filter_by(Rol=rol_filter)
+
+    usuarios = usuarios_query.all()
+    # -----------------
+
+    return render_template(
+        "administrador/gestion_roles.html",
+        usuarios=usuarios,
+        roles=roles_disponibles,
+        rol_filter=rol_filter,
+        q=q
+    )
 
 # ---------- CAMBIAR_ROL ----------
 @admin.route("/cambiar_rol/<int:user_id>", methods=["POST"])
@@ -305,6 +327,22 @@ def ver_pedidos():
 
 
 # ---------- AGREGAR PRODUCTO ----------
+@admin.route('/productos', methods=['GET', 'POST'])
+def lista_productos():
+    productos = Producto.query.all()  
+    proveedores = Proveedor.query.all() 
+    categorias = Categorias.query.all()
+
+    if request.method == 'POST':
+      
+        pass
+
+    return render_template(
+        'Administrador/productos.html', 
+        productos=productos, 
+        proveedores=proveedores, 
+        categorias=categorias
+    )
 
 @admin.route('/admin/agregar-producto', methods=['GET', 'POST'])
 def agregar_producto():
@@ -314,25 +352,23 @@ def agregar_producto():
     if request.method == 'POST':
         nombre = request.form['nombre']
         stock = int(request.form['stock'])
-        material = request.form['material']
+        material = request.form.get('material', '')  # Previene error si no se envía
         precio = float(request.form['precio'])
-        color = request.form['color']
+        color = request.form.get('color', '')
         id_proveedor = int(request.form['proveedor'])
         id_categoria = int(request.form['categoria'])
 
-   
-        imagen = request.files.get('imagen_principal')  
-        imagen_ruta = 'img/default.png'  
+        # Manejo de imagen
+        imagen = request.files.get('imagen_principal')
+        imagen_ruta = 'img/default.png'
 
         if imagen and imagen.filename != '':
             filename = secure_filename(imagen.filename)
             ruta_img = os.path.join(current_app.static_folder, 'img', filename)
-
-           
             imagen.save(ruta_img)
-
             imagen_ruta = f'img/{filename}'
 
+        # Crear producto
         nuevo = Producto(
             NombreProducto=nombre,
             Stock=stock,
@@ -349,8 +385,54 @@ def agregar_producto():
         flash('Producto agregado con éxito', 'success')
         return redirect(url_for('admin.agregar_producto'))
 
-    return render_template('administrador/agregar_producto.html', proveedores=proveedores, categorias=categorias)
+    return render_template('administrador/agregar_producto.html',
+                           proveedores=proveedores,
+                           categorias=categorias)
 
+@admin.route('/productos/editar/<int:id_producto>', methods=['GET', 'POST'])
+def editar_producto(id_producto):
+    producto = Producto.query.get_or_404(id_producto)
+
+    if request.method == 'POST':
+        try:
+            # Datos del formulario
+            producto.NombreProducto = request.form['nombre']
+            producto.Stock = int(request.form['stock'])
+            producto.PrecioUnidad = float(request.form['precio'])
+            producto.Material = request.form.get('material', '')
+            producto.Color = request.form.get('color', '')
+            producto.Descripcion = request.form.get('descripcion', '')
+            producto.ID_Proveedor = int(request.form['proveedor'])
+            producto.ID_Categoria = int(request.form['categoria'])
+
+            # Imagen (opcional)
+            if 'imagen' in request.files:
+                imagen = request.files['imagen']
+                if imagen and imagen.filename != '':
+                    filename = secure_filename(imagen.filename)
+                    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                    imagen_path = os.path.join(UPLOAD_FOLDER, filename)
+                    imagen.save(imagen_path)
+                    producto.ImagenPrincipal = f'uploads/productos/{filename}'
+
+            db.session.commit()
+            flash('✅ Producto actualizado correctamente', 'success')
+            return redirect(url_for('admin.lista_productos'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'❌ Error al actualizar el producto: {e}', 'danger')
+
+    # Datos para el formulario
+    proveedores = Proveedor.query.all()
+    categorias = Categorias.query.all()
+
+    return render_template(
+        'administrador/editar_producto.html',
+        producto=producto,
+        proveedores=proveedores,
+        categorias=categorias
+    )
 
 # ---------- RESEÑAS ----------
 
@@ -780,7 +862,7 @@ def detalle_empleado(id_empleado):
             flash("Horas inválidas, ingrese números válidos.", "danger")
             return redirect(url_for('admin.detalle_empleado', id_empleado=id_empleado))
 
-        # Guardar horas en el empleado
+       
         empleado.horas_diurnas = horas_diurnas
         empleado.horas_nocturnas = horas_nocturnas
 
@@ -788,12 +870,12 @@ def detalle_empleado(id_empleado):
         flash("Horas actualizadas correctamente.", "success")
         return redirect(url_for('admin.detalle_empleado', id_empleado=id_empleado))
 
-    # Calcular horas extra a partir de los pedidos
+    
     total_horas = 0
     total_horas_extra = 0
     for pedido in pedidos:
         if pedido.HoraLlegada and pedido.FechaEntrega:
-            # Convertir FechaEntrega a datetime si es solo date
+ 
             if isinstance(pedido.FechaEntrega, date) and not isinstance(pedido.FechaEntrega, datetime):
                 fecha_entrega_dt = datetime.combine(pedido.FechaEntrega, datetime.min.time())
             else:
@@ -801,19 +883,19 @@ def detalle_empleado(id_empleado):
 
             horas = (fecha_entrega_dt - pedido.HoraLlegada).total_seconds() / 3600
             total_horas += horas
-            if horas > 8:  # jornada estándar
+            if horas > 8: 
                 total_horas_extra += horas - 8
 
-        # Obtener instalaciones del pedido
+       
         eventos_instalacion = [c for c in pedido.calendario if c.Tipo and c.Tipo.lower() == 'instalacion']
         instalaciones.extend(eventos_instalacion)
 
-    # Guardar las horas calculadas para que persistan
+
     empleado.horas_totales = total_horas
     empleado.horas_extra = total_horas_extra
     db.session.commit()
 
-    # Calcular pagos por mes
+   
     pagos = Pagos.query.join(Pedido).filter(Pedido.ID_Empleado == id_empleado).all()
     pagos_por_mes = {}
     for pago in pagos:

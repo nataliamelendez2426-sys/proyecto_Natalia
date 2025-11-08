@@ -130,12 +130,12 @@ class Pedido(db.Model):
     ID_Empleado = db.Column(db.Integer, db.ForeignKey('Usuario.ID_Usuario'))
     HoraLlegada = db.Column(db.DateTime)
 
-    pagos = db.relationship('Pagos', backref='pedido', lazy=True)
     detalles_pedido = db.relationship('Detalle_Pedido', backref='pedido', lazy=True)
     firmas = db.relationship('Firmas', backref='pedido', lazy=True)
     comentarios = db.relationship('Comentarios', backref='pedido', lazy=True)
     calendario = db.relationship('Calendario', backref='pedido', lazy=True)
     garantias = db.relationship('Garantia', backref='pedido', lazy=True)
+    pagos = db.relationship('Pagos', back_populates='pedido', lazy=True)
 
     empleado = db.relationship('Usuario', foreign_keys=[ID_Empleado])
 
@@ -159,10 +159,12 @@ class Pagos(db.Model):
     __tablename__ = 'Pagos'
 
     ID_Pagos = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    MetodoPago = db.Column(db.String(50))
-    FechaPago = db.Column(db.Date, default=date.today)
-    Monto = db.Column(db.Float)
+    MetodoPago = db.Column(db.String(50), nullable=False)
+    FechaPago = db.Column(db.DateTime, default=datetime.utcnow)
+    Monto = db.Column(db.Float, nullable=False)
     ID_Pedido = db.Column(db.Integer, db.ForeignKey('Pedido.ID_Pedido'), nullable=False)
+
+    pedido = db.relationship('Pedido', back_populates='pagos')
 
 # ------------------ Firmas ------------------
 class Firmas(db.Model):

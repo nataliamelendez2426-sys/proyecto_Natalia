@@ -1,5 +1,5 @@
 from flask_login import current_user
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session , current_app
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from basedatos.models import db, Usuario, Notificaciones, Direccion, Calendario,Pedido, Producto, Resena, Detalle_Pedido, Pagos,Mensaje,Garantia ,GarantiaArchivo
@@ -8,7 +8,10 @@ from basedatos.notificaciones import crear_notificacion
 from datetime import date,datetime
 from flask import render_template
 from sqlalchemy import text
-
+from flask_mail import Message
+from flask import url_for
+from basedatos.decoradores import mail
+from functools import wraps
 
 
 favoritos_usuario = set() 
@@ -400,63 +403,80 @@ def mensajes_cliente_ajax():
 def ver_carrito():
     return render_template('Cliente/carrito.html')
 
+def login_required_json(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return jsonify({"success": False, "mensaje": "Usuario no autenticado"}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
 @cliente.route('/checkout', methods=['GET', 'POST'])
-@login_required
+@login_required_json
 def checkout():
-    if request.method == 'POST':
-        data = request.json
-        carrito = data.get('carrito', [])
+    try:
+        if not request.is_json:
+            return jsonify({"success": False, "mensaje": "Se esperaba JSON"}), 400
+
+        data = request.get_json()
         direccion_id = data.get('direccion')
+        carrito = data.get('carrito', [])
+        metodo_pago = data.get('metodo')
 
         if not carrito:
             return jsonify({"success": False, "mensaje": "El carrito está vacío."})
 
-        direccion_obj = Direccion.query.get(direccion_id)
-        if not direccion_obj:
-            return jsonify({"success": False, "mensaje": "Dirección no válida."})
+        # Crear pedido
+        pedido = Pedido(
+            ID_Usuario=current_user.id,
+            Destino=f"Dirección con ID {direccion_id}",
+            Estado="pendiente",
+            FechaPedido=date.today(),
+            MetodoPago=metodo_pago
+        )
+        db.session.add(pedido)
+        db.session.commit()
 
-        try:
-        
-            pedido = Pedido(
-                NombreComprador=current_user.Nombre,
-                Estado='pendiente',
-                FechaPedido=date.today(),
-                Destino=f"{direccion_obj.Direccion}, {direccion_obj.Barrio}, {direccion_obj.Ciudad}",
-                ID_Usuario=current_user.ID_Usuario
+        # Guardar detalles
+        for item in carrito:
+            detalle = Detalle_Pedido(
+                ID_Pedido=pedido.ID_Pedido,
+                ID_Producto=item.get('id', 0),
+                Cantidad=item.get('cantidad', 1)
             )
-            db.session.add(pedido)
-            db.session.flush() 
+            db.session.add(detalle)
+        db.session.commit()
 
-            for item in carrito:
-                producto_id = item.get('id_producto') or item.get('ID_Producto') or item.get('id')
-                producto = Producto.query.get(producto_id)
-                if not producto:
-                    continue
+        # Enviar correo
+        total = sum(item.get('precio',0)*item.get('cantidad',1) for item in carrito)
+        link_pdf = url_for('cliente.ver_pedido_pdf', id_pedido=pedido.ID_Pedido, _external=True)
 
-                if producto.Stock < item['cantidad']:
-                    db.session.rollback()
-                    return jsonify({"success": False, "mensaje": f"No hay suficiente stock de {producto.NombreProducto}."})
-
-                detalle = Detalle_Pedido(
-                    ID_Pedido=pedido.ID_Pedido,
-                    ID_Producto=producto.ID_Producto,
-                    Cantidad=item['cantidad'],
-                    PrecioUnidad=producto.PrecioUnidad
-                )
-                db.session.add(detalle)
-
-              
-                producto.Stock -= item['cantidad']
-
-            db.session.commit()
-            return jsonify({"success": True, "mensaje": "Pedido confirmado correctamente."})
+        msg = Message(
+            subject=f"Detalle de tu pedido #{pedido.ID_Pedido}",
+            sender='tuemail@dominio.com',
+            recipients=[current_user.Email]
+        )
+        msg.html = f"""
+        <p>Hola {current_user.Nombre},</p>
+        <p>Gracias por tu compra. Aquí tienes la información de tu pedido:</p>
+        <ul>
+            <li>ID Pedido: {pedido.ID_Pedido}</li>
+            <li>Dirección: {pedido.Destino}</li>
+            <li>Método de pago: {metodo_pago}</li>
+            <li>Total: ${total:.2f}</li>
+        </ul>
+        <p><a href="{link_pdf}" style="background-color:#57a773;color:white;padding:10px 20px;border-radius:5px;text-decoration:none;">Exportar PDF</a></p>
+        """
+        try:
+            mail.send(msg)
         except Exception as e:
-            db.session.rollback()
-            return jsonify({"success": False, "mensaje": f"Ocurrió un error: {str(e)}"})
+            current_app.logger.error(f"Error enviando correo: {e}")
 
-   
-    direcciones = Direccion.query.filter_by(ID_Usuario=current_user.ID_Usuario).all()
-    return render_template('Cliente/pagos.html', direcciones=direcciones)
+        return jsonify({"success": True, "mensaje": "Pago procesado correctamente."})
+
+    except Exception as e:
+        current_app.logger.error(f"Error en checkout: {e}")
+        return jsonify({"success": False, "mensaje": "Ocurrió un error en el servidor."}), 500
 
 
 @cliente.route('/finalizar-compra', methods=['POST'])
@@ -472,19 +492,47 @@ def finalizar_compra():
     flash(f'✅ Pago con {metodo_pago} realizado correctamente', 'success')
     return redirect(url_for('catalogo'))
 
+
 # ---------- SEGUIMIENTO ----------
 
 @cliente.route('/seguimiento/<int:id_pedido>')
 @login_required
 def seguimiento_cliente(id_pedido):
-    
     pedido = Pedido.query.get_or_404(id_pedido)
 
-
-    if pedido.usuario.id != current_user.id: 
+    if pedido.ID_Usuario != current_user.id and current_user.Rol not in ['admin', 'transportista']:
         return "Acceso denegado ❌", 403
 
-    return render_template('cliente/seguimiento.html', pedido=pedido)
+ 
+    transportista = pedido.empleado  
+
+    return render_template(
+        'cliente/seguimiento.html',
+        pedido=pedido,
+        transportista=transportista
+    )
+
+
+
+@cliente.route('/como_encontrar_pedido/<int:id_pedido>')
+@login_required
+def como_encontrar_pedido(id_pedido):
+    pedido = Pedido.query.get_or_404(id_pedido)
+
+    if pedido.ID_Usuario != current_user.id and current_user.Rol not in ['admin', 'transportista']:
+        return "Acceso denegado ❌", 403
+    
+    # Fecha de envío = hoy
+    fecha_envio = date.today()
+
+    return render_template(
+        'cliente/como_encontrar_pedido.html',
+        pedido=pedido,
+        fecha_envio=fecha_envio,
+        transportista=None  # como no hay relación, puedes poner None o un texto genérico
+    )
+
+
 
 
 @cliente.route("/confirmar_entrega/<int:pedido_id>")
