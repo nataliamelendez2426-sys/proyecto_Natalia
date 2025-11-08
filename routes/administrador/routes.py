@@ -352,25 +352,23 @@ def agregar_producto():
     if request.method == 'POST':
         nombre = request.form['nombre']
         stock = int(request.form['stock'])
-        material = request.form['material']
+        material = request.form.get('material', '')  # Previene error si no se envía
         precio = float(request.form['precio'])
-        color = request.form['color']
+        color = request.form.get('color', '')
         id_proveedor = int(request.form['proveedor'])
         id_categoria = int(request.form['categoria'])
 
-   
-        imagen = request.files.get('imagen_principal')  
-        imagen_ruta = 'img/default.png'  
+        # Manejo de imagen
+        imagen = request.files.get('imagen_principal')
+        imagen_ruta = 'img/default.png'
 
         if imagen and imagen.filename != '':
             filename = secure_filename(imagen.filename)
             ruta_img = os.path.join(current_app.static_folder, 'img', filename)
-
-           
             imagen.save(ruta_img)
-
             imagen_ruta = f'img/{filename}'
 
+        # Crear producto
         nuevo = Producto(
             NombreProducto=nombre,
             Stock=stock,
@@ -387,7 +385,9 @@ def agregar_producto():
         flash('Producto agregado con éxito', 'success')
         return redirect(url_for('admin.agregar_producto'))
 
-    return render_template('administrador/agregar_producto.html', proveedores=proveedores, categorias=categorias)
+    return render_template('administrador/agregar_producto.html',
+                           proveedores=proveedores,
+                           categorias=categorias)
 
 @admin.route('/productos/editar/<int:id_producto>', methods=['GET', 'POST'])
 def editar_producto(id_producto):
