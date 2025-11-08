@@ -3,31 +3,97 @@
 {% block content %}
 <style>
   .detalle-empleado {
-      background: #f9f9f9;
+      background: #fefefe;
       padding: 2rem;
       border-radius: 15px;
-      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
       margin-bottom: 2rem;
+      font-family: Arial, sans-serif;
   }
 
-  h2 { color: #28a745; font-weight: bold; margin-bottom: 1.5rem; }
-  h4 { color: #157145; margin-top: 2rem; margin-bottom: 1rem; }
+  h2 { color: #28a745; font-weight: 700; margin-bottom: 1.5rem; font-size: 1.8rem; }
+  h4 { color: #157145; margin-top: 2rem; margin-bottom: 1rem; font-size: 1.2rem; }
 
   ul.info-general { list-style: none; padding-left: 0; margin-bottom: 2rem; }
-  ul.info-general li { background: #d1faff; padding: 0.6rem 1rem; margin-bottom: 0.5rem; border-radius: 10px; font-weight: 500; }
+  ul.info-general li {
+      background: #d1faff;
+      padding: 0.7rem 1rem;
+      margin-bottom: 0.5rem;
+      border-radius: 10px;
+      font-weight: 500;
+      font-size: 0.95rem;
+  }
 
-  table.table { width: 100%; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-top: 1rem; }
-  table.table th { background: #28a745; color: white; text-align: center; padding: 0.5rem; }
-  table.table td { text-align: center; vertical-align: middle; padding: 0.5rem; }
+  #filtroPedidos {
+      width: 100%;
+      padding: 0.5rem 0.7rem;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 0.95rem;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+  }
 
-  .btn-secondary, .btn-primary { margin-top: 1rem; padding: 0.6rem 1.2rem; border-radius: 50px; font-weight: 600; transition: 0.3s; }
+  table.table {
+      width: 100%;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+      margin-top: 0.5rem;
+      border-collapse: collapse;
+  }
+
+  table.table th, table.table td {
+      text-align: center;
+      vertical-align: middle;
+      padding: 0.6rem 0.8rem;
+      font-size: 0.9rem;
+      border-bottom: 1px solid #e0e0e0;
+  }
+
+  table.table th {
+      background: #28a745;
+      color: white;
+      font-weight: 600;
+  }
+
+  table.table tr:nth-child(even) {
+      background: #f9f9f9;
+  }
+
+  .btn-secondary, .btn-primary {
+      margin-top: 1rem;
+      padding: 0.5rem 1.2rem;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: 0.3s;
+  }
+
   .btn-secondary:hover { background: #157145; color: white; transform: scale(1.05); }
   .btn-primary:hover { background: #28a745; color: white; transform: scale(1.05); }
 
-  .resumen-mes { background: #e6f7f1; padding: 1rem; border-radius: 10px; margin-top: 1rem; }
-  .resumen-mes p { margin-bottom: 0.5rem; font-weight: 500; font-size: 1.1rem; }
+  .resumen-mes {
+      background: #e6f7f1;
+      padding: 1rem 1.2rem;
+      border-radius: 10px;
+      margin-top: 1rem;
+  }
+  .resumen-mes p {
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      font-size: 1rem;
+  }
 
-  input[type=number] { width: 80px; padding: 0.3rem; border-radius: 5px; border: 1px solid #ccc; text-align: center; }
+  input[type=number] {
+      width: 90px;
+      padding: 0.35rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      text-align: center;
+      font-size: 0.95rem;
+  }
 </style>
 
 <div class="detalle-empleado">
@@ -41,7 +107,8 @@
     </ul>
 
     <h4>Pedidos realizados</h4>
-    <table class="table">
+    <input type="text" id="filtroPedidos" onkeyup="filtrarPedidos()" placeholder="Buscar por ID, Estado o Hora Llegada...">
+    <table class="table" id="tablaPedidos">
         <thead>
             <tr>
                 <th>ID Pedido</th>
@@ -57,7 +124,7 @@
                     <td>{{ pedido.Estado }}</td>
                     <td>{{ pedido.HoraLlegada.strftime("%Y-%m-%d %H:%M") if pedido.HoraLlegada else '-' }}</td>
                     <td>
-                        <ul style="list-style:none; padding-left:0;">
+                        <ul style="list-style:none; padding-left:0; margin:0;">
                             {% for detalle in pedido.detalles_pedido %}
                                 <li>{{ detalle.Cantidad }} x {{ detalle.producto.NombreProducto if detalle.producto else 'Producto eliminado' }}</li>
                             {% endfor %}
@@ -103,4 +170,23 @@
 
     <a href="{{ url_for('admin.lista_empleados') }}" class="btn btn-secondary">Volver</a>
 </div>
+
+<script>
+function filtrarPedidos() {
+    var input = document.getElementById("filtroPedidos");
+    var filter = input.value.toLowerCase();
+    var table = document.getElementById("tablaPedidos");
+    var tr = table.getElementsByTagName("tr");
+
+    for (var i = 1; i < tr.length; i++) {
+        var tdId = tr[i].getElementsByTagName("td")[0];
+        var tdEstado = tr[i].getElementsByTagName("td")[1];
+        var tdHora = tr[i].getElementsByTagName("td")[2];
+        if (tdId && tdEstado && tdHora) {
+            var texto = tdId.textContent + " " + tdEstado.textContent + " " + tdHora.textContent;
+            tr[i].style.display = texto.toLowerCase().includes(filter) ? "" : "none";
+        }
+    }
+}
+</script>
 {% endblock %}
