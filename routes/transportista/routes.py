@@ -254,9 +254,9 @@ def actualizar_estado(id_pedido):
 def enviar_confirmacion(id_pedido):
     pedido = Pedido.query.get_or_404(id_pedido)
     cliente = pedido.usuario
-    transportista = current_user  # el transportista que envía el correo
+    transportista = current_user  
 
-    # Enlaces de ayuda
+   
     link_rastrear = url_for(
         "cliente.seguimiento_cliente",
         id_pedido=pedido.ID_Pedido,

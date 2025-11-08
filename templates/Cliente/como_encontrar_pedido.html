@@ -5,65 +5,170 @@
 {% endblock %}
 
 {% block content %}
-<div class="container mt-5 mb-5">
-    <div class="card shadow-lg p-4 rounded-4">
-        <h2 class="text-center text-success mb-4">
-            🕵️ Cómo encontrar tu pedido
-        </h2>
-        <p class="text-center text-muted mb-4">
-            El 95% de los paquetes faltantes se encontraron siguiendo los pasos que se indican a continuación.
-        </p>
+<style>
+.container-ayuda {
+  max-width: 850px;
+  margin: 50px auto;
+  background: #fff;
+  border-radius: 16px;
+  padding: 2rem 2.5rem;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+  border-top: 6px solid #157145;
+  line-height: 1.6;
+  color: #333;
+}
 
-        <ol class="list-group list-group-numbered">
-            <li class="list-group-item mb-3">
-                <h5>1️⃣ Confirma si esta dirección es correcta</h5>
-                <p><b>{{ pedido.usuario.Nombre }}</b><br>
-                {{ pedido.Direccion }}<br>
-                {{ pedido.Ciudad }}, {{ pedido.Departamento }} Colombia</p>
-                <p>Si la dirección es incorrecta, intenta comunicarte con el transportista: 
-                    <b>{{ transportista.Nombre if transportista else "No asignado" }}</b>
-                </p>
-            </li>
+.container-ayuda h2 {
+  text-align: center;
+  color: #157145;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
 
-            <li class="list-group-item mb-3">
-                <h5>2️⃣ Verifica la información del envío</h5>
-                <p>Tu pedido fue entregado por 
-                    <b>{{ transportista.Nombre if transportista else "el transportista asignado" }}</b>.
-                </p>
-                <p><b>Estado actual:</b> {{ pedido.Estado }}<br>
-                   <b>Fecha de entrega:</b> {{ pedido.Fecha_Entrega.strftime("%d %b %Y") if pedido.Fecha_Entrega else "Pendiente" }}
-                </p>
-            </li>
+.container-ayuda p.intro {
+  text-align: center;
+  color: #555;
+  font-size: 1.05rem;
+  margin-bottom: 30px;
+}
 
-            <li class="list-group-item mb-3">
-                <h5>3️⃣ Comprueba que nadie más haya recibido el paquete</h5>
-                <p>Revisa si algún familiar, vecino o amigo aceptó el paquete por ti. 
-                Si tienes cámaras, verifica si alguien lo recibió en tu ausencia.</p>
-            </li>
+.paso {
+  margin-bottom: 25px;
+  padding-left: 10px;
+}
 
-            <li class="list-group-item mb-3">
-                <h5>4️⃣ Revisa los alrededores de tu casa o buzón</h5>
-                <p>El paquete puede estar en lugares como el buzón, garaje, puerta delantera o trasera, o sobre el césped.</p>
-            </li>
+.paso h4 {
+  color: #157145;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
 
-            <li class="list-group-item mb-3">
-                <h5>5️⃣ Contacta a soporte técnico</h5>
-                <p>Si después de revisar todo aún no encuentras tu pedido, contáctanos para ayudarte.</p>
-                <div class="text-center mt-3">
-                    <a href="{{ url_for('cliente.chat_cliente') }}" 
-                       class="btn btn-primary btn-lg px-4">
-                        🛠️ Abrir chat con soporte
-                    </a>
-                </div>
-            </li>
-        </ol>
+.paso p {
+  color: #444;
+}
 
-        <div class="text-center mt-4">
-            <a href="{{ url_for('cliente.seguimiento_cliente', id_pedido=pedido.ID_Pedido) }}" 
-               class="btn btn-outline-success">
-               ← Volver al seguimiento
-            </a>
-        </div>
+.direccion-box {
+  background: #e9f9ee;
+  border-left: 5px solid #28a745;
+  padding: 12px 18px;
+  border-radius: 10px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.coordinadora-box {
+  background: #f8fff9;
+  border: 2px solid #157145;
+  border-radius: 10px;
+  padding: 15px 20px;
+  margin-top: 10px;
+}
+
+.coordinadora-box b {
+  color: #157145;
+}
+
+.btn-ver-detalles {
+  display: inline-block;
+  background-color: #157145;
+  color: white;
+  padding: 10px 22px;
+  border-radius: 50px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.btn-ver-detalles:hover {
+  background-color: #125e3c;
+  transform: scale(1.03);
+}
+</style>
+
+<div class="container-ayuda">
+  <h2>📦 Cómo encontrar tu pedido</h2>
+  <p class="intro">El 95% de los paquetes faltantes se encontraron siguiendo los sencillos pasos que se indican a continuación.</p>
+
+  
+
+  <!-- Paso 1 -->
+  <div class="paso">
+    <h4>1️⃣ Confirma si esta dirección es correcta</h4>
+    <div class="direccion-box">
+      <p><strong>{{ pedido.usuario.Nombre }}</strong><br>
+       {{ pedido.Destino }}</p>
     </div>
+    <p>Si la dirección es incorrecta, intenta comunicarte con el soporte técnico para actualizarla.</p>
+  </div>
+
+
+
+  <!-- Paso 2 -->
+ <div class="paso">
+  <h4>2️⃣ Verifica la información del envío</h4>
+  <div class="coordinadora-box">
+    <p>
+      <b>Transportista:</b> {{ transportista.Nombre if transportista else "Soporte técnico" }}<br>
+      <b>Estado:</b> ENTREGADO<br>
+      <b>Fecha de entrega:</b> {{ fecha_envio.strftime("%d %b %Y") }}
+    </p>
+
+    <!-- Productos del pedido -->
+    <p><b>Productos en tu pedido:</b></p>
+    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:5px;">
+      {% for detalle in pedido.detalles_pedido %}
+        {% set producto = detalle.producto %}
+        {% if producto %}
+          <div style="width:80px; text-align:center; font-size:0.8rem;">
+            <div style="width:80px; height:80px; border:1px solid #ddd; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; margin-bottom:5px;">
+              <img src="{{ url_for('static', filename=producto.ImagenPrincipal or 'img/catalogo.png') }}" 
+                   alt="{{ producto.Nombre }}" 
+                   style="max-width:100%; max-height:100%; object-fit:cover;">
+            </div>
+            {{ producto.Nombre }}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <p style="text-align:center; margin-top:15px;">
+      <a href="{{ url_for('cliente.chat_cliente') }}" class="btn-ver-detalles">
+         Contactar soporte técnico
+      </a>
+    </p>
+  </div>
+</div>
+
+
+  <!-- Paso 3 -->
+  <div class="paso">
+    <h4>3️⃣ Comprueba que nadie más haya recibido el paquete</h4>
+    <p>Es posible que algún familiar, vecino o amigo haya aceptado el paquete por ti.  
+    Si puedes, revisa tus cámaras de seguridad o pregunta a tus vecinos cercanos.</p>
+  </div>
+
+  <!-- Paso 4 -->
+  <div class="paso">
+    <h4>4️⃣ Revisa alrededor de la dirección de entrega</h4>
+    <p>El mensajero puede haber dejado el paquete en lugares cercanos, como:</p>
+    <ul>
+      <li>Frente a la puerta principal o trasera</li>
+      <li>Garaje, buzón o área de recepción</li>
+     
+    </ul>
+  </div>
+
+  <!-- Paso 5 -->
+  <div class="paso">
+    <h4>5️⃣ Busca notificaciones de intento de entrega</h4>
+    <p>Si no estabas en casa, el mensajero puede haber dejado una notificación con instrucciones para recoger o reprogramar la entrega.</p>
+  </div>
+
+  <!-- Botón volver / rastrear -->
+  <p style="text-align:center; margin-top:2rem;">
+    <a href="{{ url_for('cliente.seguimiento_cliente', id_pedido=pedido.ID_Pedido) }}" class="btn-ver-detalles">
+       Volver al seguimiento / Rastrear mi pedido
+    </a>
+  </p>
 </div>
 {% endblock %}

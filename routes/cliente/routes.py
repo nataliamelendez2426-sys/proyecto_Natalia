@@ -478,16 +478,16 @@ def finalizar_compra():
 @login_required
 def seguimiento_cliente(id_pedido):
     pedido = Pedido.query.get_or_404(id_pedido)
-
-    # DEBUG temporal — imprime los IDs en la consola del servidor
-    print("🔎 Pedido pertenece al usuario:", pedido.usuario.ID_Usuario)
-    print("👤 Usuario logueado:", current_user.id)
-    print("🎭 Rol del usuario:", current_user.Rol)
-
-    if pedido.usuario.ID_Usuario != current_user.id and current_user.Rol != 'admin':
+    
+    if pedido.usuario.ID_Usuario != current_user.id and current_user.Rol not in ['admin', 'transportista']:
         return "Acceso denegado ❌", 403
 
-    return render_template('cliente/seguimiento.html', pedido=pedido)
+    # Retornamos el template con los datos del pedido
+    return render_template(
+        'cliente/seguimiento.html',
+        pedido=pedido
+    )
+
 
 
 @cliente.route('/como_encontrar_pedido/<int:id_pedido>')
@@ -495,16 +495,17 @@ def seguimiento_cliente(id_pedido):
 def como_encontrar_pedido(id_pedido):
     pedido = Pedido.query.get_or_404(id_pedido)
 
-    # Validación de acceso: solo el cliente dueño, admin o transportista
-    if pedido.usuario.ID_Usuario != current_user.id and current_user.Rol not in ['admin', 'transportista']:
+    if pedido.ID_Usuario != current_user.id and current_user.Rol not in ['admin', 'transportista']:
         return "Acceso denegado ❌", 403
-
-    transportista = pedido.empleado  # ✅ correcto según tu modelo
+    
+    # Fecha de envío = hoy
+    fecha_envio = date.today()
 
     return render_template(
         'cliente/como_encontrar_pedido.html',
         pedido=pedido,
-        transportista=transportista
+        fecha_envio=fecha_envio,
+        transportista=None  # como no hay relación, puedes poner None o un texto genérico
     )
 
 
