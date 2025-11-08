@@ -255,48 +255,61 @@ def enviar_confirmacion(id_pedido):
     pedido = Pedido.query.get_or_404(id_pedido)
     cliente = pedido.usuario
 
-    # Enlace para confirmar entrega
-    link_confirmar = url_for(
-        "transportista.confirmar_entrega",
+    # Enlaces para los botones
+    link_rastrear = url_for(
+        "cliente.rastrear_pedido",
         id_pedido=pedido.ID_Pedido,
-        respuesta="si",
+        _scheme='http',
+        _external=True
+    )
+    link_ayuda = url_for(
+        "cliente.como_encontrar_pedido",
+        id_pedido=pedido.ID_Pedido,
+        _scheme='http',
         _external=True
     )
 
     # Construcción del correo
     msg = Message(
-        subject=f"Confirmación de entrega - Pedido #{pedido.ID_Pedido}",
+        subject=f"Actualización de tu pedido #{pedido.ID_Pedido}",
         sender="casaenelarbol236@gmail.com",
         recipients=[cliente.Correo]
     )
 
     msg.html = f"""
     <div style="font-family: Arial, sans-serif; color:#333; padding:20px;">
-        <h2 style="color:#157145;">¡Hola {cliente.Nombre}! 🌿</h2>
-        <p>Tu pedido <b>#{pedido.ID_Pedido}</b> ha sido marcado como <b>ENTREGADO</b> por el transportista.</p>
+        <h2 style="color:#157145;">🌿 ¡Hola {cliente.Nombre}!</h2>
+        <p>Tu pedido <b>#{pedido.ID_Pedido}</b> ha sido actualizado por el transportista.</p>
+        <p>Puedes seguir su recorrido o recibir ayuda con su ubicación:</p>
 
-        <p>Por favor, confirma si ya lo recibiste haciendo clic en el siguiente botón:</p>
-
-        <p style="text-align:center; margin:25px 0;">
-            <a href="{link_confirmar}" 
-               style="background-color:#157145; color:white; padding:12px 25px; text-decoration:none; border-radius:6px; font-weight:bold;">
-               ✅ Sí recibí mi pedido
+        <div style="text-align:center; margin:30px 0;">
+            <a href="{link_rastrear}" 
+               style="background-color:#198754; color:white; padding:12px 25px; 
+                      text-decoration:none; border-radius:6px; font-weight:bold; margin-right:15px;">
+               🚚 Rastrear mi pedido
             </a>
-        </p>
+            <a href="{link_ayuda}" 
+               style="background-color:#0d6efd; color:white; padding:12px 25px; 
+                      text-decoration:none; border-radius:6px; font-weight:bold;">
+               ❓ Cómo encontrar mi paquete
+            </a>
+        </div>
 
         <p style="font-size:0.95rem; color:#555;">
-            Si aún <b>no has recibido</b> el pedido, simplemente ignora este mensaje.
+            Si no hiciste este pedido, puedes ignorar este mensaje.
         </p>
 
         <hr style="margin-top:25px;">
-        <p style="font-size:0.85rem; color:#999;">Gracias por comprar en <b>Casa en el Árbol</b> 💚</p>
+        <p style="font-size:0.85rem; color:#999;">Gracias por confiar en <b>Casa en el Árbol</b> 💚</p>
     </div>
     """
 
     mail.send(msg)
-    flash("✅ Correo de confirmación enviado correctamente al cliente.", "success")
+    flash("✅ Correo de rastreo enviado correctamente al cliente.", "success")
 
     return redirect(url_for("transportista.ver_pedidos_transportista"))
+
+
 
 
 
