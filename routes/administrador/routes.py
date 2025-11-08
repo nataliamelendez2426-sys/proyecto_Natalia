@@ -403,7 +403,7 @@ def editar_producto(id_producto):
 
     proveedores = Proveedor.query.all()
     categorias = Categorias.query.all()
-    return render_template('admin/editar_producto.html', producto=producto,
+    return render_template('administrador/editar_producto.html', producto=producto,
                            proveedores=proveedores, categorias=categorias)
 
 

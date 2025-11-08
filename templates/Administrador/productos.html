@@ -31,15 +31,6 @@
     box-shadow: 0 15px 30px rgba(0,0,0,0.2);
 }
 
-/* Imagen producto */
-.producto-card img {
-    width: 100%;
-    height: 180px;
-    object-fit: cover;
-    border-radius: 10px;
-    margin-bottom: 0.5rem;
-}
-
 /* Botón editar */
 .btn-edit {
     display: inline-block;
@@ -58,7 +49,7 @@
 }
 
 /* Botón añadir producto */
-#btnAñadirProducto {
+#btnAgregarProducto {
     display: inline-block;
     margin: 1rem 0;
     padding: 0.6rem 1.5rem;
@@ -69,7 +60,7 @@
     cursor: pointer;
     transition: 0.3s;
 }
-#btnAñadirProducto:hover {
+#btnAgregarProducto:hover {
     background: #0056b3;
     transform: scale(1.05);
 }
@@ -91,18 +82,20 @@
     <h2 class="text-center mt-4">Productos</h2>
 
     <div class="text-center">
-        <button id="btnAñadirProducto">Añadir Producto</button>
+        <button id="btnAgregarProducto" aria-label="Abrir formulario para añadir producto">Añadir Producto</button>
     </div>
 
     <!-- Contenedor de productos -->
     <div class="productos-container">
         {% for producto in productos %}
         <div class="producto-card">
-            <img src="{{ url_for('static', filename='uploads/' ~ (producto.Imagen|default('placeholder.png'))) }}" 
-                 alt="{{ producto.NombreProducto|default('Producto sin nombre') }}">
+            <img src="{{ url_for('static', filename=producto.ImagenPrincipal or 'img/catalogo.png') }}" 
+                 alt="{{ producto.NombreProducto|default('Producto sin nombre') }}"
+                 class="card-img-top"
+                 style="height:200px; object-fit:cover; border-radius:10px 10px 0 0;">
             <h5>{{ producto.NombreProducto|default('Producto sin nombre') }}</h5>
             <p>Stock: {{ producto.Stock|default(0) }}</p>
-            <p>Precio: ${{ "{:,.2f}".format(producto.Precio|default(0)) }}</p>
+            <p>Precio: ${{ "{:,.2f}".format(producto.Precio|default(0.0)) }}</p>
             <a href="{{ url_for('admin.editar_producto', id_producto=producto.ID_Producto|default(0)) }}" class="btn-edit">Editar</a>
         </div>
         {% else %}
@@ -117,12 +110,12 @@
 </div>
 
 <script>
-const btnAñadir = document.getElementById('btnAñadirProducto');
+const btnAgregar = document.getElementById('btnAgregarProducto');
 const formAgregar = document.getElementById('formAgregarProducto');
 
-btnAñadir.addEventListener('click', () => {
+btnAgregar.addEventListener('click', () => {
     formAgregar.classList.toggle('mostrar');
-    btnAñadir.textContent = formAgregar.classList.contains('mostrar') ? 'Cerrar Formulario' : 'Añadir Producto';
+    btnAgregar.textContent = formAgregar.classList.contains('mostrar') ? 'Cerrar Formulario' : 'Añadir Producto';
 });
 </script>
 
