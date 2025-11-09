@@ -935,7 +935,6 @@ def admin_finanzas():
 
     return render_template('administrador/finanzas.html', pagos=pagos, total_pagos=total_pagos, metodos=metodos)
 
-
 @admin.route('/finanzas/ajax')
 def finanzas_ajax():
     metodo = request.args.get('metodo', type=str)
@@ -944,8 +943,22 @@ def finanzas_ajax():
 
     query = Pagos.query.join(Pagos.pedido).join(Pedido.usuario)
 
+    # Normalización de métodos
+    metodo_map = {
+        'Tarjeta': 'credito',
+        'Transferencia': 'credito',
+        'efectivo': 'efectivo',
+        'Efectivo': 'efectivo',
+        'nequi': 'nequi',
+        'daviplata': 'daviplata'
+    }
+
+    # Filtrado por método
     if metodo:
-        query = query.filter(Pagos.MetodoPago == metodo)
+        # Buscamos en los valores originales que correspondan al método normalizado
+        query = query.filter(Pagos.MetodoPago.in_([k for k, v in metodo_map.items() if v == metodo]))
+
+    # Filtrado por fechas
     if fecha_inicio:
         fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
         query = query.filter(Pagos.FechaPago >= fecha_inicio_dt)
@@ -955,20 +968,16 @@ def finanzas_ajax():
 
     pagos = query.order_by(Pagos.FechaPago.desc()).all()
 
+    # Total y estadísticas
     total = sum(p.Monto for p in pagos)
 
-    # Estadística por método
-    metodos = {
-        'credito': 0,
-        'nequi': 0,
-        'daviplata': 0,
-        'efectivo': 0
-    }
+    metodos = { 'credito': 0, 'nequi': 0, 'daviplata': 0, 'efectivo': 0 }
     for p in pagos:
-        if p.MetodoPago in metodos:
-            metodos[p.MetodoPago] += p.Monto
+        clave = metodo_map.get(p.MetodoPago)
+        if clave:
+            metodos[clave] += p.Monto
 
-    # Preparar datos para JSON
+    # Preparar JSON
     pagos_json = []
     for p in pagos:
         pagos_json.append({
@@ -977,7 +986,7 @@ def finanzas_ajax():
                 "Nombre": p.pedido.usuario.Nombre,
                 "Apellido": p.pedido.usuario.Apellido or ""
             },
-            "MetodoPago": p.MetodoPago,
+            "MetodoPago": metodo_map.get(p.MetodoPago, p.MetodoPago),
             "FechaPago": p.FechaPago.strftime('%Y-%m-%d'),
             "Monto": p.Monto
         })

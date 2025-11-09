@@ -10,10 +10,10 @@
             <label for="metodo" class="form-label">Método de Pago</label>
             <select id="metodo" class="form-select">
                 <option value="">Todos</option>
-                <option value="credito">Tarjeta de Crédito / Débito</option>
+                <option value="credito">Tarjeta / Transferencia</option>
                 <option value="nequi">Nequi</option>
                 <option value="daviplata">Daviplata</option>
-                <option value="efectivo">Efectivo contra Entrega</option>
+                <option value="efectivo">Efectivo</option>
             </select>
         </div>
         <div class="col-md-3">
@@ -93,7 +93,7 @@ let ctx = document.getElementById('chartMetodos').getContext('2d');
 let chart = new Chart(ctx, {
     type: 'bar',
     data: {
-        labels: {{ metodos.keys()|list|tojson }},
+        labels: ['credito','nequi','daviplata','efectivo'],
         datasets: [{
             label: 'Total Pagos por Método',
             data: {{ metodos.values()|list|tojson }},
@@ -149,7 +149,6 @@ async function actualizarDatos() {
     });
 
     // Actualizar gráfico
-    chart.data.labels = Object.keys(data.metodos);
     chart.data.datasets[0].data = Object.values(data.metodos);
     chart.update();
 }
@@ -165,19 +164,16 @@ document.getElementById('btnExportPDF').addEventListener('click', async () => {
     doc.text("Control Financiero", 105, y, null, null, "center");
     y += 10;
 
-    // Capturar gráfico
     const canvas = document.getElementById('chartMetodos');
     const chartImg = canvas.toDataURL("image/png", 1.0);
     doc.addImage(chartImg, 'PNG', 15, y, 180, 80);
     y += 85;
 
-    // Capturar tabla
     const tabla = document.getElementById('tablaPagos');
     const tablaCanvas = await html2canvas(tabla, { scale: 2 });
     const tablaImg = tablaCanvas.toDataURL('image/png');
     doc.addImage(tablaImg, 'PNG', 10, y, 190, tablaCanvas.height * 190 / tablaCanvas.width);
     
-    // Total
     const finalY = doc.internal.pageSize.getHeight() - 15;
     doc.setFontSize(14);
     doc.text(`Total Pagos: $${document.getElementById('totalPagos').textContent}`, 14, finalY);
