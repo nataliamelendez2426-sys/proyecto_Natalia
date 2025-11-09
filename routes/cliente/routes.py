@@ -405,6 +405,29 @@ def ver_carrito():
 
 
 # ---------- Checkout ----------
+
+def enviar_correo_confirmacion(usuario, pedido, total_pago, metodo, direccion_envio):
+    """
+    Envía un correo de confirmación con diseño HTML.
+    """
+    html_body = render_template(
+        'email/confirmacion_pedido.html',
+        nombre=usuario.Nombre,
+        id_pedido=pedido.ID_Pedido,
+        metodo=metodo.capitalize(),
+        total=f"{total_pago:,.2f}",
+        direccion=direccion_envio
+    )
+
+    msg = Message(
+        subject=f"🧾 Confirmación de tu pedido #{pedido.ID_Pedido}",
+        recipients=[usuario.Correo],
+        html=html_body
+    )
+
+    mail.send(msg)
+
+
 @cliente.route('/checkout', methods=['POST'])
 @login_required
 def checkout():
@@ -415,24 +438,25 @@ def checkout():
         numero_celular = data.get('numero_celular')
         numero_tarjeta = data.get('numero_tarjeta')
         direccion_id = data.get('direccion_id')
-        direccion_envio = None
 
         if not carrito:
             return jsonify({"success": False, "mensaje": "El carrito está vacío."}), 400
 
-
+        # Buscar dirección seleccionada
+        direccion_envio = "Dirección no especificada"
         if direccion_id:
-            direccion = Direccion.query.filter_by(ID_Direccion=direccion_id, ID_Usuario=current_user.ID_Usuario).first()
+            direccion = Direccion.query.filter_by(
+                ID_Direccion=direccion_id,
+                ID_Usuario=current_user.ID_Usuario
+            ).first()
             if direccion:
                 direccion_envio = f"{direccion.Direccion}, {direccion.Barrio or ''}, {direccion.Ciudad or ''}"
             else:
                 direccion_envio = "Dirección no encontrada"
-        else:
-            direccion_envio = "Dirección no especificada"
 
-        # Crear Pedido
+        # Crear pedido
         pedido = Pedido(
-            NombreComprador=f"{current_user.Nombre} {current_user.Apellido or ''}",
+            NombreComprador=f"{current_user.Nombre} {current_user.Apellido or ''}".strip(),
             Destino=direccion_envio,
             Estado="pendiente",
             FechaPedido=date.today(),
@@ -441,8 +465,8 @@ def checkout():
         db.session.add(pedido)
         db.session.commit()
 
-    
-        total_pago = sum([i['precio'] * i.get('cantidad', 1) for i in carrito])
+        # Calcular total y registrar pago
+        total_pago = sum(i.get('precio', 0) * i.get('cantidad', 1) for i in carrito)
         pago = Pagos(
             MetodoPago=metodo,
             Monto=total_pago,
@@ -451,30 +475,26 @@ def checkout():
         db.session.add(pago)
         db.session.commit()
 
-        # Enviar correo
-        msg = Message(
-            subject=f"Confirmación de tu pedido #{pedido.ID_Pedido}",
-            recipients=[current_user.Correo],
-            body=(
-                f"Hola {current_user.Nombre},\n\n"
-                f"Tu pago por ${total_pago:.2f} con método {metodo} ha sido recibido.\n"
-                f"Enviaremos tu pedido a: {direccion_envio}\n\n"
-                "¡Gracias por comprar con nosotros!"
-            )
+        # ✅ Enviar correo de confirmación (usando la función externa)
+        enviar_correo_confirmacion(
+            usuario=current_user,
+            pedido=pedido,
+            total_pago=total_pago,
+            metodo=metodo,
+            direccion_envio=direccion_envio
         )
-        mail.send(msg)
 
-        # Notificación opcional
+        # Notificación opcional para Nequi/Daviplata
         if metodo in ['nequi', 'daviplata'] and numero_celular:
-            print(f"Notificación enviada al número: {numero_celular}")
+            print(f"📱 Notificación enviada al número: {numero_celular}")
 
         return jsonify({"success": True, "mensaje": "Pago procesado correctamente."})
 
     except Exception as e:
         import traceback
         traceback.print_exc()
+        db.session.rollback()
         return jsonify({"success": False, "mensaje": str(e)}), 500
-
 
 
 # ---------- SEGUIMIENTO ----------

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Confirmación de Pedido</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f6f9fc; padding: 20px;">
+    <div style="max-width: 600px; margin: auto; background: white; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h2 style="color: #07525c; text-align: center;">¡Gracias por tu compra, {{ nombre }}!</h2>
+        <p style="font-size: 16px;">Tu pedido <b>#{{ id_pedido }}</b> se ha procesado correctamente.</p>
+        <p><b>Método de pago:</b> {{ metodo }}</p>
+        <p><b>Total:</b> ${{ total }}</p>
+        <p><b>Dirección de envío:</b><br>{{ direccion }}</p>
+        <hr>
+        <p style="text-align: center; font-size: 13px; color: #888;">© 2025 Tu Tienda — Gracias por confiar en nosotros 💚</p>
+    </div>
+</body>
+</html>
