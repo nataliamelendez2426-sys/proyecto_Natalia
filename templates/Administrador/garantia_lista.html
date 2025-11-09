@@ -1,0 +1,98 @@
+{% extends "common/base.html" %}
+
+{% block navbar %}
+  {% include "common/partials/navbar_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
+
+<div class="container py-5">
+    <h2 class="mb-4 text-center text-success">Gestión de Garantías</h2>
+
+    <table class="table table-striped table-hover align-middle shadow-sm">
+        <thead class="table-success">
+            <tr class="text-center">
+                <th>ID</th>
+                <th>Pedido</th>
+                <th>Cliente</th>
+                <th>Fecha Solicitud</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for g in garantias %}
+            <tr class="text-center">
+                <td>{{ g.ID_Garantia }}</td>
+                <td>{{ g.pedido.ID_Pedido }}</td>
+                <td>{{ g.pedido.usuario.Nombre }} {{ g.pedido.usuario.Apellido or "" }}</td>
+                <td>{{ g.FechaSolicitud.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    {% if g.Estado == 'pendiente' %}
+                        <span class="badge bg-warning text-dark">Pendiente</span>
+                    {% elif g.Estado == 'aprobada' %}
+                        <span class="badge bg-success">Aprobada</span>
+                    {% elif g.Estado == 'rechazada' %}
+                        <span class="badge bg-danger">Rechazada</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Completada</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#detalleModal{{ g.ID_Garantia }}">
+                        Ver Detalle
+                    </button>
+                </td>
+            </tr>
+
+            <!-- Modal Detalle -->
+            <div class="modal fade" id="detalleModal{{ g.ID_Garantia }}" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                  <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Garantía #{{ g.ID_Garantia }} - Pedido #{{ g.pedido.ID_Pedido }}</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                  </div>
+                  <div class="modal-body">
+                      <p><b>Cliente:</b> {{ g.pedido.usuario.Nombre }} {{ g.pedido.usuario.Apellido or "" }}</p>
+                      <p><b>Fecha de Solicitud:</b> {{ g.FechaSolicitud.strftime('%Y-%m-%d %H:%M') }}</p>
+                      <p><b>Estado:</b> {{ g.Estado|capitalize }}</p>
+                      <p><b>Motivo:</b> {{ g.Motivo }}</p>
+                      {% if g.ComentarioAdmin %}
+                          <p><b>Comentario Admin:</b> {{ g.ComentarioAdmin }}</p>
+                      {% endif %}
+                      
+                      <hr>
+                      <h6>Archivos Adjuntos</h6>
+                      {% if g.archivos %}
+                          <ul>
+                          {% for archivo in g.archivos %}
+                              <li><a href="{{ url_for('static', filename=archivo.RutaArchivo) }}" target="_blank">{{ archivo.NombreArchivo }}</a></li>
+                          {% endfor %}
+                          </ul>
+                      {% else %}
+                          <p>No hay archivos adjuntos.</p>
+                      {% endif %}
+                  </div>
+                  <div class="modal-footer">
+                      {% if g.Estado == 'pendiente' %}
+                      <form action="{{ url_for('admin_garantia.resolver_garantia', garantia_id=g.ID_Garantia) }}" method="post" class="d-flex gap-2 w-100">
+                          <input type="text" name="comentario" class="form-control" placeholder="Comentario (opcional)">
+                          <button type="submit" name="accion" value="aprobada" class="btn btn-success">Aprobar</button>
+                          <button type="submit" name="accion" value="rechazada" class="btn btn-danger">Rechazar</button>
+                      </form>
+                      {% else %}
+                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                      {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}
