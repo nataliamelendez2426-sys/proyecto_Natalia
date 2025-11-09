@@ -1,6 +1,3 @@
-import os
-from openai import OpenAI  
-from dotenv import load_dotenv
 from flask_login import current_user
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session , current_app
 from flask_login import login_required, current_user
@@ -15,10 +12,6 @@ from flask_mail import Message
 from flask import url_for
 from basedatos.decoradores import mail
 from functools import wraps
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-
 
 favoritos_usuario = set() 
 
@@ -626,39 +619,3 @@ def mis_garantias():
     return render_template('cliente/garantias.html', garantias=garantias)
 
 
-@cliente.route('/chatbot')
-@login_required
-def chatbot():
-    return render_template('cliente/chatbot.html', usuario=current_user)
-
-@cliente.route('/chatbot/mensaje', methods=['POST'])
-@login_required
-def chatbot_mensaje():
-    data = request.get_json()
-    mensaje_usuario = data.get("mensaje", "")
-
-    if not mensaje_usuario:
-        return jsonify({"respuesta": "Por favor, escribe un mensaje."})
-
-    # ← Aquí va la verificación de la clave
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        return jsonify({"respuesta": "❌ La clave de OpenAI no está configurada."})
-
-    client = OpenAI(api_key=api_key)
-
-    try:
-        respuesta_ai = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system",
-                 "content": "Eres un asistente virtual amable y profesional para la tienda 'Casa en el Árbol'. "
-                            "Ayudas a los clientes con seguimiento de pedidos, dudas de productos, devoluciones y soporte general."},
-                {"role": "user", "content": mensaje_usuario}
-            ]
-        )
-        texto_respuesta = respuesta_ai.choices[0].message.content
-        return jsonify({"respuesta": texto_respuesta})
-    except Exception as e:
-        print("⚠️ Error en chatbot:", e)
-        return jsonify({"respuesta": "😔 Lo siento, hubo un problema al procesar tu solicitud."})

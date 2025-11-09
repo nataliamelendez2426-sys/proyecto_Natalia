@@ -4,11 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from sqlalchemy.orm import joinedload
 from flask_login import current_user
-from dotenv import load_dotenv
-import os
 
-load_dotenv()  # carga las variables del .env
-print("Clave cargada:", os.getenv("OPENAI_API_KEY")) 
 
 # ------------------ MODELOS ------------------ #
 from basedatos.models import db, Usuario, Producto,Pedido
