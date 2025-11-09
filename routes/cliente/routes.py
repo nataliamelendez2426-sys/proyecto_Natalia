@@ -1,5 +1,6 @@
 import os
 from openai import OpenAI  
+from dotenv import load_dotenv
 from flask_login import current_user
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session , current_app
 from flask_login import login_required, current_user
@@ -15,7 +16,7 @@ from flask import url_for
 from basedatos.decoradores import mail
 from functools import wraps
 
-
+load_dotenv()
 favoritos_usuario = set() 
 
 from . import cliente
@@ -627,7 +628,6 @@ def mis_garantias():
 def chatbot():
     return render_template('cliente/chatbot.html', usuario=current_user)
 
-# 🔹 Ruta que recibe los mensajes del usuario y responde con IA
 @cliente.route('/chatbot/mensaje', methods=['POST'])
 @login_required
 def chatbot_mensaje():
@@ -638,17 +638,9 @@ def chatbot_mensaje():
         return jsonify({"respuesta": "Por favor, escribe un mensaje."})
 
     try:
-        # ✅ Obtiene la API key desde variable de entorno
-        api_key = os.getenv("OPENAI_API_KEY")
+        # ✅ Inicializa correctamente el cliente OpenAI con la clave del .env
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-        if not api_key:
-            print("⚠️ No se encontró la variable OPENAI_API_KEY en el entorno.")
-            return jsonify({"respuesta": "Error interno: falta la API key del asistente."})
-
-        # ✅ Inicializa el cliente
-        client = OpenAI(api_key=api_key)
-
-        # ✅ Llamada al modelo
         respuesta_ai = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -667,7 +659,5 @@ def chatbot_mensaje():
         return jsonify({"respuesta": texto_respuesta})
 
     except Exception as e:
-        import traceback
         print("⚠️ Error en chatbot:", e)
-        traceback.print_exc()  # 👈 esto muestra la traza completa del error
         return jsonify({"respuesta": "😔 Lo siento, hubo un problema al procesar tu solicitud."})
