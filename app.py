@@ -4,7 +4,7 @@ from flask import Flask, render_template, session, redirect, request, flash, url
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from sqlalchemy.orm import joinedload
-from flask_login import current_user
+from flask_login import current_user , login_required
 
 
 
@@ -85,65 +85,84 @@ def nosotros():
     return render_template("common/nosotros.html")
 
 @app.route('/catalogo')
+@login_required
 def catalogo():
-    usuario = current_user  # supondremos que está logueado
-
-    # Obtener filtros de query params
+    # --- Filtros desde GET ---
     categorias_seleccionadas = request.args.getlist('categoria')
     materiales_seleccionados = request.args.getlist('material')
     colores_seleccionados = request.args.getlist('color')
     precio_min = request.args.get('precio_min', type=float)
     precio_max = request.args.get('precio_max', type=float)
 
-    # Base query
-    productos_query = Producto.query
+    # --- Construir query base ---
+    query = Producto.query
 
-    # Aplicar filtros
+    # Filtrar por categorías
     if categorias_seleccionadas:
-        productos_query = productos_query.filter(Producto.ID_Categoria.in_(categorias_seleccionadas))
+        query = query.filter(Producto.ID_Categoria.in_([int(c) for c in categorias_seleccionadas]))
+
+    # Filtrar por materiales
     if materiales_seleccionados:
-        productos_query = productos_query.filter(Producto.Material.in_(materiales_seleccionados))
+        query = query.filter(Producto.Material.in_(materiales_seleccionados))
+
+    # Filtrar por colores
     if colores_seleccionados:
-        productos_query = productos_query.filter(Producto.Color.in_(colores_seleccionados))
+        query = query.filter(Producto.Color.in_(colores_seleccionados))
+
+    # Filtrar por precio
     if precio_min is not None:
-        productos_query = productos_query.filter(Producto.PrecioUnidad >= precio_min)
+        query = query.filter(Producto.PrecioUnidad >= precio_min)
     if precio_max is not None:
-        productos_query = productos_query.filter(Producto.PrecioUnidad <= precio_max)
+        query = query.filter(Producto.PrecioUnidad <= precio_max)
 
-    productos = productos_query.all()
+    productos = query.all()
 
-    # Priorizar según preferencias del usuario
-    categorias_fav = [c.ID_Categoria for c in usuario.categorias_favoritas] if usuario.is_authenticated else []
-    materiales_fav = json.loads(usuario.materiales_preferidos or '[]') if usuario.is_authenticated else []
-    colores_fav = json.loads(usuario.colores_preferidos or '[]') if usuario.is_authenticated else []
-
-    def score_producto(p):
-        score = 0
-        if p.ID_Categoria in categorias_fav:
-            score += 3
-        if p.Material in materiales_fav:
-            score += 2
-        if p.Color in colores_fav:
-            score += 1
-        return score
-
-    productos.sort(key=score_producto, reverse=True)  # los más relevantes primero
-
-    # Datos para filtros
+    # --- Obtener todas las categorías, materiales y colores para los filtros ---
     todas_etiquetas = Categorias.query.all()
-    materiales = list(set([p.Material for p in Producto.query.all() if p.Material]))
-    colores = list(set([p.Color for p in Producto.query.all() if p.Color]))
+    materiales = [m[0] for m in db.session.query(Producto.Material).distinct().all() if m[0]]
+    colores = [c[0] for c in db.session.query(Producto.Color).distinct().all() if c[0]]
 
-    return render_template('common/catalogo.html',
-                           productos=productos,
-                           todas_etiquetas=todas_etiquetas,
-                           categorias_seleccionadas=categorias_seleccionadas,
-                           materiales=materiales,
-                           materiales_seleccionados=materiales_seleccionados,
-                           colores=colores,
-                           colores_seleccionados=colores_seleccionados,
-                           precio_min=precio_min,
-                           precio_max=precio_max)
+    # --- Guardar automáticamente preferencias del usuario ---
+    try:
+        current_user.categorias_favoritas = Categorias.query.filter(
+            Categorias.ID_Categoria.in_([int(c) for c in categorias_seleccionadas])
+        ).all() if categorias_seleccionadas else current_user.categorias_favoritas
+    except:
+        current_user.categorias_favoritas = []
+
+    try:
+        current_user.materiales_preferidos = json.dumps(materiales_seleccionados) if materiales_seleccionados else current_user.materiales_preferidos
+    except:
+        current_user.materiales_preferidos = '[]'
+
+    try:
+        current_user.colores_preferidos = json.dumps(colores_seleccionados) if colores_seleccionados else current_user.colores_preferidos
+    except:
+        current_user.colores_preferidos = '[]'
+
+    db.session.commit()  # Guardar cambios automáticamente
+
+    # --- Preparar datos para mostrar en la plantilla ---
+    categorias_favoritas = [c.ID_Categoria for c in current_user.categorias_favoritas]
+    materiales_preferidos = json.loads(current_user.materiales_preferidos or '[]')
+    colores_preferidos = json.loads(current_user.colores_preferidos or '[]')
+
+    return render_template(
+        'common/catalogo.html',
+        productos=productos,
+        todas_etiquetas=todas_etiquetas,
+        categorias_seleccionadas=categorias_seleccionadas,
+        materiales=materiales,
+        materiales_seleccionados=materiales_seleccionados,
+        colores=colores,
+        colores_seleccionados=colores_seleccionados,
+        precio_min=precio_min,
+        precio_max=precio_max,
+        categorias_favoritas=categorias_favoritas,
+        materiales_preferidos=materiales_preferidos,
+        colores_preferidos=colores_preferidos
+    )
+
 
 
 

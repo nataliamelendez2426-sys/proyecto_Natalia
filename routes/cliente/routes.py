@@ -5,7 +5,7 @@ from flask_login import current_user
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session , current_app
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
-from basedatos.models import db, Usuario, Notificaciones, Direccion, Calendario,Pedido, Producto, Resena, Detalle_Pedido, Pagos,Mensaje,Garantia ,GarantiaArchivo
+from basedatos.models import db, Usuario, Notificaciones, Direccion, Calendario,Pedido, Producto, Resena, Detalle_Pedido, Pagos,Mensaje,Garantia ,GarantiaArchivo ,Categorias
 from basedatos.decoradores import role_required
 from basedatos.notificaciones import crear_notificacion
 from datetime import date,datetime
@@ -623,3 +623,20 @@ def mis_garantias():
     return render_template('cliente/garantias.html', garantias=garantias)
 
 
+@cliente.route('/guardar_preferencias', methods=['POST'])
+@login_required
+def guardar_preferencias():
+    categorias = request.form.getlist('categoria')  # lista de IDs seleccionadas
+    materiales = request.form.getlist('material')
+    colores = request.form.getlist('color')
+
+    # Actualizar categorías favoritas
+    current_user.categorias_favoritas = Categorias.query.filter(Categorias.ID_Categoria.in_(categorias)).all()
+
+    # Guardar materiales y colores como JSON
+    import json
+    current_user.materiales_preferidos = json.dumps(materiales)
+    current_user.colores_preferidos = json.dumps(colores)
+
+    db.session.commit()
+    return redirect(url_for('cliente.catalogo'))
