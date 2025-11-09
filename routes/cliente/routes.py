@@ -18,6 +18,8 @@ from functools import wraps
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+
+
 favoritos_usuario = set() 
 
 from . import cliente
@@ -638,6 +640,7 @@ def chatbot_mensaje():
     if not mensaje_usuario:
         return jsonify({"respuesta": "Por favor, escribe un mensaje."})
 
+    # ← Aquí va la verificación de la clave
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         return jsonify({"respuesta": "❌ La clave de OpenAI no está configurada."})
