@@ -89,26 +89,24 @@
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+const fixedLabels = ['credito','nequi','daviplata','efectivo'];
+const fixedColors = [
+    'rgba(54, 162, 235, 0.6)',
+    'rgba(255, 206, 86, 0.6)',
+    'rgba(75, 192, 192, 0.6)',
+    'rgba(255, 99, 132, 0.6)'
+];
+
 let ctx = document.getElementById('chartMetodos').getContext('2d');
 let chart = new Chart(ctx, {
     type: 'bar',
     data: {
-        labels: Object.keys({{ metodos|tojson }}),
+        labels: fixedLabels,
         datasets: [{
             label: 'Total Pagos por Método',
             data: Object.values({{ metodos|tojson }}),
-            backgroundColor: [
-                'rgba(54, 162, 235, 0.6)',
-                'rgba(255, 206, 86, 0.6)',
-                'rgba(75, 192, 192, 0.6)',
-                'rgba(255, 99, 132, 0.6)'
-            ],
-            borderColor: [
-                'rgba(54, 162, 235, 1)',
-                'rgba(255, 206, 86, 1)',
-                'rgba(75, 192, 192, 1)',
-                'rgba(255, 99, 132, 1)'
-            ],
+            backgroundColor: fixedColors,
+            borderColor: fixedColors.map(c => c.replace('0.6', '1')),
             borderWidth: 1
         }]
     },
@@ -148,12 +146,14 @@ async function actualizarDatos() {
         `;
     });
 
-    // Actualizar gráfico solo con métodos que tienen pagos
-    const labels = Object.keys(data.metodos).filter(k => data.metodos[k] > 0);
-    const values = labels.map(l => data.metodos[l]);
-
-    chart.data.labels = labels;
-    chart.data.datasets[0].data = values;
+    // Actualizar gráfico manteniendo siempre las 4 barras
+    chart.data.labels = fixedLabels;
+    chart.data.datasets[0].data = [
+        data.metodos['credito'] || 0,
+        data.metodos['nequi'] || 0,
+        data.metodos['daviplata'] || 0,
+        data.metodos['efectivo'] || 0
+    ];
     chart.update();
 }
 
