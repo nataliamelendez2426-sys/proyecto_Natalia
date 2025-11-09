@@ -63,3 +63,20 @@ def send_reset_email(user_email, user_name, token):
     
    
     mail.send(msg)
+    
+
+def send_mail_simple(mail, user_email, subject, message):
+    """
+    Envía un correo simple usando Flask-Mail.
+    """
+    try:
+        msg = Message(
+            subject=subject,
+            recipients=[user_email],
+            body=message
+        )
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"❌ Error enviando correo: {e}")
+        return False

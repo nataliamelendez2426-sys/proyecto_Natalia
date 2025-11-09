@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, flash, session, jsonify , current_app
+from flask import render_template, request, redirect, url_for, flash, session, jsonify, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from flask_login import login_required, login_user, logout_user
@@ -7,9 +7,26 @@ from basedatos.models import db, Usuario
 from basedatos.decoradores import validar_password, validar_email, send_reset_email
 from basedatos.notificaciones import crear_notificacion
 from . import auth
-
+from flask_mail import Message
 
 s = URLSafeTimedSerializer("mi_clave_super_secreta_y_unica")
+
+# ------------------ FUNCIÓN PARA ENVIAR CORREO SIMPLE ------------------ #
+def send_mail_simple(mail, user_email, subject, message):
+    """
+    Envía un correo simple usando Flask-Mail.
+    """
+    try:
+        msg = Message(
+            subject=subject,
+            recipients=[user_email],
+            body=message
+        )
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"❌ Error enviando correo: {e}")
+        return False
 
 # ------------------ REGISTRO ------------------ #
 @auth.route('/register', methods=['POST'])
@@ -19,7 +36,6 @@ def register():
     telefono = request.form.get('phone', '').strip()
     password = request.form.get('password', '').strip()
 
-    # Validaciones básicas
     if not nombre_completo or not correo or not password:
         return jsonify({'status': 'warning', 'message': 'Nombre, correo y contraseña son obligatorios.'})
 
@@ -30,7 +46,6 @@ def register():
     if error:
         return jsonify({'status': 'danger', 'message': error})
 
-    
     usuario_existente = Usuario.query.filter(func.lower(Usuario.Correo) == correo).first()
     if usuario_existente:
         return jsonify({'status': 'danger', 'message': 'Este correo ya está registrado. Usa otro por favor.'})
@@ -56,22 +71,18 @@ def register():
             mensaje="Tu cuenta se ha creado correctamente."
         )
 
-      
         return jsonify({
             'status': 'success',
-            'message': 'Cuenta creada correctamente.Ahora puedes iniciar sesión.',
+            'message': 'Cuenta creada correctamente. Ahora puedes iniciar sesión.',
             'redirect': url_for('index'),
-            'delay': 3000  
+            'delay': 3000
         })
 
     except Exception as e:
         db.session.rollback()
-
         if 'Duplicate entry' in str(e):
             return jsonify({'status': 'danger', 'message': 'El correo ya está registrado. Intenta con otro.'})
-
         return jsonify({'status': 'danger', 'message': f'Error al registrar: {str(e)}'})
-
 
 # ------------------ LOGIN ------------------ #
 @auth.route('/login', methods=['POST'])
@@ -102,14 +113,12 @@ def login():
 
             # ------------------ ENVÍO DE CORREO DE NOTIFICACIÓN ------------------ #
             try:
-                # Aquí usamos current_app para acceder a mail sin importaciones circulares
-                send_reset_email(
+                mail = current_app.extensions.get('mail')
+                send_mail_simple(
+                    mail=mail,
                     user_email=usuario.Correo,
-                    user_name=usuario.Nombre,
-                    token=None,
                     subject="Inicio de sesión detectado",
-                    message=f"Hola {usuario.Nombre},\n\nSe ha detectado un inicio de sesión con tu correo en nuestra página.\nSi no fuiste tú, te recomendamos cambiar tu contraseña inmediatamente.",
-                    mail=current_app.extensions.get('mail')  # Obtenemos mail de app
+                    message=f"Hola {usuario.Nombre},\n\nSe ha detectado un inicio de sesión con tu correo en nuestra página.\nSi no fuiste tú, te recomendamos cambiar tu contraseña inmediatamente."
                 )
             except Exception as mail_error:
                 print(f"❌ Error enviando correo de notificación de login: {mail_error}")
@@ -126,7 +135,6 @@ def login():
         print("❌ ERROR LOGIN:", e)
         return jsonify({'status': 'danger', 'message': f'Error interno: {str(e)}'})
 
-
 # ------------------ LOGOUT ------------------ #
 @auth.route('/logout')
 @login_required
@@ -134,7 +142,6 @@ def logout():
     logout_user()
     flash('Has cerrado sesión correctamente.', 'info')
     return redirect(url_for('index'))
-
 
 # ------------------ OLVIDÉ CONTRASEÑA ------------------ #
 @auth.route('/forgot_password', methods=['POST'])
@@ -152,7 +159,6 @@ def forgot_password():
     except Exception as e:
         return jsonify({'status': 'danger', 'message': f'Error al enviar correo: {str(e)}'})
 
-
 # ------------------ RESTABLECER CONTRASEÑA ------------------ #
 @auth.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
@@ -163,7 +169,6 @@ def reset_password(token):
         except (SignatureExpired, BadSignature):
             return render_template('common/index.html', mostrar_modal_reset=False, token_expirado=True, token=None)
 
-  
     try:
         email = s.loads(token, salt='password-recovery', max_age=3600)
     except (SignatureExpired, BadSignature):
@@ -195,8 +200,7 @@ def reset_password(token):
     )
 
     return jsonify({
-    'status': 'success',
-    'message': 'Contraseña restablecida correctamente. Ahora puedes iniciar sesión.',
-    'redirect': url_for('index')
-})
-
+        'status': 'success',
+        'message': 'Contraseña restablecida correctamente. Ahora puedes iniciar sesión.',
+        'redirect': url_for('index')
+    })
