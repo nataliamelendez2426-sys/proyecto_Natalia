@@ -1,0 +1,25 @@
+{% extends "common/base.html" %}
+
+{% block navbar %}
+  {% include "common/partials/navbar_cliente.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4">Solicitar Garantía</h2>
+
+  <form action="{{ url_for('cliente.solicitar_garantia', pedido_id=pedido.ID_Pedido) }}" method="POST" enctype="multipart/form-data">
+    <div class="mb-3">
+      <label for="motivo" class="form-label">Motivo de la garantía</label>
+      <textarea class="form-control" name="motivo" id="motivo" rows="4" required></textarea>
+    </div>
+
+    <div class="mb-3">
+      <label for="archivos" class="form-label">Adjuntar archivos (opcional)</label>
+      <input class="form-control" type="file" name="archivos" id="archivos" multiple>
+    </div>
+
+    <button type="submit" class="btn btn-success">Enviar Solicitud</button>
+  </form>
+</div>
+{% endblock %}

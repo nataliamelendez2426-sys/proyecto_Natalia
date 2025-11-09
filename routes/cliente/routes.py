@@ -13,9 +13,11 @@ from flask import render_template
 from sqlalchemy import text
 from flask_mail import Message
 from flask import url_for
+from werkzeug.utils import secure_filename
 from basedatos.decoradores import mail
 from functools import wraps
 
+UPLOAD_FOLDER = 'static/uploads/garantias'
 
 favoritos_usuario = set() 
 
@@ -584,43 +586,41 @@ def eliminar_pedido(pedido_id):
     return redirect(url_for('cliente.historial'))
 
 # ---------- GARANTIAS ----------
-
-@cliente.route('/crear/<int:pedido_id>', methods=['GET', 'POST'])
+@cliente.route('/garantia/<int:pedido_id>', methods=['GET', 'POST'])
 @login_required
-def crear_garantia(pedido_id):
+def solicitar_garantia(pedido_id):
     pedido = Pedido.query.get_or_404(pedido_id)
 
     if request.method == 'POST':
-        motivo = request.form['motivo']
-        archivos = request.files.getlist('archivos')  
-       
-        garantia = Garantia(ID_Pedido=pedido.ID_Pedido, ID_Usuario=current_user.ID_Usuario,
-                            Motivo=motivo)
-        db.session.add(garantia)
+        motivo = request.form.get('motivo')
+        archivos = request.files.getlist('archivos')
+
+        nueva_garantia = Garantia(
+            ID_Pedido=pedido.ID_Pedido,
+            ID_Usuario=current_user.ID_Usuario,
+            Motivo=motivo
+        )
+        db.session.add(nueva_garantia)
+        db.session.commit()  
+
+        # Guardar archivos
+        for archivo in archivos:
+            if archivo.filename != '':
+                filename = secure_filename(archivo.filename)
+                ruta = os.path.join(UPLOAD_FOLDER, filename)
+                archivo.save(ruta)
+                archivo_garantia = GarantiaArchivo(
+                    ID_Garantia=nueva_garantia.ID_Garantia,
+                    NombreArchivo=filename,
+                    RutaArchivo=ruta
+                )
+                db.session.add(archivo_garantia)
+
         db.session.commit()
+        flash('Solicitud de garantía enviada correctamente.', 'success')
+        return redirect(url_for('cliente.mis_pedidos'))
 
-        
-        for f in archivos:
-            if f.filename:
-                ruta = f"/uploads/garantias/{f.filename}"
-                f.save(f".{ruta}")  
-                archivo = GarantiaArchivo(ID_Garantia=garantia.ID_Garantia,
-                                          NombreArchivo=f.filename,
-                                          RutaArchivo=ruta)
-                db.session.add(archivo)
-        db.session.commit()
-
-        flash("Garantía creada correctamente.", "success")
-        return redirect(url_for('mis_garantias'))
-
-    return render_template('cliente/crear_garantia.html', pedido=pedido)
-
-
-@cliente.route('/mis_garantias')
-@login_required
-def mis_garantias():
-    garantias = Garantia.query.filter_by(ID_Usuario=current_user.ID_Usuario).all()
-    return render_template('cliente/garantias.html', garantias=garantias)
+    return render_template('cliente/solicitar_garantia.html', pedido=pedido)
 
 
 @cliente.route('/guardar_preferencias', methods=['POST'])
