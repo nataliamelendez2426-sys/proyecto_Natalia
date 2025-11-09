@@ -84,84 +84,57 @@ def index():
 def nosotros():
     return render_template("common/nosotros.html")
 
-@app.route('/catalogo')
+@app.route('/catalogo/ajax')
 @login_required
 def catalogo():
-    # --- Filtros desde GET ---
-    categorias_seleccionadas = request.args.getlist('categoria')
-    materiales_seleccionados = request.args.getlist('material')
-    colores_seleccionados = request.args.getlist('color')
+    # Obtener filtros del GET
+    categorias = request.args.getlist('categoria')
+    materiales = request.args.getlist('material')
+    colores = request.args.getlist('color')
     precio_min = request.args.get('precio_min', type=float)
     precio_max = request.args.get('precio_max', type=float)
 
-    # --- Construir query base ---
-    query = Producto.query
+    # Query inicial
+    productos = Producto.query
 
-    # Filtrar por categorías
-    if categorias_seleccionadas:
-        query = query.filter(Producto.ID_Categoria.in_([int(c) for c in categorias_seleccionadas]))
-
-    # Filtrar por materiales
-    if materiales_seleccionados:
-        query = query.filter(Producto.Material.in_(materiales_seleccionados))
-
-    # Filtrar por colores
-    if colores_seleccionados:
-        query = query.filter(Producto.Color.in_(colores_seleccionados))
-
-    # Filtrar por precio
+    if categorias:
+        productos = productos.filter(Producto.ID_Categoria.in_(categorias))
+    if materiales:
+        productos = productos.filter(Producto.Material.in_(materiales))
+    if colores:
+        productos = productos.filter(Producto.Color.in_(colores))
     if precio_min is not None:
-        query = query.filter(Producto.PrecioUnidad >= precio_min)
+        productos = productos.filter(Producto.PrecioUnidad >= precio_min)
     if precio_max is not None:
-        query = query.filter(Producto.PrecioUnidad <= precio_max)
+        productos = productos.filter(Producto.PrecioUnidad <= precio_max)
 
-    productos = query.all()
+    productos = productos.all()
 
-    # --- Obtener todas las categorías, materiales y colores para los filtros ---
-    todas_etiquetas = Categorias.query.all()
-    materiales = [m[0] for m in db.session.query(Producto.Material).distinct().all() if m[0]]
-    colores = [c[0] for c in db.session.query(Producto.Color).distinct().all() if c[0]]
+    # Puntuar según preferencias del usuario
+    def score(p):
+        s = 0
+        if p.ID_Categoria in [c.ID_Categoria for c in current_user.categorias_favoritas]: s += 3
+        if p.Material in current_user.materiales_preferidos: s += 2
+        if p.Color in current_user.colores_preferidos: s += 1
+        return s
 
-    # --- Guardar automáticamente preferencias del usuario ---
-    try:
-        current_user.categorias_favoritas = Categorias.query.filter(
-            Categorias.ID_Categoria.in_([int(c) for c in categorias_seleccionadas])
-        ).all() if categorias_seleccionadas else current_user.categorias_favoritas
-    except:
-        current_user.categorias_favoritas = []
+    productos = sorted(productos, key=lambda p: score(p), reverse=True)
 
-    try:
-        current_user.materiales_preferidos = json.dumps(materiales_seleccionados) if materiales_seleccionados else current_user.materiales_preferidos
-    except:
-        current_user.materiales_preferidos = '[]'
+    # Convertir a JSON
+    result = []
+    for p in productos:
+        result.append({
+            "ID_Producto": p.ID_Producto,
+            "NombreProducto": p.NombreProducto,
+            "PrecioUnidad": float(p.PrecioUnidad),
+            "Stock": p.Stock,
+            "Material": p.Material,
+            "Color": p.Color,
+            "CategoriaNombre": p.categoria.NombreCategoria if p.categoria else None,
+            "ImagenPrincipal": p.ImagenPrincipal
+        })
 
-    try:
-        current_user.colores_preferidos = json.dumps(colores_seleccionados) if colores_seleccionados else current_user.colores_preferidos
-    except:
-        current_user.colores_preferidos = '[]'
-
-    db.session.commit()  # Guardar cambios automáticamente
-
-    # --- Preparar datos para mostrar en la plantilla ---
-    categorias_favoritas = [c.ID_Categoria for c in current_user.categorias_favoritas]
-    materiales_preferidos = json.loads(current_user.materiales_preferidos or '[]')
-    colores_preferidos = json.loads(current_user.colores_preferidos or '[]')
-
-    return render_template(
-        'common/catalogo.html',
-        productos=productos,
-        todas_etiquetas=todas_etiquetas,
-        categorias_seleccionadas=categorias_seleccionadas,
-        materiales=materiales,
-        materiales_seleccionados=materiales_seleccionados,
-        colores=colores,
-        colores_seleccionados=colores_seleccionados,
-        precio_min=precio_min,
-        precio_max=precio_max,
-        categorias_favoritas=categorias_favoritas,
-        materiales_preferidos=materiales_preferidos,
-        colores_preferidos=colores_preferidos
-    )
+    return jsonify(result)
 
 
 
