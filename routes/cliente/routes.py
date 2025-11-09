@@ -20,10 +20,9 @@ load_dotenv()
 
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
-    raise ValueError("❌ La clave de OpenAI no se ha cargado desde .env")
+    raise ValueError("❌ La clave de OpenAI no se ha cargado")
 
 client = OpenAI(api_key=api_key)
-print("✅ Clave cargada correctamente")
 
 favoritos_usuario = set() 
 
