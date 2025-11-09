@@ -56,7 +56,7 @@
                 <td>{{ p.pedido.usuario.Nombre }} {{ p.pedido.usuario.Apellido or "" }}</td>
                 <td>{{ p.MetodoPago }}</td>
                 <td>{{ p.FechaPago.strftime('%Y-%m-%d') }}</td>
-                <td>${{ '%.2f'|format(p.Monto) }}</td>
+                <td>${{ '%.2f'|format(p.Monto) }} ({{ "%.2f"|format((p.Monto / total_pagos * 100) if total_pagos else 0) }}%)</td>
                 <td>
                     <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#detalleModal{{ p.ID_Pagos }}">Ver Detalle</button>
                 </td>
@@ -86,8 +86,9 @@
     </table>
 </div>
 
-<!-- Chart.js -->
+<!-- Chart.js + datalabels -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 <script>
 const fixedLabels = ['credito','nequi','daviplata','efectivo'];
 const fixedColors = [
@@ -110,7 +111,21 @@ let chart = new Chart(ctx, {
             borderWidth: 1
         }]
     },
-    options: { scales: { y: { beginAtZero: true } } }
+    options: { 
+        scales: { y: { beginAtZero: true } },
+        plugins: {
+            datalabels: {
+                color: '#000',
+                anchor: 'end',
+                align: 'top',
+                formatter: function(value, context) {
+                    const total = context.chart.data.datasets[0].data.reduce((a,b)=>a+b,0);
+                    return total ? ((value/total)*100).toFixed(1) + '%' : '';
+                }
+            }
+        }
+    },
+    plugins: [ChartDataLabels]
 });
 </script>
 
@@ -130,24 +145,26 @@ async function actualizarDatos() {
     // Actualizar total
     document.getElementById('totalPagos').textContent = data.total.toFixed(2);
 
-    // Actualizar tabla
+    // Actualizar tabla con porcentaje
     const tbody = document.querySelector("#tablaPagos tbody");
     tbody.innerHTML = '';
     data.pagos.forEach(p => {
+        const porcentaje = data.total ? ((p.Monto / data.total) * 100).toFixed(2) : 0;
         tbody.innerHTML += `
             <tr>
                 <td>${p.ID_Pagos}</td>
                 <td>${p.usuario.Nombre} ${p.usuario.Apellido || ''}</td>
                 <td>${p.MetodoPago}</td>
                 <td>${p.FechaPago}</td>
-                <td>$${p.Monto.toFixed(2)}</td>
-                <td><button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#detalleModal${p.ID_Pagos}">Ver Detalle</button></td>
+                <td>$${p.Monto.toFixed(2)} (${porcentaje}%)</td>
+                <td>
+                    <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#detalleModal${p.ID_Pagos}">Ver Detalle</button>
+                </td>
             </tr>
         `;
     });
 
-    // Actualizar gráfico manteniendo siempre las 4 barras
-    chart.data.labels = fixedLabels;
+    // Actualizar gráfico manteniendo las 4 barras
     chart.data.datasets[0].data = [
         data.metodos['credito'] || 0,
         data.metodos['nequi'] || 0,
