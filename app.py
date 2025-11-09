@@ -8,7 +8,7 @@ from flask_login import current_user
 
 
 # ------------------ MODELOS ------------------ #
-from basedatos.models import db, Usuario, Producto,Pedido,Etiqueta
+from basedatos.models import db, Usuario, Producto,Pedido,Categorias
 
 # ------------------ EXTENSIONES ------------------ #
 from basedatos.decoradores import mail
@@ -85,22 +85,62 @@ def nosotros():
 
 @app.route("/catalogo")
 def catalogo():
-    # Obtener etiquetas seleccionadas del query string
-    etiquetas_seleccionadas = request.args.getlist('etiqueta')  # lista de strings
+    # Obtener filtros del query string
+    categorias_seleccionadas = request.args.getlist('categoria')
+    materiales_seleccionados = request.args.getlist('material')
+    colores_seleccionados = request.args.getlist('color')
+    precio_min = request.args.get('precio_min', type=float)
+    precio_max = request.args.get('precio_max', type=float)
 
-    # Todas las etiquetas para mostrar en el sidebar
-    todas_etiquetas = Etiqueta.query.order_by(Etiqueta.NombreEtiqueta).all()
+    # Convertir categorías a enteros
+    try:
+        categorias_seleccionadas = [int(c) for c in categorias_seleccionadas]
+    except ValueError:
+        categorias_seleccionadas = []
 
-    if etiquetas_seleccionadas:
-        # Filtrar productos que tengan alguna de las etiquetas seleccionadas
-        productos = Producto.query.join(Producto.etiquetas).filter(Etiqueta.ID_Etiqueta.in_(etiquetas_seleccionadas)).all()
-    else:
-        productos = Producto.query.all()
+    # Base query
+    query = Producto.query
 
-    return render_template("common/catalogo.html",
-                           productos=productos,
-                           todas_etiquetas=todas_etiquetas,
-                           etiquetas_seleccionadas=etiquetas_seleccionadas)
+    # Filtrar por categorías
+    if categorias_seleccionadas:
+        query = query.filter(Producto.ID_Categoria.in_(categorias_seleccionadas))
+
+    # Filtrar por material
+    if materiales_seleccionados:
+        query = query.filter(Producto.Material.in_(materiales_seleccionados))
+
+    # Filtrar por color
+    if colores_seleccionados:
+        query = query.filter(Producto.Color.in_(colores_seleccionados))
+
+    # Filtrar por precio
+    if precio_min is not None:
+        query = query.filter(Producto.PrecioUnidad >= precio_min)
+    if precio_max is not None:
+        query = query.filter(Producto.PrecioUnidad <= precio_max)
+
+    productos = query.all()
+
+    # Datos para los filtros en el sidebar
+    todas_categorias = Categorias.query.order_by(Categorias.NombreCategoria).all()
+    todos_materiales = [m[0] for m in db.session.query(Producto.Material).distinct().all() if m[0]]
+    todos_colores = [c[0] for c in db.session.query(Producto.Color).distinct().all() if c[0]]
+
+    return render_template(
+        "common/catalogo.html",
+        productos=productos,
+        todas_etiquetas=todas_categorias,
+        etiquetas_seleccionadas=[str(c) for c in categorias_seleccionadas],
+        materiales=todos_materiales,
+        materiales_seleccionados=materiales_seleccionados,
+        colores=todos_colores,
+        colores_seleccionados=colores_seleccionados,
+        precio_min=precio_min,
+        precio_max=precio_max
+    )
+
+
+
 
 
 @app.route("/favoritos", methods=["POST"])
