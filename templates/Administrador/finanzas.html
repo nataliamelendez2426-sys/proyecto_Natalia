@@ -5,14 +5,29 @@
 {% endblock %}
 
 {% block content %}
-<div class="container mt-5">
+<style>
 
-    <h2 class="mb-4 text-success fw-bold" style="text-shadow: 1px 1px 2px #000;">Control Financiero</h2>
+
+/* Botones y tablas centradas */
+.table td, .table th {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.modal {
+    z-index: 2000 !important;
+}
+</style>
+
+<div class="container mt-4">
+
+    <!-- Título centrado -->
+    <h2 class="mb-4 text-center fw-bold" style="color:#2F4F4F;">Control Financiero</h2>
 
     <!-- Filtros -->
-    <form id="filtroPagos" class="row g-3 mb-4">
+    <form id="filtroPagos" class="row g-3 mb-3 justify-content-center">
         <div class="col-md-3">
-            <label for="metodo" class="form-label fw-bold text-success">Método de Pago</label>
+            <label for="metodo" class="form-label fw-bold">Método de Pago</label>
             <select id="metodo" class="form-select border-success shadow-sm">
                 <option value="">Todos</option>
                 <option value="credito">Tarjeta / Transferencia</option>
@@ -22,56 +37,68 @@
             </select>
         </div>
         <div class="col-md-3">
-            <label for="fecha_inicio" class="form-label fw-bold text-success">Fecha Inicio</label>
+            <label for="fecha_inicio" class="form-label fw-bold">Fecha Inicio</label>
             <input type="date" id="fecha_inicio" class="form-control border-success shadow-sm">
         </div>
         <div class="col-md-3">
-            <label for="fecha_fin" class="form-label fw-bold text-success">Fecha Fin</label>
+            <label for="fecha_fin" class="form-label fw-bold">Fecha Fin</label>
             <input type="date" id="fecha_fin" class="form-control border-success shadow-sm">
-        </div>
-        <div class="col-md-3 d-flex align-items-end gap-2">
-            <button type="button" id="btnFiltrar" class="btn btn-success btn-lg w-50 shadow">Filtrar</button>
-            <button type="button" class="btn btn-outline-success btn-lg w-50 shadow" data-bs-toggle="modal" data-bs-target="#detalleModalGeneral">Ver Detalles</button>
         </div>
     </form>
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4 class="text-success fw-bold" style="text-shadow: 1px 1px 2px #000;">Total Pagos: $<span id="totalPagos">{{ '%.2f'|format(total_pagos) }}</span></h4>
+    <!-- Botones centrados -->
+    <div class="d-flex justify-content-center gap-3 mb-4">
+        <button type="button" id="btnFiltrar" class="btn btn-success btn-lg shadow">Filtrar</button>
+        <button type="button" class="btn btn-outline-success btn-lg shadow" data-bs-toggle="modal" data-bs-target="#detalleModalGeneral">Ver Detalles</button>
         <button id="btnExportPDF" class="btn btn-success btn-lg shadow">Exportar PDF</button>
     </div>
 
-    <h5 class="text-success fw-bold mb-2">Estadísticas por Método de Pago</h5>
-    <canvas id="chartMetodos" width="400" height="150" class="border rounded p-3 shadow-sm bg-light"></canvas>
+    <!-- Total -->
+    <div class="text-center mb-4">
+        <h4 class="fw-bold" style="color:#2F4F4F;">Total Pagos: $<span id="totalPagos">{{ '%.2f'|format(total_pagos) }}</span></h4>
+    </div>
 
-    <h5 class="mt-5 text-success fw-bold mb-3">Todos los Pagos</h5>
-    <table class="table table-hover table-striped table-bordered border-success shadow rounded" id="tablaPagos">
-        <thead class="table-success text-success fw-bold">
-            <tr>
-                <th>ID</th>
-                <th>Usuario</th>
-                <th>Método</th>
-                <th>Fecha</th>
-                <th>Monto</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for p in pagos %}
-            <tr>
-                <td>{{ p.ID_Pagos }}</td>
-                <td>{{ p.pedido.usuario.Nombre }} {{ p.pedido.usuario.Apellido or "" }}</td>
-                <td>{{ p.MetodoPago }}</td>
-                <td>{{ p.FechaPago.strftime('%Y-%m-%d') }}</td>
-                <td>${{ '%.2f'|format(p.Monto) }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <!-- Gráfico -->
+    <div class="d-flex justify-content-center mb-5">
+        <div style="width:80%;">
+            <h5 class="fw-bold text-center mb-3" style="color:#2F4F4F;">Estadísticas por Método de Pago</h5>
+            <canvas id="chartMetodos" width="400" height="150" class="border rounded p-3 shadow-sm bg-light"></canvas>
+        </div>
+    </div>
 
+    <!-- Tabla -->
+    <div class="d-flex justify-content-center">
+        <div style="width:90%;">
+            <h5 class="fw-bold mb-3" style="color:#2F4F4F;">Todos los Pagos</h5>
+            <table class="table table-hover table-striped table-bordered shadow rounded" id="tablaPagos">
+                <thead class="table-success fw-bold">
+                    <tr>
+                        <th>ID</th>
+                        <th>Usuario</th>
+                        <th>Método</th>
+                        <th>Fecha</th>
+                        <th>Monto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in pagos %}
+                    <tr>
+                        <td>{{ p.ID_Pagos }}</td>
+                        <td>{{ p.pedido.usuario.Nombre }} {{ p.pedido.usuario.Apellido or "" }}</td>
+                        <td>{{ p.MetodoPago }}</td>
+                        <td>{{ p.FechaPago.strftime('%Y-%m-%d') }}</td>
+                        <td>${{ '%.2f'|format(p.Monto) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <!-- Modal General Detalles -->
 <div class="modal fade" id="detalleModalGeneral" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
     <div class="modal-content border-success shadow">
       <div class="modal-header bg-success text-white">
         <h5 class="modal-title fw-bold">Detalle de Todos los Pagos</h5>
@@ -89,10 +116,10 @@
 <script>
 const fixedLabels = ['credito','nequi','daviplata','efectivo'];
 const fixedColors = [
-    'rgba(34,139,34,0.7)', // verde bosque
-    'rgba(50,205,50,0.7)', // lima
-    'rgba(144,238,144,0.7)', // verde claro
-    'rgba(0,128,0,0.7)' // verde
+    'rgba(34,139,34,0.7)',
+    'rgba(50,205,50,0.7)',
+    'rgba(144,238,144,0.7)',
+    'rgba(0,128,0,0.7)'
 ];
 
 let ctx = document.getElementById('chartMetodos').getContext('2d');
@@ -111,10 +138,10 @@ let chart = new Chart(ctx, {
     },
     options: { 
         responsive:true,
-        plugins: { legend:{ labels:{color:'#006400', font:{weight:'bold'}} } },
+        plugins: { legend:{ labels:{color:'#2F4F4F', font:{weight:'bold'}} } },
         scales: { 
-            y:{ beginAtZero:true, ticks:{ color:'#006400', font:{weight:'bold'} } },
-            x:{ ticks:{ color:'#006400', font:{weight:'bold'} } }
+            y:{ beginAtZero:true, ticks:{ color:'#2F4F4F', font:{weight:'bold'} } },
+            x:{ ticks:{ color:'#2F4F4F', font:{weight:'bold'} } }
         },
         animation: { duration: 1000, easing: 'easeOutQuart' }
     }
@@ -132,13 +159,13 @@ async function actualizarDatos() {
 
     document.getElementById('totalPagos').textContent = data.total.toFixed(2);
 
-    // Tabla principal
+    // Tabla principal centrada
     const tbody = document.querySelector("#tablaPagos tbody");
     tbody.innerHTML = '';
-    let modalHtml = '<table class="table table-bordered table-striped"><thead class="table-success text-success fw-bold"><tr><th>ID</th><th>Usuario</th><th>Método</th><th>Fecha</th><th>Monto</th><th>% del total</th></tr></thead><tbody>';
+    let modalHtml = '<table class="table table-bordered table-striped"><thead class="table-success fw-bold"><tr class="text-center"><th>ID</th><th>Usuario</th><th>Método</th><th>Fecha</th><th>Monto</th><th>% del total</th></tr></thead><tbody>';
     data.pagos.forEach(p => {
         tbody.innerHTML += `
-            <tr class="shadow-sm">
+            <tr class="text-center shadow-sm">
                 <td>${p.ID_Pagos}</td>
                 <td>${p.usuario.Nombre} ${p.usuario.Apellido || ''}</td>
                 <td>${p.MetodoPago}</td>
@@ -148,7 +175,7 @@ async function actualizarDatos() {
         `;
         const porcentaje = data.total ? ((p.Monto / data.total) * 100).toFixed(2) : 0;
         modalHtml += `
-            <tr>
+            <tr class="text-center">
                 <td>${p.ID_Pagos}</td>
                 <td>${p.usuario.Nombre} ${p.usuario.Apellido || ''}</td>
                 <td>${p.MetodoPago}</td>
@@ -184,7 +211,7 @@ document.getElementById('btnExportPDF').addEventListener('click', async () => {
 
     let y = 10;
     doc.setFontSize(16);
-    doc.setTextColor(0,128,0);
+    doc.setTextColor(47,79,79);
     doc.text("Control Financiero", 105, y, null, null, "center");
     y += 10;
 
@@ -200,7 +227,7 @@ document.getElementById('btnExportPDF').addEventListener('click', async () => {
 
     const finalY = doc.internal.pageSize.getHeight() - 15;
     doc.setFontSize(14);
-    doc.setTextColor(0,128,0);
+    doc.setTextColor(47,79,79);
     doc.text(`Total Pagos: $${document.getElementById('totalPagos').textContent}`, 14, finalY);
 
     doc.save("reporte_pagos.pdf");
