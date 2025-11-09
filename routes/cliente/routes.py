@@ -637,7 +637,7 @@ def chatbot_mensaje():
 
     try:
         # ✅ Inicializa correctamente el cliente OpenAI
-        client = OpenAI(api_key="mi_clave_super_secreta_y_unica")
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # Usa variable de entorno
 
         # ✅ Llamada al modelo
         respuesta_ai = client.chat.completions.create(
@@ -646,8 +646,8 @@ def chatbot_mensaje():
                 {
                     "role": "system",
                     "content": (
-                        "Eres un asistente útil para una tienda llamada 'Casa en el Árbol'. "
-                        "Ayudas a clientes con seguimiento de pedidos, productos y dudas frecuentes."
+                        "Eres un asistente virtual amable y profesional para la tienda 'Casa en el Árbol'. "
+                        "Ayudas a los clientes con seguimiento de pedidos, dudas de productos, devoluciones y soporte general."
                     )
                 },
                 {"role": "user", "content": mensaje_usuario}
@@ -658,5 +658,5 @@ def chatbot_mensaje():
         return jsonify({"respuesta": texto_respuesta})
 
     except Exception as e:
-        print("Error en chatbot:", e)
+        print("⚠️ Error en chatbot:", e)
         return jsonify({"respuesta": "😔 Lo siento, hubo un problema al procesar tu solicitud."})
