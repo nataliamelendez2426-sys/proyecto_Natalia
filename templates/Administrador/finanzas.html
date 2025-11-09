@@ -1,14 +1,19 @@
 {% extends "common/base.html" %}
 
+{% block navbar %}
+  {% include "common/partials/navbar_admin.html" %}
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <h2 class="mb-4 text-success">Control Financiero</h2>
+<div class="container mt-5">
+
+    <h2 class="mb-4 text-success fw-bold" style="text-shadow: 1px 1px 2px #000;">Control Financiero</h2>
 
     <!-- Filtros -->
-    <form id="filtroPagos" class="row g-3 mb-3">
+    <form id="filtroPagos" class="row g-3 mb-4">
         <div class="col-md-3">
-            <label for="metodo" class="form-label text-success">Método de Pago</label>
-            <select id="metodo" class="form-select border-success">
+            <label for="metodo" class="form-label fw-bold text-success">Método de Pago</label>
+            <select id="metodo" class="form-select border-success shadow-sm">
                 <option value="">Todos</option>
                 <option value="credito">Tarjeta / Transferencia</option>
                 <option value="nequi">Nequi</option>
@@ -17,30 +22,30 @@
             </select>
         </div>
         <div class="col-md-3">
-            <label for="fecha_inicio" class="form-label text-success">Fecha Inicio</label>
-            <input type="date" id="fecha_inicio" class="form-control border-success">
+            <label for="fecha_inicio" class="form-label fw-bold text-success">Fecha Inicio</label>
+            <input type="date" id="fecha_inicio" class="form-control border-success shadow-sm">
         </div>
         <div class="col-md-3">
-            <label for="fecha_fin" class="form-label text-success">Fecha Fin</label>
-            <input type="date" id="fecha_fin" class="form-control border-success">
+            <label for="fecha_fin" class="form-label fw-bold text-success">Fecha Fin</label>
+            <input type="date" id="fecha_fin" class="form-control border-success shadow-sm">
         </div>
         <div class="col-md-3 d-flex align-items-end gap-2">
-            <button type="button" id="btnFiltrar" class="btn btn-success w-50">Filtrar</button>
-            <button type="button" class="btn btn-outline-success w-50" data-bs-toggle="modal" data-bs-target="#detalleModalGeneral">Ver Detalles</button>
+            <button type="button" id="btnFiltrar" class="btn btn-success btn-lg w-50 shadow">Filtrar</button>
+            <button type="button" class="btn btn-outline-success btn-lg w-50 shadow" data-bs-toggle="modal" data-bs-target="#detalleModalGeneral">Ver Detalles</button>
         </div>
     </form>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="text-success">Total Pagos: $<span id="totalPagos">{{ '%.2f'|format(total_pagos) }}</span></h4>
-        <button id="btnExportPDF" class="btn btn-success">Exportar PDF</button>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="text-success fw-bold" style="text-shadow: 1px 1px 2px #000;">Total Pagos: $<span id="totalPagos">{{ '%.2f'|format(total_pagos) }}</span></h4>
+        <button id="btnExportPDF" class="btn btn-success btn-lg shadow">Exportar PDF</button>
     </div>
 
-    <h5 class="text-success">Estadísticas por Método de Pago</h5>
-    <canvas id="chartMetodos" width="400" height="150" class="border rounded p-2 bg-light"></canvas>
+    <h5 class="text-success fw-bold mb-2">Estadísticas por Método de Pago</h5>
+    <canvas id="chartMetodos" width="400" height="150" class="border rounded p-3 shadow-sm bg-light"></canvas>
 
-    <h5 class="mt-4 text-success">Todos los Pagos</h5>
-    <table class="table table-hover table-striped table-bordered border-success" id="tablaPagos">
-        <thead class="table-success text-success">
+    <h5 class="mt-5 text-success fw-bold mb-3">Todos los Pagos</h5>
+    <table class="table table-hover table-striped table-bordered border-success shadow rounded" id="tablaPagos">
+        <thead class="table-success text-success fw-bold">
             <tr>
                 <th>ID</th>
                 <th>Usuario</th>
@@ -61,18 +66,19 @@
             {% endfor %}
         </tbody>
     </table>
+
 </div>
 
 <!-- Modal General Detalles -->
 <div class="modal fade" id="detalleModalGeneral" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content border-success">
+    <div class="modal-content border-success shadow">
       <div class="modal-header bg-success text-white">
-        <h5 class="modal-title">Detalle de Todos los Pagos</h5>
+        <h5 class="modal-title fw-bold">Detalle de Todos los Pagos</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
-      <div class="modal-body" id="modalBodyGeneral">
-        <!-- Se llenará dinámicamente con JS -->
+      <div class="modal-body" id="modalBodyGeneral" style="max-height:600px; overflow-y:auto;">
+        <!-- Contenido dinámico con JS -->
       </div>
     </div>
   </div>
@@ -83,10 +89,10 @@
 <script>
 const fixedLabels = ['credito','nequi','daviplata','efectivo'];
 const fixedColors = [
-    'rgba(75, 192, 192, 0.6)',
-    'rgba(144, 238, 144, 0.6)',
-    'rgba(34, 139, 34, 0.6)',
-    'rgba(0, 128, 0, 0.6)'
+    'rgba(34,139,34,0.7)', // verde bosque
+    'rgba(50,205,50,0.7)', // lima
+    'rgba(144,238,144,0.7)', // verde claro
+    'rgba(0,128,0,0.7)' // verde
 ];
 
 let ctx = document.getElementById('chartMetodos').getContext('2d');
@@ -98,16 +104,19 @@ let chart = new Chart(ctx, {
             label: 'Total Pagos por Método',
             data: Object.values({{ metodos|tojson }}),
             backgroundColor: fixedColors,
-            borderColor: fixedColors.map(c => c.replace('0.6','1')),
-            borderWidth: 1
+            borderColor: fixedColors.map(c => c.replace('0.7','1')),
+            borderWidth: 2,
+            borderRadius: 6
         }]
     },
     options: { 
+        responsive:true,
+        plugins: { legend:{ labels:{color:'#006400', font:{weight:'bold'}} } },
         scales: { 
-            y: { beginAtZero: true, ticks: { color: 'green' } },
-            x: { ticks: { color: 'green' } }
+            y:{ beginAtZero:true, ticks:{ color:'#006400', font:{weight:'bold'} } },
+            x:{ ticks:{ color:'#006400', font:{weight:'bold'} } }
         },
-        plugins: { legend: { labels: { color: 'green', font: { weight: 'bold' } } } }
+        animation: { duration: 1000, easing: 'easeOutQuart' }
     }
 });
 
@@ -121,16 +130,15 @@ async function actualizarDatos() {
     const res = await fetch(`/admin/finanzas/ajax?${params.toString()}`);
     const data = await res.json();
 
-    // Total
     document.getElementById('totalPagos').textContent = data.total.toFixed(2);
 
-    // Tabla principal sin porcentaje
+    // Tabla principal
     const tbody = document.querySelector("#tablaPagos tbody");
     tbody.innerHTML = '';
-    let modalHtml = '<table class="table table-bordered table-striped"><thead class="table-success text-success"><tr><th>ID</th><th>Usuario</th><th>Método</th><th>Fecha</th><th>Monto</th><th>% del total</th></tr></thead><tbody>';
+    let modalHtml = '<table class="table table-bordered table-striped"><thead class="table-success text-success fw-bold"><tr><th>ID</th><th>Usuario</th><th>Método</th><th>Fecha</th><th>Monto</th><th>% del total</th></tr></thead><tbody>';
     data.pagos.forEach(p => {
         tbody.innerHTML += `
-            <tr>
+            <tr class="shadow-sm">
                 <td>${p.ID_Pagos}</td>
                 <td>${p.usuario.Nombre} ${p.usuario.Apellido || ''}</td>
                 <td>${p.MetodoPago}</td>
@@ -138,7 +146,6 @@ async function actualizarDatos() {
                 <td>$${p.Monto.toFixed(2)}</td>
             </tr>
         `;
-        // Modal con porcentaje
         const porcentaje = data.total ? ((p.Monto / data.total) * 100).toFixed(2) : 0;
         modalHtml += `
             <tr>
@@ -154,7 +161,7 @@ async function actualizarDatos() {
     modalHtml += '</tbody></table>';
     document.getElementById('modalBodyGeneral').innerHTML = modalHtml;
 
-    // Actualizar gráfico con valores absolutos
+    // Gráfico
     chart.data.datasets[0].data = [
         data.metodos['credito'] || 0,
         data.metodos['nequi'] || 0,
@@ -177,7 +184,7 @@ document.getElementById('btnExportPDF').addEventListener('click', async () => {
 
     let y = 10;
     doc.setFontSize(16);
-    doc.setTextColor(0, 128, 0);
+    doc.setTextColor(0,128,0);
     doc.text("Control Financiero", 105, y, null, null, "center");
     y += 10;
 
@@ -193,7 +200,7 @@ document.getElementById('btnExportPDF').addEventListener('click', async () => {
 
     const finalY = doc.internal.pageSize.getHeight() - 15;
     doc.setFontSize(14);
-    doc.setTextColor(0, 128, 0);
+    doc.setTextColor(0,128,0);
     doc.text(`Total Pagos: $${document.getElementById('totalPagos').textContent}`, 14, finalY);
 
     doc.save("reporte_pagos.pdf");
