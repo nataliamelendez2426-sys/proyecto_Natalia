@@ -42,7 +42,8 @@
           <div class="form-check">
             <input class="form-check-input" type="checkbox" 
                    name="categoria" value="{{ categoria.ID_Categoria }}"
-                   id="categoria-{{ categoria.ID_Categoria }}">
+                   id="categoria-{{ categoria.ID_Categoria }}"
+                   {% if categoria.ID_Categoria|string in categorias_seleccionadas %} checked {% endif %}>
             <label class="form-check-label" for="categoria-{{ categoria.ID_Categoria }}">
               {{ categoria.NombreCategoria }}
             </label>
@@ -55,7 +56,8 @@
           <div class="form-check">
             <input class="form-check-input" type="checkbox" 
                    name="material" value="{{ mat }}"
-                   id="material-{{ loop.index }}">
+                   id="material-{{ loop.index }}"
+                   {% if mat in materiales_seleccionados %} checked {% endif %}>
             <label class="form-check-label" for="material-{{ loop.index }}">
               {{ mat }}
             </label>
@@ -68,7 +70,8 @@
           <div class="form-check">
             <input class="form-check-input" type="checkbox" 
                    name="color" value="{{ col }}"
-                   id="color-{{ loop.index }}">
+                   id="color-{{ loop.index }}"
+                   {% if col in colores_seleccionados %} checked {% endif %}>
             <label class="form-check-label" for="color-{{ loop.index }}">
               {{ col }}
             </label>
@@ -81,15 +84,19 @@
           <input type="number" step="0.01" class="form-control mb-1" name="precio_min" placeholder="Precio mínimo" value="{{ precio_min or '' }}">
           <input type="number" step="0.01" class="form-control" name="precio_max" placeholder="Precio máximo" value="{{ precio_max or '' }}">
         </div>
+
+        <button type="submit" class="btn btn-primary btn-sm mt-2">Filtrar</button>
       </form>
     </div>
 
     <!-- Catálogo de productos -->
     <div class="col-md-9">
-      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4" id="productos-contenedor">
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
         {% for producto in productos %}
-        <div class="col" data-id="{{ producto.ID_Producto }}">
+        <div class="col">
           <div class="card h-100 shadow-sm position-relative">
+            
+            <!-- Badge Recomendado -->
             {% set score = 0 %}
             {% if producto.ID_Categoria in categorias_favoritas %}{% set score = score + 3 %}{% endif %}
             {% if producto.Material in materiales_preferidos %}{% set score = score + 2 %}{% endif %}
@@ -97,26 +104,39 @@
             {% if score > 0 %}
               <span class="badge bg-success position-absolute top-0 start-0 m-2">Recomendado</span>
             {% endif %}
+
             <img src="{{ url_for('static', filename=producto.ImagenPrincipal or 'img/catalogo.png') }}" class="card-img-top" alt="Imagen de {{ producto.NombreProducto }}">
+
+            <!-- Botón favorito -->
             <button type="button" class="btn btn-light btn-favorite position-absolute top-0 end-0 m-2" title="Agregar a favoritos" data-id="{{ producto.ID_Producto|string }}">
               <i class="bi bi-heart"></i>
             </button>
+
             <div class="card-body d-flex flex-column">
               <h5 class="card-title">{{ producto.NombreProducto }}</h5>
               <p class="card-text">${{ '%.2f'|format(producto.PrecioUnidad) }}</p>
               {% if producto.Stock <= 10 and producto.Stock > 0 %}
                 <p class="card-text text-danger"><b>Últimas unidades: {{ producto.Stock }}</b></p>
               {% endif %}
+
               <div class="mb-2">
-                {% if producto.categoria %}<span class="badge bg-secondary me-1">{{ producto.categoria.NombreCategoria }}</span>{% endif %}
-                {% if producto.Material %}<span class="badge bg-info text-dark me-1">{{ producto.Material }}</span>{% endif %}
-                {% if producto.Color %}<span class="badge bg-warning text-dark me-1">{{ producto.Color }}</span>{% endif %}
+                {% if producto.categoria %}
+                  <span class="badge bg-secondary me-1">{{ producto.categoria.NombreCategoria }}</span>
+                {% endif %}
+                {% if producto.Material %}
+                  <span class="badge bg-info text-dark me-1">{{ producto.Material }}</span>
+                {% endif %}
+                {% if producto.Color %}
+                  <span class="badge bg-warning text-dark me-1">{{ producto.Color }}</span>
+                {% endif %}
               </div>
+
               <a href="{{ url_for('cliente.detalle_producto_catalogo', id=producto.ID_Producto) }}" class="btn btn-outline-primary mt-auto mb-2">Ver más</a>
               <a href="{{ url_for('cliente.escribir_resena', id=producto.ID_Producto) }}" class="btn btn-outline-warning mb-2">
                 <i class="bi bi-star me-1"></i> Añadir reseña
               </a>
-              <button type="button" class="btn btn-primary btn-add-cart" {% if producto.Stock == 0 %} disabled {% endif %}
+              <button type="button" class="btn btn-primary btn-add-cart"
+                {% if producto.Stock == 0 %} disabled {% endif %}
                 data-id="{{ producto.ID_Producto|string }}"
                 data-nombre="{{ producto.NombreProducto }}"
                 data-precio="{{ '%.2f'|format(producto.PrecioUnidad) }}"
@@ -139,13 +159,6 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const contenedor = document.getElementById('productos-contenedor');
-
-  // Variables de usuario para puntuar productos
-  const categoriasFavoritas = {{ categorias_favoritas|map(attribute='ID_Categoria')|list }};
-  const materialesPreferidos = {{ materiales_preferidos|tojson }};
-  const coloresPreferidos = {{ colores_preferidos|tojson }};
-
   // Favoritos
   let favoritos = JSON.parse(localStorage.getItem('favoritos') || '[]').map(String);
   const actualizarIconoFavorito = (btn, agregado) => {
@@ -164,8 +177,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const btn = e.target.closest('.btn-favorite');
     if(!btn) return;
     const id = btn.dataset.id.toString();
-    let agregado = false;
     const index = favoritos.indexOf(id);
+    let agregado = false;
     if(index === -1){ favoritos.push(id); agregado = true; }
     else { favoritos.splice(index,1); }
     localStorage.setItem('favoritos', JSON.stringify(favoritos));
@@ -199,59 +212,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const agregarAlCarrito = (btn) => {
     const id = btn.dataset.id.toString();
     let productoExistente = carrito.find(p=>p.id === id);
-    if(productoExistente){ productoExistente.cantidad += 1; }
-    else { carrito.push({id, nombre: btn.dataset.nombre, precio: parseFloat(btn.dataset.precio), imagen: btn.dataset.imagen, cantidad:1}); }
+    if(productoExistente){
+      productoExistente.cantidad += 1;
+    } else {
+      carrito.push({
+        id: id,
+        nombre: btn.dataset.nombre,
+        precio: parseFloat(btn.dataset.precio),
+        imagen: btn.dataset.imagen,
+        cantidad: 1
+      });
+    }
     localStorage.setItem('carrito', JSON.stringify(carrito));
     actualizarContadorCarrito();
     mostrarMensaje("Producto agregado al carrito","success");
   };
-  document.querySelectorAll('.btn-add-cart').forEach(btn=>{ btn.addEventListener('click', ()=> agregarAlCarrito(btn)); });
-  actualizarContadorCarrito();
-
-  // Filtrado dinámico con AJAX
-  const formFiltro = document.getElementById('filtro-productos');
-  formFiltro.addEventListener('change', () => {
-    const formData = new FormData(formFiltro);
-    const params = new URLSearchParams(formData);
-    fetch(`/catalogo/ajax?${params.toString()}`)
-      .then(res => res.json())
-      .then(data => {
-        contenedor.innerHTML = '';
-        data.forEach(producto => {
-          let score = 0;
-          if(categoriasFavoritas.includes(producto.ID_Categoria)) score += 3;
-          if(materialesPreferidos.includes(producto.Material)) score += 2;
-          if(coloresPreferidos.includes(producto.Color)) score += 1;
-          const recomendadoBadge = score>0 ? '<span class="badge bg-success position-absolute top-0 start-0 m-2">Recomendado</span>' : '';
-          const card = document.createElement('div');
-          card.className = 'col';
-          card.innerHTML = `
-            <div class="card h-100 shadow-sm position-relative">
-              ${recomendadoBadge}
-              <img src="${producto.ImagenPrincipal || '/static/img/catalogo.png'}" class="card-img-top" alt="${producto.NombreProducto}">
-              <button type="button" class="btn btn-light btn-favorite position-absolute top-0 end-0 m-2" data-id="${producto.ID_Producto}">
-                <i class="bi bi-heart"></i>
-              </button>
-              <div class="card-body d-flex flex-column">
-                <h5 class="card-title">${producto.NombreProducto}</h5>
-                <p class="card-text">$${producto.PrecioUnidad.toFixed(2)}</p>
-                ${producto.Stock <= 10 && producto.Stock > 0 ? `<p class="text-danger"><b>Últimas unidades: ${producto.Stock}</b></p>` : ''}
-                <div class="mb-2">
-                  ${producto.CategoriaNombre ? `<span class="badge bg-secondary me-1">${producto.CategoriaNombre}</span>` : ''}
-                  ${producto.Material ? `<span class="badge bg-info text-dark me-1">${producto.Material}</span>` : ''}
-                  ${producto.Color ? `<span class="badge bg-warning text-dark me-1">${producto.Color}</span>` : ''}
-                </div>
-                <a href="/cliente/detalle_producto_catalogo/${producto.ID_Producto}" class="btn btn-outline-primary mt-auto mb-2">Ver más</a>
-                <button type="button" class="btn btn-primary btn-add-cart" ${producto.Stock==0 ? 'disabled':''} data-id="${producto.ID_Producto}" data-nombre="${producto.NombreProducto}" data-precio="${producto.PrecioUnidad}" data-imagen="${producto.ImagenPrincipal}">
-                  <i class="bi bi-cart-plus me-2"></i> Agregar al carrito
-                </button>
-              </div>
-            </div>
-          `;
-          contenedor.appendChild(card);
-        });
-      });
+  document.querySelectorAll('.btn-add-cart').forEach(btn=>{
+    btn.addEventListener('click', ()=> agregarAlCarrito(btn));
   });
+  actualizarContadorCarrito();
 });
 </script>
 {% endblock %}
