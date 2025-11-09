@@ -914,3 +914,19 @@ def detalle_empleado(id_empleado):
         horas_diurnas=horas_diurnas,
         horas_nocturnas=horas_nocturnas
     )
+
+
+@admin.route('/finanzas')
+def finanzas():
+    pagos = Pagos.query.order_by(Pagos.FechaPago.desc()).all()
+    total_pagos = sum(p.Monto for p in pagos)
+
+    # Estadísticas: pagos por método
+    metodos = {}
+    for p in pagos:
+        metodos[p.MetodoPago] = metodos.get(p.MetodoPago, 0) + p.Monto
+
+    return render_template('administrador/finanzas.html', pagos=pagos, total_pagos=total_pagos, metodos=metodos)
+
+
+

@@ -1,0 +1,110 @@
+{% extends "common/base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Control Financiero</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>Total Pagos: ${{ '%.2f'|format(total_pagos) }}</h4>
+        <button id="btnExportPDF" class="btn btn-danger">Exportar PDF</button>
+    </div>
+
+    <h5>Estadísticas por Método de Pago</h5>
+    <canvas id="chartMetodos" width="400" height="150"></canvas>
+
+    <h5 class="mt-4">Todos los Pagos</h5>
+    <table class="table table-striped" id="tablaPagos">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Método</th>
+                <th>Fecha</th>
+                <th>Monto</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in pagos %}
+            <tr>
+                <td>{{ p.ID_Pagos }}</td>
+                <td>{{ p.MetodoPago }}</td>
+                <td>{{ p.FechaPago.strftime('%Y-%m-%d') }}</td>
+                <td>${{ '%.2f'|format(p.Monto) }}</td>
+                <td>
+                    <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#detalleModal{{ p.ID_Pagos }}">Ver Detalle</button>
+                </td>
+            </tr>
+
+            <!-- Modal Detalle -->
+            <div class="modal fade" id="detalleModal{{ p.ID_Pagos }}" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">Detalle Pago #{{ p.ID_Pagos }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                  </div>
+                  <div class="modal-body">
+                    <p><b>Método:</b> {{ p.MetodoPago }}</p>
+                    <p><b>Fecha:</b> {{ p.FechaPago.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                    <p><b>Monto:</b> ${{ '%.2f'|format(p.Monto) }}</p>
+                    <p><b>ID Pedido:</b> {{ p.ID_Pedido }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('chartMetodos').getContext('2d');
+const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: {{ metodos.keys()|list|tojson }},
+        datasets: [{
+            label: 'Total Pagos por Método',
+            data: {{ metodos.values()|list|tojson }},
+            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: { scales: { y: { beginAtZero: true } } }
+});
+</script>
+
+<!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+document.getElementById('btnExportPDF').addEventListener('click', () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Reporte de Pagos", 105, 15, null, null, "center");
+    doc.setFontSize(12);
+    let y = 25;
+
+    // Tabla de pagos
+    doc.text("ID | Método | Fecha | Monto", 10, y);
+    y += 7;
+
+    const filas = document.querySelectorAll("#tablaPagos tbody tr");
+    filas.forEach(fila => {
+        const cols = Array.from(fila.querySelectorAll("td")).slice(0,4).map(td => td.innerText);
+        doc.text(cols.join(" | "), 10, y);
+        y += 7;
+    });
+
+    // Total
+    y += 5;
+    doc.setFontSize(14);
+    doc.text("Total Pagos: ${{ '%.2f'|format(total_pagos) }}", 10, y);
+
+    doc.save("reporte_pagos.pdf");
+});
+</script>
+{% endblock %}
