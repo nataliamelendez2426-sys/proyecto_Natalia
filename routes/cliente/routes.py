@@ -420,7 +420,7 @@ def checkout():
         if not carrito:
             return jsonify({"success": False, "mensaje": "El carrito está vacío."}), 400
 
-        # Buscar la dirección seleccionada por el usuario
+
         if direccion_id:
             direccion = Direccion.query.filter_by(ID_Direccion=direccion_id, ID_Usuario=current_user.ID_Usuario).first()
             if direccion:
@@ -441,7 +441,7 @@ def checkout():
         db.session.add(pedido)
         db.session.commit()
 
-        # Crear Pago
+    
         total_pago = sum([i['precio'] * i.get('cantidad', 1) for i in carrito])
         pago = Pagos(
             MetodoPago=metodo,
