@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, flash, session, jsonify
+from flask import render_template, request, redirect, url_for, flash, session, jsonify , current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from flask_login import login_required, login_user, logout_user
@@ -99,6 +99,20 @@ def login():
 
             if usuario.Rol == 'cliente':
                 session['mostrar_bienvenida'] = True
+
+            # ------------------ ENVÍO DE CORREO DE NOTIFICACIÓN ------------------ #
+            try:
+                # Aquí usamos current_app para acceder a mail sin importaciones circulares
+                send_reset_email(
+                    user_email=usuario.Correo,
+                    user_name=usuario.Nombre,
+                    token=None,
+                    subject="Inicio de sesión detectado",
+                    message=f"Hola {usuario.Nombre},\n\nSe ha detectado un inicio de sesión con tu correo en nuestra página.\nSi no fuiste tú, te recomendamos cambiar tu contraseña inmediatamente.",
+                    mail=current_app.extensions.get('mail')  # Obtenemos mail de app
+                )
+            except Exception as mail_error:
+                print(f"❌ Error enviando correo de notificación de login: {mail_error}")
 
             return jsonify({
                 'status': 'success',
