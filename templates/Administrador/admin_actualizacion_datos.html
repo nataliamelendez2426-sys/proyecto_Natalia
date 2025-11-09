@@ -5,6 +5,8 @@
 {% endblock %}
 
 {% block content %}
+
+
 <link rel="stylesheet" href="{{ url_for('static', filename='css/perfil.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
 
@@ -50,29 +52,27 @@
           <h5 class="mb-0">PERFIL</h5>
         </div>
         <form method="POST" action="{{ url_for('admin.actualizacion_datos') }}">
-          {% if csrf_token is defined %}
-            {{ csrf_token() }}
-          {% endif %}
+          {{ csrf_token() if csrf_token is defined }}
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label" for="nombre">Nombre</label>
-              <input type="text" id="nombre" name="nombre" class="form-control" value="{{ usuario.Nombre }}" required>
+              <input type="text" id="nombre" name="nombre" class="form-control" value="{{ usuario.Nombre }}" required />
             </div>
             <div class="col-md-6">
               <label class="form-label" for="apellido">Apellido</label>
-              <input type="text" id="apellido" name="apellido" class="form-control" value="{{ usuario.Apellido or '' }}" required>
+              <input type="text" id="apellido" name="apellido" class="form-control" value="{{ usuario.Apellido or '' }}" required />
             </div>
             <div class="col-md-12">
               <label class="form-label" for="correo">Email</label>
-              <input type="email" id="correo" name="correo" class="form-control" value="{{ usuario.Correo }}" required>
+              <input type="email" id="correo" name="correo" class="form-control" value="{{ usuario.Correo }}" required />
             </div>
             <div class="col-md-6">
               <label class="form-label" for="genero">Género</label>
-              <input type="text" id="genero" name="genero" class="form-control" value="{{ usuario.Genero or '' }}">
+              <input type="text" id="genero" name="genero" class="form-control" value="{{ usuario.Genero or '' }}" />
             </div>
             <div class="col-md-6">
               <label class="form-label" for="telefono">Teléfono</label>
-              <input type="tel" id="telefono" name="telefono" class="form-control" value="{{ usuario.Telefono or '' }}">
+              <input type="tel" id="telefono" name="telefono" class="form-control" value="{{ usuario.Telefono or '' }}" />
             </div>
             <div class="col-12 text-end">
               <button type="submit" class="btn btn-green mt-3">Guardar cambios</button>
@@ -95,9 +95,9 @@
               <div class="list-group-item d-flex justify-content-between align-items-center flex-wrap">
                 <div>
                   <div><strong>Dirección:</strong> {{ dir.Direccion }}</div>
-                  <div><strong>Ciudad:</strong> {{ dir.Ciudad or '' }}</div>
-                  <div><strong>Departamento:</strong> {{ dir.Departamento or '' }}</div>
-                  <div><strong>País:</strong> {{ dir.Pais or 'Colombia' }}</div>
+                  <div><strong>Ciudad:</strong> {{ dir.Ciudad }}</div>
+                  <div><strong>Departamento:</strong> {{ dir.Departamento }}</div>
+                  <div><strong>País:</strong> {{ dir.Pais }}</div>
                 </div>
                 <button type="button" class="btn btn-link text-danger btn-borrar-direccion"
                         data-url="{{ url_for('admin.borrar_direccion', id_direccion=dir.ID_Direccion) }}">
@@ -125,9 +125,7 @@
       </div>
       <div class="modal-body">
         <form method="POST" action="{{ url_for('admin.agregar_direccion') }}">
-          {% if csrf_token is defined %}
-            {{ csrf_token() }}
-          {% endif %}
+          {{ csrf_token() if csrf_token is defined }}
           <div class="mb-3">
             <label for="modal_pais" class="form-label">País</label>
             <select name="pais" id="modal_pais" class="form-select rounded-pill" disabled>
@@ -138,33 +136,33 @@
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label for="modal_departamento" class="form-label">Departamento</label>
-              <input type="text" id="modal_departamento" name="departamento" class="form-control rounded-pill" value="Bogotá, D.C." readonly>
+              <input type="text" id="modal_departamento" name="departamento" class="form-control rounded-pill" value="Bogotá, D.C." readonly />
             </div>
             <div class="col-md-6">
               <label for="modal_municipio" class="form-label">Municipio</label>
-              <input type="text" id="modal_municipio" name="municipio" class="form-control rounded-pill" value="Bogotá, D.C." readonly>
+              <input type="text" id="modal_municipio" name="municipio" class="form-control rounded-pill" value="Bogotá, D.C." readonly />
             </div>
           </div>
 
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label for="modal_direccion" class="form-label">Dirección</label>
-              <input type="text" id="modal_direccion" name="direccion" class="form-control rounded-pill" placeholder="Dirección" required>
+              <input type="text" id="modal_direccion" name="direccion" class="form-control rounded-pill" placeholder="Dirección" required />
             </div>
             <div class="col-md-6">
               <label for="modal_infoAdicional" class="form-label">Información adicional</label>
-              <input type="text" id="modal_infoAdicional" name="infoAdicional" class="form-control rounded-pill" placeholder="Apto. 201, torre 5">
+              <input type="text" id="modal_infoAdicional" name="infoAdicional" class="form-control rounded-pill" placeholder="Apto. 201, torre 5" />
             </div>
           </div>
 
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label for="modal_barrio" class="form-label">Barrio</label>
-              <input type="text" id="modal_barrio" name="barrio" class="form-control rounded-pill" placeholder="Barrio">
+              <input type="text" id="modal_barrio" name="barrio" class="form-control rounded-pill" placeholder="Barrio" />
             </div>
             <div class="col-md-6">
               <label for="modal_destinatario" class="form-label">Destinatario</label>
-              <input type="text" id="modal_destinatario" name="destinatario" class="form-control rounded-pill" placeholder="Quién recibe">
+              <input type="text" id="modal_destinatario" name="destinatario" class="form-control rounded-pill" placeholder="Quién recibe" />
             </div>
           </div>
 

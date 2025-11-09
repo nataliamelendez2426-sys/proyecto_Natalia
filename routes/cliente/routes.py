@@ -173,35 +173,20 @@ def perfil():
 @cliente.route("/pedido/<int:id_pedido>/detalle")
 @login_required
 def ver_detalle_pedido(id_pedido):
-    pedido = Pedido.query.filter_by(ID_Pedido=id_pedido, ID_Usuario=current_user.ID_Usuario).first()
-    if not pedido:
-        return jsonify({'error': 'Pedido no encontrado'}), 404
+    pedido = Pedido.query.get_or_404(id_pedido)
 
-    detalles = []
-    for det in pedido.detalles_pedido:
-        cantidad = det.Cantidad or 0
-        precio = det.PrecioUnidad or 0
-        subtotal = cantidad * precio
+    try:
+        detalles = pedido.detalles_pedido  
+    except Exception as e:
+        print("Error detalles pedido:", e)
+        detalles = []
 
-        detalles.append({
-            "ProductoNombre": det.producto.NombreProducto if det.producto else "Producto",
-            "Cantidad": cantidad,
-            "PrecioUnidad": precio,
-            "Subtotal": subtotal
-        })
+    return render_template(
+        "Common/partials/detalle_pedido.html",
+        pedido=pedido,
+        detalles=detalles
+    )
 
-    direccion = {
-        "Direccion": pedido.Destino or '',
-        "Barrio": '',
-        "Municipio": '',
-        "Departamento": '',
-        "Pais": 'Colombia'
-    }
-
-    return jsonify({
-        "detalles": detalles,
-        "direccion": direccion
-    })
 
 
 
