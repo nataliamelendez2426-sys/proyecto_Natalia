@@ -917,14 +917,21 @@ def detalle_empleado(id_empleado):
 
 
 @admin.route('/finanzas')
-def finanzas():
+def admin_finanzas():
     pagos = Pagos.query.order_by(Pagos.FechaPago.desc()).all()
     total_pagos = sum(p.Monto for p in pagos)
 
-    # Estadísticas: pagos por método
-    metodos = {}
+
+    metodos = {
+        'credito': 0,
+        'nequi': 0,
+        'daviplata': 0,
+        'efectivo': 0
+    }
+
     for p in pagos:
-        metodos[p.MetodoPago] = metodos.get(p.MetodoPago, 0) + p.Monto
+        if p.MetodoPago in metodos:
+            metodos[p.MetodoPago] += p.Monto
 
     return render_template('administrador/finanzas.html', pagos=pagos, total_pagos=total_pagos, metodos=metodos)
 

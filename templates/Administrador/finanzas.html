@@ -16,6 +16,7 @@
         <thead>
             <tr>
                 <th>ID</th>
+                <th>Usuario</th>
                 <th>Método</th>
                 <th>Fecha</th>
                 <th>Monto</th>
@@ -26,6 +27,7 @@
             {% for p in pagos %}
             <tr>
                 <td>{{ p.ID_Pagos }}</td>
+                <td>{{ p.pedido.usuario.Nombre }} {{ p.pedido.usuario.Apellido or "" }}</td>
                 <td>{{ p.MetodoPago }}</td>
                 <td>{{ p.FechaPago.strftime('%Y-%m-%d') }}</td>
                 <td>${{ '%.2f'|format(p.Monto) }}</td>
@@ -43,6 +45,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                   </div>
                   <div class="modal-body">
+                    <p><b>Usuario:</b> {{ p.pedido.usuario.Nombre }} {{ p.pedido.usuario.Apellido or "" }}</p>
                     <p><b>Método:</b> {{ p.MetodoPago }}</p>
                     <p><b>Fecha:</b> {{ p.FechaPago.strftime('%Y-%m-%d %H:%M:%S') }}</p>
                     <p><b>Monto:</b> ${{ '%.2f'|format(p.Monto) }}</p>
@@ -89,12 +92,12 @@ document.getElementById('btnExportPDF').addEventListener('click', () => {
     let y = 25;
 
     // Tabla de pagos
-    doc.text("ID | Método | Fecha | Monto", 10, y);
+    doc.text("ID | Usuario | Método | Fecha | Monto", 10, y);
     y += 7;
 
     const filas = document.querySelectorAll("#tablaPagos tbody tr");
     filas.forEach(fila => {
-        const cols = Array.from(fila.querySelectorAll("td")).slice(0,4).map(td => td.innerText);
+        const cols = Array.from(fila.querySelectorAll("td")).slice(0,5).map(td => td.innerText);
         doc.text(cols.join(" | "), 10, y);
         y += 7;
     });
