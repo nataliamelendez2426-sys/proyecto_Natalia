@@ -420,16 +420,16 @@ def checkout():
         
         data = request.get_json()
         carrito = data.get('carrito', [])
-        direccion = data.get('direccion') or "Sin dirección"
-        metodo = data.get('metodo') or "efectivo"
+        metodo = data.get('metodo')
+        numero_celular = data.get('numero_celular')
+        numero_tarjeta = data.get('numero_tarjeta')
 
         if not carrito:
-            return jsonify({"success": False, "mensaje": "El carrito está vacío."}), 400
+            return jsonify({"success": False, "mensaje": "Carrito vacío"}), 400
 
-        # Crear pedido
         pedido = Pedido(
             NombreComprador=current_user.Nombre,
-            Destino=direccion,
+            Destino="Sin dirección",
             Estado="pendiente",
             FechaPedido=date.today(),
             ID_Usuario=current_user.id
@@ -445,9 +445,8 @@ def checkout():
                 Cantidad=item.get('cantidad',1)
             )
             db.session.add(detalle)
-        db.session.commit()
 
-     
+        # Guardar pago
         pago = Pagos(
             MetodoPago=metodo,
             Monto=sum([i['precio']*i.get('cantidad',1) for i in carrito]),
@@ -456,12 +455,21 @@ def checkout():
         db.session.add(pago)
         db.session.commit()
 
-        return jsonify({"success": True, "mensaje": "Pago procesado correctamente."})
+        # Enviar notificación (simulado)
+        if metodo in ['nequi','daviplata'] and numero_celular:
+            enviar_notificacion(numero_celular, pedido.ID_Pedido, metodo)
+
+        return jsonify({"success": True})
 
     except Exception as e:
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "mensaje": str(e)}), 500
+
+
+def enviar_notificacion(numero, id_pedido, metodo):
+    # Aquí puedes integrar Twilio, Nexmo, etc.
+    print(f"Notificación enviada a {numero} sobre pago {metodo} del pedido {id_pedido}")
 
 # ---------- SEGUIMIENTO ----------
 

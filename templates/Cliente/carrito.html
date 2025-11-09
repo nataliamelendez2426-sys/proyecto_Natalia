@@ -5,6 +5,7 @@
 {% endblock %}
 
 {% block content %}
+
 <div class="container mt-5">
     <h2 class="mb-4 fw-bold" style="color: #07525c;">Tu Carrito de Compras</h2>
     
@@ -19,12 +20,53 @@
     
     <div class="text-end mb-5" id="checkout-container">
         <button id="btn-checkout" class="btn btn-success btn-lg shadow">
-            <i class="bi bi-credit-card me-2"></i> Proceder al Pago
+            <i class="bi bi-credit-card me-2"></i> Procesar Pago
         </button>
     </div>
 </div>
 
-<!-- Modal Confirmación -->
+<!-- Modal de Pago -->
+<div class="modal fade" id="modalPago" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-credit-card-2-back me-2"></i> Pagar Pedido</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="form-pago">
+          <div class="mb-3">
+            <label class="form-label">Método de Pago</label>
+            <select class="form-select" id="metodo-pago" name="metodo" required>
+              <option value="credito">Tarjeta</option>
+              <option value="nequi">Nequi</option>
+              <option value="daviplata">Daviplata</option>
+              <option value="efectivo">Efectivo</option>
+            </select>
+          </div>
+
+          <!-- Tarjeta -->
+          <div id="pago-tarjeta" class="mb-3">
+            <label class="form-label">Número de Tarjeta</label>
+            <input type="text" class="form-control" name="numero_tarjeta" placeholder="Ej: 1111222233334444">
+          </div>
+
+          <!-- Pago Digital -->
+          <div id="pago-digital" class="mb-3" style="display:none;">
+            <label class="form-label">Número de Celular</label>
+            <input type="tel" class="form-control" name="numero_celular" placeholder="Ej: 3001234567">
+          </div>
+
+          <button type="submit" class="btn btn-success w-100">
+            <i class="bi bi-lock-fill me-2"></i> Confirmar y Pagar
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Confirmación -->
 <div class="modal fade" id="modalConfirmacion" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow-lg">
@@ -45,215 +87,126 @@
 </div>
 
 <style>
-:root {
-    --primary-green: #07525c;
-    --secondary-green: #57a773;
-    --accent-green: #157145;
-    --bg-cream: #f8f9fa;
-    --text-dark: #1b3e2b;
-    --shadow-light: rgba(0,0,0,0.05);
-    --shadow-medium: rgba(0,0,0,0.12);
-}
-
-body {
-    background-color: var(--bg-cream);
-    color: var(--text-dark);
-}
-
-.card-modern {
-    border-radius: 15px;
-    overflow: hidden;
-    transition: transform 0.3s, box-shadow 0.3s;
-    background-color: #ffffff;
-    box-shadow: 0 4px 10px var(--shadow-light);
-}
-
-.card-modern:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px var(--shadow-medium);
-}
-
-.card-modern img {
-    transition: transform 0.3s;
-}
-
-.card-modern:hover img {
-    transform: scale(1.05);
-}
-
-.card-title {
-    color: var(--primary-green);
-}
-
-.btn-eliminar {
-    border-color: #dc3545;
-    color: #dc3545;
-}
-.btn-eliminar:hover {
-    background-color: #dc3545;
-    color: white;
-}
-
-.input-cantidad {
-    border-radius: 8px;
-    border: 1px solid var(--secondary-green);
-}
-.input-cantidad:focus {
-    box-shadow: 0 0 8px rgba(5,82,92,0.3);
-    border-color: var(--accent-green);
-}
-
-#carrito-total {
-    font-size: 1.5rem;
-}
-
-.alert-info {
-    font-size: 1.1rem;
-    background-color: #e7fcff;
-    color: var(--primary-green);
-    border-color: var(--secondary-green);
-}
+.card-modern { border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+.input-cantidad { border-radius:8px; border:1px solid #57a773; }
+.input-cantidad:focus { border-color:#157145; box-shadow:0 0 8px rgba(5,82,92,0.3);}
+.btn-eliminar { border-color:#dc3545; color:#dc3545; }
+.btn-eliminar:hover { background-color:#dc3545; color:white;}
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     let carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
-    
     const listaCarritoDOM = document.getElementById('lista-carrito');
     const carritoTotalDOM = document.getElementById('carrito-total');
     const vaciarCarritoBtn = document.getElementById('vaciar-carrito');
     const checkoutBtn = document.getElementById('btn-checkout');
-    const checkoutContainer = document.getElementById('checkout-container');
-
-    const actualizarTotal = () => {
-        const total = carrito.reduce((sum, item) => sum + (parseFloat(item.precio || 0) * parseInt(item.cantidad || 1)), 0);
-        carritoTotalDOM.textContent = `$${total.toFixed(2)}`;
-        return total;
-    };
 
     const renderizarCarrito = () => {
         listaCarritoDOM.innerHTML = '';
-
-        if(carrito.length === 0){
-            listaCarritoDOM.innerHTML = `
-                <div class="col-12">
-                    <div class="alert alert-info text-center" role="alert">
-                        <i class="bi bi-info-circle me-2"></i> El carrito está vacío. ¡Añade productos!
-                    </div>
-                </div>
-            `;
+        if(!carrito.length){
+            listaCarritoDOM.innerHTML = `<div class="col-12"><div class="alert alert-info text-center">El carrito está vacío</div></div>`;
             carritoTotalDOM.textContent = '$0.00';
-            checkoutContainer.style.display = 'none';
-            vaciarCarritoBtn.disabled = true;
             return;
         }
 
-        checkoutContainer.style.display = 'block';
-        vaciarCarritoBtn.disabled = false;
-
-        carrito.forEach((item, index) => {
-            const precio = parseFloat(item.precio || 0);
-            const cantidad = parseInt(item.cantidad || 1);
-
+        carrito.forEach((item,index)=>{
+            const precio = parseFloat(item.precio||0);
+            const cantidad = parseInt(item.cantidad||1);
             const col = document.createElement('div');
-            col.className = 'col-12 col-md-6 col-lg-4';
-            col.innerHTML = `
+            col.className='col-12 col-md-6 col-lg-4';
+            col.innerHTML=`
                 <div class="card card-modern h-100">
-                    <img src="${item.imagen || '{{ url_for('static', filename='img/catalogo.png') }}'}" 
-                        class="card-img-top p-3" 
-                        alt="${item.nombre}" 
-                        style="height: 200px; object-fit: contain;">
+                    <img src="${item.imagen||'{{ url_for('static', filename='img/catalogo.png') }}'}" class="card-img-top p-3" alt="${item.nombre}" style="height:200px;object-fit:contain;">
                     <div class="card-body d-flex flex-column">
                         <h5 class="card-title fw-bold">${item.nombre}</h5>
-                        <p class="card-text mb-1">Precio Unitario: <span class="fw-bold" style="color: var(--secondary-green);">$${precio.toFixed(2)}</span></p>
-                        <p class="card-text mb-3">Subtotal: 
-                            <span class="fw-bold" style="color: var(--accent-green);">$<span data-subtotal-index="${index}">${(precio * cantidad).toFixed(2)}</span></span>
-                        </p>
+                        <p class="mb-1">Precio Unitario: $${precio.toFixed(2)}</p>
+                        <p class="mb-3">Subtotal: $<span data-subtotal-index="${index}">${(precio*cantidad).toFixed(2)}</span></p>
                         <div class="d-flex align-items-center gap-3 mb-3 mt-auto">
-                            <label for="cantidad-item-${index}" class="form-label mb-0">Cantidad:</label>
-                            <input type="number" min="1" value="${cantidad}" class="form-control form-control-sm w-50 input-cantidad" data-index="${index}" id="cantidad-item-${index}">
+                            <label class="mb-0">Cantidad:</label>
+                            <input type="number" min="1" value="${cantidad}" class="form-control form-control-sm w-50 input-cantidad" data-index="${index}">
                         </div>
-                        <button class="btn btn-outline-danger btn-eliminar" data-index="${index}">
-                            <i class="bi bi-x-circle me-1"></i> Eliminar
-                        </button>
+                        <button class="btn btn-outline-danger btn-eliminar" data-index="${index}">Eliminar</button>
                     </div>
-                </div>
-            `;
+                </div>`;
             listaCarritoDOM.appendChild(col);
 
-            col.querySelector('.input-cantidad').addEventListener('change', e => handleCantidadChange(e, precio));
-            col.querySelector('.btn-eliminar').addEventListener('click', e => handleEliminarClick(e, index));
+            col.querySelector('.input-cantidad').addEventListener('change', e=>{
+                let idx=parseInt(e.target.dataset.index);
+                let nCant=parseInt(e.target.value); if(nCant<1)nCant=1;
+                carrito[idx].cantidad=nCant;
+                localStorage.setItem('carrito',JSON.stringify(carrito));
+                document.querySelector(`[data-subtotal-index="${idx}"]`).textContent=(carrito[idx].cantidad*precio).toFixed(2);
+                actualizarTotal();
+            });
+
+            col.querySelector('.btn-eliminar').addEventListener('click', e=>{
+                const idx=parseInt(e.target.dataset.index);
+                carrito.splice(idx,1);
+                localStorage.setItem('carrito',JSON.stringify(carrito));
+                renderizarCarrito();
+            });
         });
-
         actualizarTotal();
     };
 
-    const handleCantidadChange = (event, precioUnitario) => {
-        const input = event.target;
-        const index = parseInt(input.getAttribute('data-index'));
-        let nuevaCantidad = parseInt(input.value);
-
-        if(isNaN(nuevaCantidad) || nuevaCantidad < 1){
-            nuevaCantidad = 1;
-            input.value = 1;
-        }
-
-        carrito[index].cantidad = nuevaCantidad;
-        localStorage.setItem('carrito', JSON.stringify(carrito));
-
-        const nuevoSubtotal = (precioUnitario * nuevaCantidad).toFixed(2);
-        document.querySelector(`[data-subtotal-index="${index}"]`).textContent = nuevoSubtotal;
-
-        actualizarTotal();
+    const actualizarTotal = ()=>{
+        const total = carrito.reduce((acc,i)=>acc+i.precio*(i.cantidad||1),0);
+        carritoTotalDOM.textContent=`$${total.toFixed(2)}`;
+        return total;
     };
 
-    const handleEliminarClick = (event, indexToRemove) => {
-        carrito.splice(indexToRemove, 1);
-        localStorage.setItem('carrito', JSON.stringify(carrito));
-        renderizarCarrito();
-    };
-
-    vaciarCarritoBtn.addEventListener('click', () => {
-        if(carrito.length > 0 && confirm('¿Está seguro que desea vaciar su carrito? Esta acción no se puede deshacer.')) {
-            carrito = [];
-            localStorage.setItem('carrito', JSON.stringify(carrito));
+    vaciarCarritoBtn.addEventListener('click', ()=>{
+        if(carrito.length>0 && confirm('¿Vaciar carrito?')){
+            carrito=[];
+            localStorage.setItem('carrito',JSON.stringify(carrito));
             renderizarCarrito();
         }
     });
 
-    // Checkout con fetch POST JSON
-    checkoutBtn.addEventListener('click', async () => {
-        if(carrito.length === 0){
-            alert("El carrito está vacío.");
-            return;
-        }
+    // Abrir modal de pago
+    checkoutBtn.addEventListener('click', ()=>{
+        if(!carrito.length){ alert("Carrito vacío"); return;}
+        new bootstrap.Modal(document.getElementById('modalPago')).show();
+    });
 
-        const total = actualizarTotal();
+    // Cambiar campos según método de pago
+    const metodoSelect = document.getElementById('metodo-pago');
+    const tarjetaDiv = document.getElementById('pago-tarjeta');
+    const digitalDiv = document.getElementById('pago-digital');
+    metodoSelect.addEventListener('change', ()=>{
+        const metodo=metodoSelect.value;
+        tarjetaDiv.style.display=metodo==='credito'?'block':'none';
+        digitalDiv.style.display=(metodo==='nequi'||metodo==='daviplata')?'block':'none';
+    });
 
-        try {
-            const res = await fetch("{{ url_for('cliente.checkout') }}", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ carrito, direccion: null, metodo: 'efectivo' }) // puedes adaptar si hay dirección o método
+    // Submit pago
+    document.getElementById('form-pago').addEventListener('submit', async e=>{
+        e.preventDefault();
+        const metodo = metodoSelect.value;
+        const numeroCel = e.target.numero_celular?.value || null;
+        const numeroTarjeta = e.target.numero_tarjeta?.value || null;
+
+        try{
+            const res = await fetch("{{ url_for('cliente.checkout') }}",{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({carrito, metodo, numero_celular:numeroCel, numero_tarjeta:numeroTarjeta})
             });
             const data = await res.json();
-
             if(data.success){
-                const modal = new bootstrap.Modal(document.getElementById('modalConfirmacion'));
-                document.getElementById('total-modal').textContent = `Total: $${total.toFixed(2)}`;
-                modal.show();
-                carrito = [];
-                localStorage.setItem('carrito', '[]');
+                bootstrap.Modal.getInstance(document.getElementById('modalPago')).hide();
+                localStorage.setItem('carrito','[]');
                 renderizarCarrito();
-            } else {
-                alert(data.mensaje || 'Error procesando el pago.');
-            }
-        } catch(err){
-            alert("Ocurrió un error: " + err.message);
-        }
+                const modalConfirm = new bootstrap.Modal(document.getElementById('modalConfirmacion'));
+                document.getElementById('total-modal').textContent=`Total: $${actualizarTotal().toFixed(2)}`;
+                modalConfirm.show();
+            } else alert(data.mensaje||'Error procesando pago');
+        }catch(err){ alert('Error: '+err.message);}
     });
 
     renderizarCarrito();
 });
 </script>
+
 {% endblock %}
