@@ -176,7 +176,13 @@ def ver_detalle_pedido(id_pedido):
     pedido = Pedido.query.get_or_404(id_pedido)
 
     try:
-        detalles = pedido.detalles_pedido  
+        detalles = pedido.detalles_pedido or []
+
+        # Evitamos None en PrecioUnidad y Cantidad
+        for d in detalles:
+            d.PrecioUnidad = d.PrecioUnidad or 0
+            d.Cantidad = d.Cantidad or 0
+
     except Exception as e:
         print("Error detalles pedido:", e)
         detalles = []
@@ -186,7 +192,6 @@ def ver_detalle_pedido(id_pedido):
         pedido=pedido,
         detalles=detalles
     )
-
 
 
 

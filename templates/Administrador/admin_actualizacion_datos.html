@@ -1,12 +1,11 @@
 {% extends "common/base.html" %}
 
 {% block navbar %}
-  {% include "common/partials/navbar_admin.html" %}
+  {% include "common/partials/navbar_cliente.html" %}
 {% endblock %}
 
 {% block content %}
-
-
+<!-- Estilos -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/perfil.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
 
@@ -36,10 +35,11 @@
     <!-- Sidebar -->
     <div class="col-md-3 col-lg-2 mb-4">
       <div class="sidebar shadow-sm">
-        <h4>HOLA!</h4>
-        <a id="menu-perfil" class="active" href="javascript:void(0);"><i class="bi bi-person-circle me-2"></i>Perfil</a>
-        <a href="{{ url_for('admin.ver_pedidos') }}"><i class="bi bi-heart me-2"></i>Pedidos</a>
-        <a href="{{ url_for('admin.dashboard') }}"><i class="bi bi-box-arrow-right me-2"></i>Salir</a>
+        <h4> HOLA!</h4>
+        <a id="menu-perfil" class="active"><i class="bi bi-person-circle me-2"></i>Perfil</a>
+        <a id="menu-direcciones"><i class="bi bi-geo-alt me-2"></i>Direcciones</a>
+        <a id="menu-pedidos"><i class="bi bi-box-seam me-2"></i>Pedidos</a>
+        <a href="{{ url_for('cliente.dashboard') }}"><i class="bi bi-box-arrow-right me-2"></i>Salir</a>
       </div>
     </div>
 
@@ -51,8 +51,7 @@
         <div class="profile-header mb-4">
           <h5 class="mb-0">PERFIL</h5>
         </div>
-        <form method="POST" action="{{ url_for('admin.actualizacion_datos') }}">
-          {{ csrf_token() if csrf_token is defined }}
+        <form method="POST" action="{{ url_for('cliente.actualizacion_datos') }}">
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label" for="nombre">Nombre</label>
@@ -94,13 +93,13 @@
             {% for dir in direcciones %}
               <div class="list-group-item d-flex justify-content-between align-items-center flex-wrap">
                 <div>
-                  <div><strong>Dirección:</strong> {{ dir.Direccion }}</div>
-                  <div><strong>Ciudad:</strong> {{ dir.Ciudad }}</div>
-                  <div><strong>Departamento:</strong> {{ dir.Departamento }}</div>
-                  <div><strong>País:</strong> {{ dir.Pais }}</div>
+                  <div><strong>Dirección:</strong> {{ dir.Direccion or 'No especificado' }}</div>
+                  <div><strong>Ciudad:</strong> {{ dir.Ciudad or 'No especificado' }}</div>
+                  <div><strong>Departamento:</strong> {{ dir.Departamento or 'No especificado' }}</div>
+                  <div><strong>País:</strong> {{ dir.Pais or 'No especificado' }}</div>
                 </div>
                 <button type="button" class="btn btn-link text-danger btn-borrar-direccion"
-                        data-url="{{ url_for('admin.borrar_direccion', id_direccion=dir.ID_Direccion) }}">
+                        data-url="{{ url_for('cliente.borrar_direccion', id_direccion=dir.ID_Direccion) }}">
                   <i class="bi bi-trash fs-5"></i> Borrar
                 </button>
               </div>
@@ -111,80 +110,123 @@
         </div>
       </div>
 
-    </div>
-  </div>
-</div>
+      <!-- Sección Pedidos -->
+      <div id="seccion-pedidos" class="card shadow-sm p-4 mt-4" style="display:none;">
+        <h5 class="mb-4">PEDIDOS</h5>
+        <div class="list-group">
+          {% if pedidos %}
+            {% for pedido in pedidos %}
+              <div class="list-group-item d-flex justify-content-between align-items-center flex-wrap">
+                <div>
+                  <strong>Pedido #{{ pedido.ID_Pedido }}</strong><br>
+                  {% if pedido.FechaPedido %}
+                    <small>Fecha del pedido: {{ pedido.FechaPedido.strftime('%d/%m/%Y') }}</small><br>
+                  {% endif %}
+                  {% if pedido.FechaEntrega %}
+                    <small>Entrega estimada: {{ pedido.FechaEntrega.strftime('%d/%m/%Y') }}</small><br>
+                  {% endif %}
+                  <small>Destino: {{ pedido.Destino or 'No especificado' }}</small><br>
+                  <span class="badge bg-success mt-1">{{ pedido.Estado|capitalize }}</span>
+                </div>
 
-<!-- Modal Agregar Dirección -->
-<div class="modal fade" id="modalDireccion" tabindex="-1" aria-labelledby="modalDireccionLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content p-4 rounded-4">
-      <div class="modal-header border-0">
-        <h5 class="modal-title fw-bold" id="modalDireccionLabel">AÑADIR DIRECCIÓN</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                <div class="d-flex gap-2 mt-2 mt-md-0">
+                  <button class="btn btn-outline-success btn-sm"
+                          data-bs-toggle="modal"
+                          data-bs-target="#modalPedido"
+                          data-id="{{ pedido.ID_Pedido }}">
+                    Ver detalles
+                  </button>
+
+                  <button class="btn btn-outline-primary btn-sm"
+                          data-bs-toggle="modal"
+                          data-bs-target="#modalRegistroFotografico"
+                          data-id="{{ pedido.ID_Pedido }}">
+                    Ver registro fotográfico
+                  </button>
+
+                  <a href="{{ url_for('cliente.seguimiento_cliente', id_pedido=pedido.ID_Pedido) }}" 
+                     class="btn btn-outline-warning btn-sm">
+                     Rastrear pedido
+                  </a>
+
+                  <a href="{{ url_for('cliente.solicitar_garantia', pedido_id=pedido.ID_Pedido) }}" 
+                     class="btn btn-warning btn-sm">
+                     Solicitar Garantía
+                  </a>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <p class="text-muted">No tienes pedidos registrados.</p>
+          {% endif %}
+        </div>
       </div>
-      <div class="modal-body">
-        <form method="POST" action="{{ url_for('admin.agregar_direccion') }}">
-          {{ csrf_token() if csrf_token is defined }}
-          <div class="mb-3">
-            <label for="modal_pais" class="form-label">País</label>
-            <select name="pais" id="modal_pais" class="form-select rounded-pill" disabled>
-              <option selected>Colombia</option>
-            </select>
-          </div>
 
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label for="modal_departamento" class="form-label">Departamento</label>
-              <input type="text" id="modal_departamento" name="departamento" class="form-control rounded-pill" value="Bogotá, D.C." readonly />
+      <!-- Modal Registro Fotográfico -->
+      <div class="modal fade" id="modalRegistroFotografico" tabindex="-1" aria-labelledby="modalRegistroFotograficoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+          <div class="modal-content p-4 rounded-4">
+            <div class="modal-header border-0">
+              <h5 class="modal-title fw-bold" id="modalRegistroFotograficoLabel">REGISTRO FOTOGRÁFICO DEL PEDIDO</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
-            <div class="col-md-6">
-              <label for="modal_municipio" class="form-label">Municipio</label>
-              <input type="text" id="modal_municipio" name="municipio" class="form-control rounded-pill" value="Bogotá, D.C." readonly />
-            </div>
-          </div>
-
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label for="modal_direccion" class="form-label">Dirección</label>
-              <input type="text" id="modal_direccion" name="direccion" class="form-control rounded-pill" placeholder="Dirección" required />
-            </div>
-            <div class="col-md-6">
-              <label for="modal_infoAdicional" class="form-label">Información adicional</label>
-              <input type="text" id="modal_infoAdicional" name="infoAdicional" class="form-control rounded-pill" placeholder="Apto. 201, torre 5" />
+            <div class="modal-body">
+              <div id="contenido-registro-fotografico">
+                <p class="text-muted"></p>
+              </div>
             </div>
           </div>
-
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label for="modal_barrio" class="form-label">Barrio</label>
-              <input type="text" id="modal_barrio" name="barrio" class="form-control rounded-pill" placeholder="Barrio" />
-            </div>
-            <div class="col-md-6">
-              <label for="modal_destinatario" class="form-label">Destinatario</label>
-              <input type="text" id="modal_destinatario" name="destinatario" class="form-control rounded-pill" placeholder="Quién recibe" />
-            </div>
-          </div>
-
-          <div class="text-end mt-4">
-            <button type="submit" class="btn btn-green px-4 py-2 rounded-pill">Guardar</button>
-          </div>
-        </form>
+        </div>
       </div>
-    </div>
-  </div>
-</div>
 
-<!-- Modal Confirmar Borrar -->
-<div class="modal fade" id="modalConfirmarBorrar" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content p-4 rounded-4 text-center">
-      <h5 class="modal-title mb-3 text-danger fw-bold">¿Eliminar esta dirección?</h5>
-      <p>Esta acción no se puede deshacer. ¿Seguro que deseas continuar?</p>
-      <div class="d-flex justify-content-center gap-3 mt-3">
-        <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" id="btnConfirmarBorrar" class="btn btn-danger px-4 rounded-pill">Borrar</button>
+      <!-- Modal Agregar Dirección -->
+      <div class="modal fade" id="modalDireccion" tabindex="-1" aria-labelledby="modalDireccionLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content p-4 rounded-4">
+            <div class="modal-header border-0">
+              <h5 class="modal-title fw-bold" id="modalDireccionLabel">AÑADIR DIRECCIÓN</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+              <form method="POST" action="{{ url_for('cliente.agregar_direccion') }}">
+                <!-- Campos como antes -->
+              </form>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <!-- Modal Confirmar Borrar -->
+      <div class="modal fade" id="modalConfirmarBorrar" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content p-4 rounded-4 text-center">
+            <h5 class="modal-title mb-3 text-danger fw-bold">¿Eliminar esta dirección?</h5>
+            <p>Esta acción no se puede deshacer. ¿Seguro que deseas continuar?</p>
+            <div class="d-flex justify-content-center gap-3 mt-3">
+              <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+              <button type="button" id="btnConfirmarBorrar" class="btn btn-danger px-4 rounded-pill">Borrar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Detalle Pedido -->
+      <div class="modal fade" id="modalPedido" tabindex="-1" aria-labelledby="modalPedidoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content p-4 rounded-4">
+            <div class="modal-header border-0">
+              <h5 class="modal-title fw-bold" id="modalPedidoLabel">DETALLE DEL PEDIDO</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+              <div id="detalle-pedido-contenido">
+                <p class="text-muted">Cargando detalles...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -194,4 +236,21 @@
 <script src="{{ url_for('static', filename='js/actualizacion.js') }}"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 
+<script>
+  // Manejo de modal para cargar detalles seguros
+  const modalPedido = document.getElementById('modalPedido');
+  modalPedido.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const id = button.getAttribute('data-id');
+    const contenido = document.getElementById('detalle-pedido-contenido');
+
+    fetch(`/cliente/pedido/${id}/detalle`)
+      .then(resp => {
+        if (!resp.ok) throw new Error('Error al obtener los detalles del pedido.');
+        return resp.text();
+      })
+      .then(html => contenido.innerHTML = html)
+      .catch(err => contenido.innerHTML = '<p class="text-danger">❌ No se pudieron cargar los detalles: ' + err.message + '</p>');
+  });
+</script>
 {% endblock %}

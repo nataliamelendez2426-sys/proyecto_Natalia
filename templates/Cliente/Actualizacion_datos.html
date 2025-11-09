@@ -55,7 +55,7 @@
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label" for="nombre">Nombre</label>
-              <input type="text" id="nombre" name="nombre" class="form-control" value="{{ usuario.Nombre or '' }}" required />
+              <input type="text" id="nombre" name="nombre" class="form-control" value="{{ usuario.Nombre }}" required />
             </div>
             <div class="col-md-6">
               <label class="form-label" for="apellido">Apellido</label>
@@ -63,7 +63,7 @@
             </div>
             <div class="col-md-12">
               <label class="form-label" for="correo">Email</label>
-              <input type="email" id="correo" name="correo" class="form-control" value="{{ usuario.Correo or '' }}" required />
+              <input type="email" id="correo" name="correo" class="form-control" value="{{ usuario.Correo }}" required />
             </div>
             <div class="col-md-6">
               <label class="form-label" for="genero">Género</label>
@@ -262,15 +262,14 @@
             </div>
             <div class="modal-body">
               <div id="detalle-pedido-contenido">
-                <!-- Detalles se cargarán aquí con valores seguros -->
                 {% if detalles %}
                   <ul class="list-group">
                     {% for detalle in detalles %}
                       <li class="list-group-item">
-                        <p><strong>Producto:</strong> {{ detalle.Producto or 'No disponible' }}</p>
-                        <p><strong>Precio unidad:</strong> ${{ "%.2f"|format(detalle.PrecioUnidad or 0) }}</p>
-                        <p><strong>Cantidad:</strong> {{ detalle.Cantidad or 0 }}</p>
-                        <p><strong>Total:</strong> ${{ "%.2f"|format((detalle.PrecioUnidad or 0) * (detalle.Cantidad or 0)) }}</p>
+                        <p class="mb-1"><strong>Producto:</strong> {{ detalle.Producto or 'No disponible' }}</p>
+                        <p class="mb-1 text-success"><strong>Precio unidad:</strong> ${{ "%.2f"|format(detalle.PrecioUnidad or 0) }}</p>
+                        <p class="mb-1"><strong>Cantidad:</strong> {{ detalle.Cantidad or 0 }}</p>
+                        <p class="mb-1"><strong>Total:</strong> ${{ "%.2f"|format((detalle.PrecioUnidad or 0) * (detalle.Cantidad or 0)) }}</p>
                       </li>
                     {% endfor %}
                   </ul>
