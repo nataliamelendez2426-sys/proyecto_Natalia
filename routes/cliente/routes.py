@@ -396,14 +396,13 @@ def mensajes_cliente_ajax():
         } for m in mensajes
     ])
 
-# ---------- CARRITO ----------
-
 @cliente.route('/carrito')
 @login_required
 def ver_carrito():
-   
-    direcciones = [] 
+    # Puedes traer direcciones reales de la base de datos
+    direcciones = []  
     return render_template('cliente/carrito.html', direcciones=direcciones)
+
 
 @cliente.route('/checkout', methods=['POST'])
 @login_required
@@ -418,33 +417,45 @@ def checkout():
         if not carrito:
             return jsonify({"success": False, "mensaje": "El carrito está vacío."}), 400
 
-
+        # Crear pedido
         pedido = Pedido(
             NombreComprador=current_user.Nombre,
             Destino="Dirección ejemplo",
             Estado="pendiente",
-            FechaPedido=date.today(),
+            FechaPedido=datetime.today(),
             ID_Usuario=current_user.id
         )
-
         db.session.add(pedido)
         db.session.commit()
 
         # Crear pago
+        total_pago = sum([i['precio']*i.get('cantidad',1) for i in carrito])
         pago = Pagos(
             MetodoPago=metodo,
-            Monto=sum([i['precio']*i.get('cantidad',1) for i in carrito]),
+            Monto=total_pago,
             ID_Pedido=pedido.ID_Pedido
         )
         db.session.add(pago)
         db.session.commit()
 
-        return jsonify({"success": True, "mensaje": "Pago procesado correctamente."})
+        # Enviar correo de confirmación
+        msg = Message(
+            subject=f"Confirmación de tu pedido #{pedido.ID_Pedido}",
+            recipients=[current_user.Email],
+            body=f"Hola {current_user.Nombre},\n\n"
+                 f"Tu pago por ${total_pago:.2f} con método {metodo} ha sido recibido.\n\n"
+                 "¡Gracias por comprar con nosotros!"
+        )
+        mail.send(msg)
+
+        return jsonify({"success": True, "mensaje": "Pago procesado correctamente y correo enviado."})
 
     except Exception as e:
         import traceback
         traceback.print_exc()
+        db.session.rollback()
         return jsonify({"success": False, "mensaje": str(e)}), 500
+
 
 @cliente.route('/notificar_pago', methods=['POST'])
 @login_required
@@ -455,16 +466,19 @@ def notificar_pago():
         carrito = data.get('carrito')
         metodo = data.get('metodo')
 
-        # Enviar correo de confirmación al usuario
+        if not carrito or not numero:
+            return jsonify({"success": False, "mensaje": "Faltan datos"}), 400
+
+        # Simular envío de notificación
+        print(f"Notificación enviada al número {numero} sobre el pago de ${sum([i['precio']*i.get('cantidad',1) for i in carrito]):.2f} con método {metodo}")
+
+        # También puedes enviar correo si quieres redundancia
         msg = Message(
-            subject="Confirmación de tu pedido",
+            subject="Confirmación de tu pago",
             recipients=[current_user.Email],
             body=f"Tu pago por ${sum([i['precio']*i.get('cantidad',1) for i in carrito]):.2f} con método {metodo} ha sido recibido."
         )
         mail.send(msg)
-
-        # Aquí puedes agregar integración con Nequi/Daviplata si tienen API para enviar notificación
-        print(f"Notificación enviada al número: {numero}")
 
         return jsonify({"success": True, "mensaje": "Notificación enviada."})
     except Exception as e:
