@@ -25,9 +25,9 @@
     </div>
 </div>
 
-<!-- Modal de Pago -->
+<!-- Modal de Pago con resumen -->
 <div class="modal fade" id="modalPago" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content border-0 shadow-lg">
       <div class="modal-header bg-primary text-white">
         <h5 class="modal-title"><i class="bi bi-credit-card-2-back me-2"></i> Pagar Pedido</h5>
@@ -35,6 +35,13 @@
       </div>
       <div class="modal-body">
         <form id="form-pago">
+          <!-- Resumen de productos -->
+          <h5>Resumen del Pedido</h5>
+          <ul class="list-group mb-3" id="resumen-productos-modal"></ul>
+          <h5 class="text-end">Total: $<span id="total-modal-pago">0.00</span></h5>
+          <hr>
+
+          <!-- Método de Pago -->
           <div class="mb-3">
             <label class="form-label">Método de Pago</label>
             <select class="form-select" id="metodo-pago" name="metodo" required>
@@ -86,14 +93,6 @@
   </div>
 </div>
 
-<style>
-.card-modern { border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-.input-cantidad { border-radius:8px; border:1px solid #57a773; }
-.input-cantidad:focus { border-color:#157145; box-shadow:0 0 8px rgba(5,82,92,0.3);}
-.btn-eliminar { border-color:#dc3545; color:#dc3545; }
-.btn-eliminar:hover { background-color:#dc3545; color:white;}
-</style>
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     let carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
@@ -101,6 +100,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const carritoTotalDOM = document.getElementById('carrito-total');
     const vaciarCarritoBtn = document.getElementById('vaciar-carrito');
     const checkoutBtn = document.getElementById('btn-checkout');
+    const resumenModal = document.getElementById('resumen-productos-modal');
+    const totalModalPago = document.getElementById('total-modal-pago');
+
+    const actualizarTotal = () => {
+        const total = carrito.reduce((acc,i)=>acc+i.precio*(i.cantidad||1),0);
+        carritoTotalDOM.textContent=`$${total.toFixed(2)}`;
+        return total;
+    };
 
     const renderizarCarrito = () => {
         listaCarritoDOM.innerHTML = '';
@@ -150,12 +157,6 @@ document.addEventListener('DOMContentLoaded', () => {
         actualizarTotal();
     };
 
-    const actualizarTotal = ()=>{
-        const total = carrito.reduce((acc,i)=>acc+i.precio*(i.cantidad||1),0);
-        carritoTotalDOM.textContent=`$${total.toFixed(2)}`;
-        return total;
-    };
-
     vaciarCarritoBtn.addEventListener('click', ()=>{
         if(carrito.length>0 && confirm('¿Vaciar carrito?')){
             carrito=[];
@@ -164,13 +165,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Abrir modal de pago
+    // Abrir modal de pago con resumen
     checkoutBtn.addEventListener('click', ()=>{
         if(!carrito.length){ alert("Carrito vacío"); return;}
+
+        resumenModal.innerHTML='';
+        let totalFinal=0;
+        carrito.forEach(item=>{
+            const cant = item.cantidad ||1;
+            const subtotal = cant*item.precio;
+            totalFinal+=subtotal;
+            const li = document.createElement('li');
+            li.className='list-group-item d-flex justify-content-between align-items-center';
+            li.textContent = `${item.nombre} x ${cant}`;
+            const span = document.createElement('span');
+            span.textContent=`$${subtotal.toFixed(2)}`;
+            li.appendChild(span);
+            resumenModal.appendChild(li);
+        });
+        totalModalPago.textContent = totalFinal.toFixed(2);
+
         new bootstrap.Modal(document.getElementById('modalPago')).show();
     });
 
-    // Cambiar campos según método de pago
+    // Mostrar/ocultar campos según método
     const metodoSelect = document.getElementById('metodo-pago');
     const tarjetaDiv = document.getElementById('pago-tarjeta');
     const digitalDiv = document.getElementById('pago-digital');
