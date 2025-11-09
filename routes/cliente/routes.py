@@ -2,7 +2,7 @@ import os
 from openai import OpenAI  
 from dotenv import load_dotenv
 from flask_login import current_user
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session , abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session , current_app
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from basedatos.models import db, Usuario, Notificaciones, Direccion, Calendario,Pedido, Producto, Resena, Detalle_Pedido, Pagos,Mensaje,Garantia ,GarantiaArchivo ,Categorias
@@ -169,20 +169,25 @@ def perfil():
 
 # ---------- DETALLE_PEDIDO ----------
 
-@cliente.route('/cliente/pedido/<int:id>/detalle')
+
+@cliente.route("/pedido/<int:id_pedido>/detalle")
 @login_required
-def detalle_pedido(id):
-    pedido = Pedido.query.filter_by(ID_Pedido=id, ID_Usuario=current_user.ID_Usuario).first()
+def ver_detalle_pedido(id_pedido):
+    pedido = Pedido.query.filter_by(ID_Pedido=id_pedido, ID_Usuario=current_user.ID_Usuario).first()
     if not pedido:
         return jsonify({'error': 'Pedido no encontrado'}), 404
 
     detalles = []
     for det in pedido.detalles_pedido:
+        cantidad = det.Cantidad or 0
+        precio = det.PrecioUnidad or 0
+        subtotal = cantidad * precio
+
         detalles.append({
             "ProductoNombre": det.producto.NombreProducto if det.producto else "Producto",
-            "Cantidad": det.Cantidad or 0,
-            "PrecioUnidad": det.PrecioUnidad or 0,
-            "Subtotal": (det.Cantidad or 0) * (det.PrecioUnidad or 0)
+            "Cantidad": cantidad,
+            "PrecioUnidad": precio,
+            "Subtotal": subtotal
         })
 
     direccion = {
@@ -197,6 +202,10 @@ def detalle_pedido(id):
         "detalles": detalles,
         "direccion": direccion
     })
+
+
+
+
 # ---------- AGENDAR_INSTALACION ----------
 
 @cliente.route('/cliente/instalacion', methods=['GET', 'POST'])

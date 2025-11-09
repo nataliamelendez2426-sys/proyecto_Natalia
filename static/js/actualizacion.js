@@ -1,87 +1,77 @@
 document.addEventListener('DOMContentLoaded', () => {
-  
-  const menuPerfil = document.getElementById('menu-perfil');
-  const menuDirecciones = document.getElementById('menu-direcciones');
-  const menuPedidos = document.getElementById('menu-pedidos');
 
-  const seccionPerfil = document.getElementById('seccion-perfil');
-  const seccionDirecciones = document.getElementById('seccion-direcciones');
-  const seccionPedidos = document.getElementById('seccion-pedidos');
+  const modalPedido = document.getElementById('modalPedido');
 
+  if (modalPedido) {
+    modalPedido.addEventListener('show.bs.modal', event => {
+      const button = event.relatedTarget;
+      if (!button) return;
 
-  function ocultarSecciones() {
-    seccionPerfil.style.display = 'none';
-    seccionDirecciones.style.display = 'none';
-    seccionPedidos.style.display = 'none';
+      const pedidoId = button.getAttribute('data-id');
+      const contenido = document.getElementById('detalle-pedido-contenido');
+      if (!contenido) return;
 
-    menuPerfil.classList.remove('active');
-    menuDirecciones.classList.remove('active');
-    menuPedidos.classList.remove('active');
+      contenido.innerHTML = `<p class="text-muted">Cargando detalles del pedido #${pedidoId}...</p>`;
+
+      fetch(`/cliente/pedido/${pedidoId}/detalle`)
+        .then(resp => {
+          if (!resp.ok) throw new Error('Error al obtener los detalles del pedido.');
+          return resp.json();  // <-- ahora esperamos JSON
+        })
+        .then(data => {
+          if (!data.detalles || data.detalles.length === 0) {
+            contenido.innerHTML = '<p class="text-danger">❌ No se encontraron detalles para este pedido.</p>';
+            return;
+          }
+
+          let html = '';
+
+          // Dirección
+          if (data.direccion) {
+            html += `
+              <div class="mb-3">
+                <h6>Dirección de entrega</h6>
+                <p>
+                  ${data.direccion.Direccion || ''}, 
+                  ${data.direccion.Barrio || ''}, 
+                  ${data.direccion.Municipio || ''}, 
+                  ${data.direccion.Departamento || ''}, 
+                  ${data.direccion.Pais || ''}
+                </p>
+              </div>
+            `;
+          }
+
+          html += `<h6>Productos</h6>`;
+          html += `<ul class="list-group mb-3">`;
+
+          let totalPedido = 0;
+
+          data.detalles.forEach(detalle => {
+            const cantidad = detalle.Cantidad || 0;
+            const precioUnidad = detalle.PrecioUnidad || 0;
+            const subtotal = detalle.Subtotal || cantidad * precioUnidad;
+            totalPedido += subtotal;
+
+            html += `
+              <li class="list-group-item">
+                <strong>${detalle.ProductoNombre || 'Producto'}</strong><br>
+                Cantidad: ${cantidad}<br>
+                Precio unidad: $${precioUnidad.toFixed(2)}<br>
+                Subtotal: $${subtotal.toFixed(2)}
+              </li>
+            `;
+          });
+
+          html += `</ul>`;
+          html += `<p class="text-end fw-bold">Total pedido: $${totalPedido.toFixed(2)}</p>`;
+
+          contenido.innerHTML = html;
+        })
+        .catch(err => {
+          contenido.innerHTML = `<p class="text-danger">❌ No se pudieron cargar los detalles: ${err.message}</p>`;
+        });
+    });
   }
 
-  
-  menuPerfil.addEventListener('click', () => {
-    ocultarSecciones();
-    seccionPerfil.style.display = 'block';
-    menuPerfil.classList.add('active');
-  });
-
-  menuDirecciones.addEventListener('click', () => {
-    ocultarSecciones();
-    seccionDirecciones.style.display = 'block';
-    menuDirecciones.classList.add('active');
-  });
-
-  menuPedidos.addEventListener('click', () => {
-    ocultarSecciones();
-    seccionPedidos.style.display = 'block';
-    menuPedidos.classList.add('active');
-  });
-
-
-  let urlBorrar = null;
-  const modalBorrar = new bootstrap.Modal(document.getElementById('modalConfirmarBorrar'));
-
-  document.querySelectorAll('.btn-borrar-direccion').forEach(btn => {
-    btn.addEventListener('click', function () {
-      urlBorrar = this.dataset.url;
-      modalBorrar.show();
-    });
-  });
-
-  const formBorrar = document.createElement('form');
-  formBorrar.method = 'POST';
-  formBorrar.style.display = 'none';
-  document.body.appendChild(formBorrar);
-
-  document.getElementById('btnConfirmarBorrar').addEventListener('click', function () {
-    if (urlBorrar) {
-      formBorrar.action = urlBorrar;
-      formBorrar.submit();
-    }
-  });
-
-
-const modalPedido = document.getElementById('modalPedido');
-
-modalPedido.addEventListener('show.bs.modal', event => {
-  const button = event.relatedTarget;
-  const pedidoId = button.getAttribute('data-id');
-  const contenido = document.getElementById('detalle-pedido-contenido');
-
-  
-  contenido.innerHTML = `<p class="text-muted">Cargando detalles del pedido #${pedidoId}...</p>`;
-
-  fetch(`/cliente/pedido/${pedidoId}/detalle`)
-    .then(response => {
-      if (!response.ok) throw new Error('Error al obtener los detalles del pedido.');
-      return response.text();
-    })
-    .then(html => {
-      contenido.innerHTML = html; 
-    })
-    .catch(error => {
-      contenido.innerHTML = `<p class="text-danger">❌ No se pudieron cargar los detalles: ${error.message}</p>`;
-    });
-});
 });
