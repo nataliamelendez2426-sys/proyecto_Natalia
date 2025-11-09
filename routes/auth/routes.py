@@ -7,6 +7,11 @@ from basedatos.models import db, Usuario
 from basedatos.decoradores import validar_password, validar_email, send_reset_email
 from basedatos.notificaciones import crear_notificacion
 from . import auth
+from flask_mail import Message
+from sqlalchemy import func
+import random
+from app import mail 
+
 
 
 s = URLSafeTimedSerializer("mi_clave_super_secreta_y_unica")
@@ -86,6 +91,42 @@ def login():
         usuario = Usuario.query.filter(func.lower(Usuario.Correo) == correo).first()
 
         if usuario and check_password_hash(usuario.Contraseña, password):
+            # Generamos un código de verificación
+            codigo_verificacion = str(random.randint(100000, 999999))
+            session['codigo_verificacion'] = codigo_verificacion
+            session['usuario_id'] = usuario.id  # Guardamos el usuario temporalmente
+
+            # Enviar correo de verificación
+            msg = Message(
+                subject='Código de verificación',
+                sender=app.config['MAIL_USERNAME'],
+                recipients=[usuario.Correo],
+                body=f"Tu código de verificación es: {codigo_verificacion}"
+            )
+            mail.send(msg)
+
+            return jsonify({
+                'status': 'info',
+                'message': 'Se ha enviado un código de verificación a tu correo.',
+                'next_step': 'verify'
+            })
+
+        return jsonify({'status': 'danger', 'message': 'Correo o contraseña incorrectos.'})
+
+    except Exception as e:
+        print("❌ ERROR LOGIN:", e)
+        return jsonify({'status': 'danger', 'message': f'Error interno: {str(e)}'})
+    
+@auth.route('/verify', methods=['POST'])
+def verify():
+    try:
+        codigo = request.form.get('codigo', '').strip()
+        usuario_id = session.get('usuario_id')
+        if not usuario_id:
+            return jsonify({'status': 'danger', 'message': 'No hay sesión activa para verificar.'})
+
+        if codigo == session.get('codigo_verificacion'):
+            usuario = Usuario.query.get(usuario_id)
             login_user(usuario)
             session['username'] = f"{usuario.Nombre} {usuario.Apellido or ''}".strip()
 
@@ -100,17 +141,18 @@ def login():
             if usuario.Rol == 'cliente':
                 session['mostrar_bienvenida'] = True
 
-            return jsonify({
-                'status': 'success',
-                'message': 'Inicio de sesión exitoso.',
-                'redirect': url_for(destino)
-            })
+            # Limpiar datos temporales
+            session.pop('codigo_verificacion', None)
+            session.pop('usuario_id', None)
 
-        return jsonify({'status': 'danger', 'message': 'Correo o contraseña incorrectos.'})
+            return jsonify({'status': 'success', 'message': 'Verificación correcta.', 'redirect': url_for(destino)})
+
+        return jsonify({'status': 'danger', 'message': 'Código de verificación incorrecto.'})
 
     except Exception as e:
-        print("❌ ERROR LOGIN:", e)
+        print("❌ ERROR VERIFY:", e)
         return jsonify({'status': 'danger', 'message': f'Error interno: {str(e)}'})
+
 
 
 # ------------------ LOGOUT ------------------ #
