@@ -447,7 +447,7 @@ def checkout():
             db.session.add(detalle)
         db.session.commit()
 
-        # Registrar el pago
+     
         pago = Pagos(
             MetodoPago=metodo,
             Monto=sum([i['precio']*i.get('cantidad',1) for i in carrito]),
