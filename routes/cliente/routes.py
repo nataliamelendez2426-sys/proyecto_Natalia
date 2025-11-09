@@ -1,3 +1,6 @@
+import os
+from openai import OpenAI  
+from dotenv import load_dotenv
 from flask_login import current_user
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session , current_app
 from flask_login import login_required, current_user
@@ -12,6 +15,7 @@ from flask_mail import Message
 from flask import url_for
 from basedatos.decoradores import mail
 from functools import wraps
+
 
 favoritos_usuario = set() 
 
