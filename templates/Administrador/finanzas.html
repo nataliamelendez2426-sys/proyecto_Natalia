@@ -3,8 +3,34 @@
 {% block content %}
 <div class="container mt-4">
     <h2 class="mb-4">Control Financiero</h2>
+
+    <!-- Filtros -->
+    <form id="filtroPagos" class="row g-3 mb-3">
+        <div class="col-md-3">
+            <label for="metodo" class="form-label">Método de Pago</label>
+            <select id="metodo" class="form-select">
+                <option value="">Todos</option>
+                <option value="credito">Tarjeta de Crédito / Débito</option>
+                <option value="nequi">Nequi</option>
+                <option value="daviplata">Daviplata</option>
+                <option value="efectivo">Efectivo contra Entrega</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
+            <input type="date" id="fecha_inicio" class="form-control">
+        </div>
+        <div class="col-md-3">
+            <label for="fecha_fin" class="form-label">Fecha Fin</label>
+            <input type="date" id="fecha_fin" class="form-control">
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button type="button" id="btnFiltrar" class="btn btn-primary w-100">Filtrar</button>
+        </div>
+    </form>
+
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4>Total Pagos: ${{ '%.2f'|format(total_pagos) }}</h4>
+        <h4>Total Pagos: $<span id="totalPagos">{{ '%.2f'|format(total_pagos) }}</span></h4>
         <button id="btnExportPDF" class="btn btn-danger">Exportar PDF</button>
     </div>
 
@@ -13,7 +39,7 @@
 
     <h5 class="mt-4">Todos los Pagos</h5>
     <table class="table table-striped" id="tablaPagos">
-        <thead>
+        <thead class="table-dark">
             <tr>
                 <th>ID</th>
                 <th>Usuario</th>
@@ -63,16 +89,26 @@
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-const ctx = document.getElementById('chartMetodos').getContext('2d');
-const chart = new Chart(ctx, {
+let ctx = document.getElementById('chartMetodos').getContext('2d');
+let chart = new Chart(ctx, {
     type: 'bar',
     data: {
         labels: {{ metodos.keys()|list|tojson }},
         datasets: [{
             label: 'Total Pagos por Método',
             data: {{ metodos.values()|list|tojson }},
-            backgroundColor: 'rgba(54, 162, 235, 0.6)',
-            borderColor: 'rgba(54, 162, 235, 1)',
+            backgroundColor: [
+                'rgba(54, 162, 235, 0.6)',
+                'rgba(255, 206, 86, 0.6)',
+                'rgba(75, 192, 192, 0.6)',
+                'rgba(255, 99, 132, 0.6)'
+            ],
+            borderColor: [
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 206, 86, 1)',
+                'rgba(75, 192, 192, 1)',
+                'rgba(255, 99, 132, 1)'
+            ],
             borderWidth: 1
         }]
     },
@@ -80,32 +116,71 @@ const chart = new Chart(ctx, {
 });
 </script>
 
-<!-- jsPDF -->
+<!-- jsPDF + html2canvas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
-document.getElementById('btnExportPDF').addEventListener('click', () => {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text("Reporte de Pagos", 105, 15, null, null, "center");
-    doc.setFontSize(12);
-    let y = 25;
+async function actualizarDatos() {
+    const metodo = document.getElementById('metodo').value;
+    const fechaInicio = document.getElementById('fecha_inicio').value;
+    const fechaFin = document.getElementById('fecha_fin').value;
 
-    // Tabla de pagos
-    doc.text("ID | Usuario | Método | Fecha | Monto", 10, y);
-    y += 7;
+    const params = new URLSearchParams({ metodo, fecha_inicio: fechaInicio, fecha_fin: fechaFin });
+    const res = await fetch(`/admin/finanzas/ajax?${params.toString()}`);
+    const data = await res.json();
 
-    const filas = document.querySelectorAll("#tablaPagos tbody tr");
-    filas.forEach(fila => {
-        const cols = Array.from(fila.querySelectorAll("td")).slice(0,5).map(td => td.innerText);
-        doc.text(cols.join(" | "), 10, y);
-        y += 7;
+    // Actualizar total
+    document.getElementById('totalPagos').textContent = data.total.toFixed(2);
+
+    // Actualizar tabla
+    const tbody = document.querySelector("#tablaPagos tbody");
+    tbody.innerHTML = '';
+    data.pagos.forEach(p => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${p.ID_Pagos}</td>
+                <td>${p.usuario.Nombre} ${p.usuario.Apellido || ''}</td>
+                <td>${p.MetodoPago}</td>
+                <td>${p.FechaPago}</td>
+                <td>$${p.Monto.toFixed(2)}</td>
+                <td><button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#detalleModal${p.ID_Pagos}">Ver Detalle</button></td>
+            </tr>
+        `;
     });
 
+    // Actualizar gráfico
+    chart.data.labels = Object.keys(data.metodos);
+    chart.data.datasets[0].data = Object.values(data.metodos);
+    chart.update();
+}
+
+document.getElementById('btnFiltrar').addEventListener('click', actualizarDatos);
+
+document.getElementById('btnExportPDF').addEventListener('click', async () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
+
+    let y = 10;
+    doc.setFontSize(16);
+    doc.text("Control Financiero", 105, y, null, null, "center");
+    y += 10;
+
+    // Capturar gráfico
+    const canvas = document.getElementById('chartMetodos');
+    const chartImg = canvas.toDataURL("image/png", 1.0);
+    doc.addImage(chartImg, 'PNG', 15, y, 180, 80);
+    y += 85;
+
+    // Capturar tabla
+    const tabla = document.getElementById('tablaPagos');
+    const tablaCanvas = await html2canvas(tabla, { scale: 2 });
+    const tablaImg = tablaCanvas.toDataURL('image/png');
+    doc.addImage(tablaImg, 'PNG', 10, y, 190, tablaCanvas.height * 190 / tablaCanvas.width);
+    
     // Total
-    y += 5;
+    const finalY = doc.internal.pageSize.getHeight() - 15;
     doc.setFontSize(14);
-    doc.text("Total Pagos: ${{ '%.2f'|format(total_pagos) }}", 10, y);
+    doc.text(`Total Pagos: $${document.getElementById('totalPagos').textContent}`, 14, finalY);
 
     doc.save("reporte_pagos.pdf");
 });

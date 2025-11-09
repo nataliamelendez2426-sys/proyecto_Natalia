@@ -936,4 +936,54 @@ def admin_finanzas():
     return render_template('administrador/finanzas.html', pagos=pagos, total_pagos=total_pagos, metodos=metodos)
 
 
+@admin.route('/finanzas/ajax')
+def finanzas_ajax():
+    metodo = request.args.get('metodo', type=str)
+    fecha_inicio = request.args.get('fecha_inicio', type=str)
+    fecha_fin = request.args.get('fecha_fin', type=str)
 
+    query = Pagos.query.join(Pagos.pedido).join(Pedido.usuario)
+
+    if metodo:
+        query = query.filter(Pagos.MetodoPago == metodo)
+    if fecha_inicio:
+        fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+        query = query.filter(Pagos.FechaPago >= fecha_inicio_dt)
+    if fecha_fin:
+        fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d')
+        query = query.filter(Pagos.FechaPago <= fecha_fin_dt)
+
+    pagos = query.order_by(Pagos.FechaPago.desc()).all()
+
+    total = sum(p.Monto for p in pagos)
+
+    # Estadística por método
+    metodos = {
+        'credito': 0,
+        'nequi': 0,
+        'daviplata': 0,
+        'efectivo': 0
+    }
+    for p in pagos:
+        if p.MetodoPago in metodos:
+            metodos[p.MetodoPago] += p.Monto
+
+    # Preparar datos para JSON
+    pagos_json = []
+    for p in pagos:
+        pagos_json.append({
+            "ID_Pagos": p.ID_Pagos,
+            "usuario": {
+                "Nombre": p.pedido.usuario.Nombre,
+                "Apellido": p.pedido.usuario.Apellido or ""
+            },
+            "MetodoPago": p.MetodoPago,
+            "FechaPago": p.FechaPago.strftime('%Y-%m-%d'),
+            "Monto": p.Monto
+        })
+
+    return jsonify({
+        "pagos": pagos_json,
+        "total": total,
+        "metodos": metodos
+    })
