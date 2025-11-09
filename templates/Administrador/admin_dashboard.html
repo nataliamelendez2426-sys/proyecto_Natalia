@@ -1,4 +1,3 @@
-
 {% extends "common/base.html" %}
 
 {% block navbar %}
@@ -6,416 +5,205 @@
 {% endblock %}
 
 {% block content %}
+<div class="container mt-5">
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
+    <h2 class="mb-4 text-success fw-bold" style="text-shadow: 1px 1px 2px #000;">Control Financiero</h2>
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="alert alert-{{ category }} flash-small d-flex align-items-center" role="alert">
-        {% if category == 'success' %}
-          <i class="bi bi-check-circle-fill me-2"></i>
-        {% elif category == 'danger' %}
-          <i class="bi bi-x-circle-fill me-2"></i>
-        {% elif category == 'warning' %}
-          <i class="bi bi-exclamation-triangle-fill me-2"></i>
-        {% elif category == 'info' %}
-          <i class="bi bi-info-circle-fill me-2"></i>
-        {% endif %}
-        {{ message }}
-      </div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
-
-
-<style>
-  :root {
-    --verde: #57a773;
-    --verde-oscuro: #157145;
-    --celeste: #9bd1e5;
-    --celeste-claro: #d1faff;
-    --gris: #6a8eae;
-    --blanco: #fff;
-  }
-
-
-  * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', sans-serif; }
-
-  body { background: var(--celeste-claro); overflow-x: hidden; }
-
-.hero {
-  height: 100vh;
-  background: url("{{ url_for('static', filename='img/imagendashboard.jpg') }}") no-repeat center center;
-  background-size: cover;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  position: relative;
-  color: white;
-}
-
-  .hero::after {
-    content:'';
-    position:absolute;
-    top:0; left:0; width:100%; height:100%;
-    background: rgba(0,0,0,0.4);
-  }
-
-  .hero-content { position: relative; z-index:1; max-width:900px; }
-
-  .hero h1 { font-size:4rem; margin-bottom:1rem; text-shadow:2px 2px 5px rgba(0,0,0,0.5); }
-  .hero p { font-size:1.5rem; margin-bottom:2rem; text-shadow:1px 1px 3px rgba(0,0,0,0.5); }
-
-  .hero-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 1rem;
-  }
-
-  .btn-section {
-    padding:1rem 2rem;
-    border:none;
-    border-radius:50px;
-    background: var(--verde);
-    color: white;
-    font-size:1.2rem;
-    cursor:pointer;
-    transition: 0.3s;
-  }
-
-  .btn-section:hover { background: var(--verde-oscuro); transform: scale(1.05); }
-
-  /* Secciones tipo tarjeta gigante */
-  .secciones {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    padding: 4rem 2rem;
-    gap: 2rem;
-  }
-
-  .tarjeta {
-    flex: 1 1 300px;
-    height: 200px;
-    background: white;
-    border-radius: 25px;
-    display:flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align:center;
-    font-weight:bold;
-    color: var(--verde-oscuro);
-    font-size:1.5rem;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-    cursor:pointer;
-    transition: transform 0.3s, box-shadow 0.3s, background 0.3s;
-  }
-
-  .tarjeta:hover {
-    transform: translateY(-10px) scale(1.05);
-    box-shadow: 0 20px 30px rgba(0,0,0,0.3);
-    background: var(--verde);
-    color: white;
-  }
-
-  /* Galería interactiva */
-  .galeria {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px,1fr));
-    gap:2rem;
-    padding:4rem 2rem;
-  }
-
-  .mueble {
-    position: relative;
-    border-radius:20px;
-    overflow:hidden;
-    cursor:pointer;
-    transition: transform 0.3s;
-  }
-
-  .mueble img {
-    width:100%;
-    height:250px;
-    object-fit:cover;
-    transition: transform 0.3s;
-  }
-
-  .mueble:hover img { transform: scale(1.1); }
-
-  .mueble .info {
-    position:absolute;
-    bottom:0;
-    left:0;
-    width:100%;
-    background: rgba(0,0,0,0.6);
-    color:white;
-    padding:1rem;
-    text-align:center;
-    opacity:0;
-    transition: opacity 0.3s;
-  }
-
-  .mueble:hover .info { opacity:1; }
-
-  footer {
-    background: var(--verde);
-    color:white;
-    text-align:center;
-    padding:2rem 1rem;
-  }
-
-  /* Icono flotante de Chatbot */
-  .chatbot {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    background: var(--verde);
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    transition: transform 0.3s, background 0.3s;
-    z-index: 1000;
-  }
-
-  .chatbot:hover { transform: scale(1.1); background: var(--verde-oscuro); }
-
-  .chatbot img {
-    width: 30px;
-    height: 30px;
-  }
-
-  @media(max-width:768px){
-    .hero h1 { font-size:2.5rem; }
-    .hero p { font-size:1.2rem; }
-    .tarjeta { font-size:1.2rem; height:180px; }
-    .chatbot { width:50px; height:50px; }
-    .chatbot img { width:25px; height:25px; }
-  }
-</style>
-
-
-<link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
-
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="alert alert-{{ category }} flash-small d-flex align-items-center mt-3" role="alert">
-        {% if category == 'success' %}
-          <i class="bi bi-check-circle-fill me-2"></i>
-        {% elif category == 'danger' %}
-          <i class="bi bi-x-circle-fill me-2"></i>
-        {% elif category == 'warning' %}
-          <i class="bi bi-exclamation-triangle-fill me-2"></i>
-        {% elif category == 'info' %}
-          <i class="bi bi-info-circle-fill me-2"></i>
-        {% endif %}
-        {{ message }}
-      </div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
-
-<!-- Botón flotante Recursos Humanos -->
-<a href="{{ url_for('admin.lista_empleados') }}" id="botonRecursosHumanos">
-    <i class="fas fa-users"></i>
-    Recursos Humanos
-</a>
-
-
-<!-- Botón flotante -->
-<a href="{{ url_for('admin.chat_admin') }}" id="botonSoporte">
-    <i class="fas fa-headset"></i>
-    Soporte Técnico
-</a>
-
-<style>
-/* Botón Recursos Humanos */
-#botonRecursosHumanos {
-    position: fixed;
-    bottom: 100px; /* Más arriba que el de soporte técnico */
-    right: 30px;
-    background: linear-gradient(135deg, #57a773, #28a745);
-    color: white;
-    border-radius: 50px;
-    padding: 14px 22px;
-    font-weight: 600;
-    font-family: 'Poppins', sans-serif;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    text-decoration: none;
-    transition: transform 0.3s, background 0.3s, box-shadow 0.3s;
-    z-index: 1000;
-}
-
-#botonRecursosHumanos i {
-    font-size: 1.3rem;
-}
-
-#botonRecursosHumanos:hover {
-    background: linear-gradient(135deg, #28a745, #157145);
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 12px 25px rgba(0,0,0,0.35);
-}
-
-#botonRecursosHumanos:active {
-    transform: translateY(0px) scale(0.97);
-    box-shadow: 0 6px 15px rgba(0,0,0,0.25);
-}
-
-/* Botón Soporte Técnico */
-#botonSoporte {
-    position: fixed;
-    bottom: 30px; /* Debajo del de Recursos Humanos */
-    right: 30px;
-    background: #007bff;
-    color: white;
-    border-radius: 50px;
-    padding: 12px 18px;
-    font-weight: 600;
-    font-family: 'Poppins', sans-serif;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    text-decoration: none;
-    transition: background 0.3s, transform 0.2s;
-    z-index: 999;
-}
-
-#botonSoporte i {
-    font-size: 1.2rem;
-}
-
-#botonSoporte:hover {
-    background: #0056b3;
-    transform: scale(1.05);
-}
-
-#botonSoporte:active {
-    transform: scale(0.95);
-}
-
-</style>
-
-
-<section class="hero">
-  <div class="hero-content">
-    <h1>Bienvenido a Casa en el arbol</h1>
-    <p>Explora y transforma tu hogar de forma interactiva</p>
-    <div class="hero-buttons">
-      
-      <button class="btn-section" onclick="window.location.href='{{ url_for('admin.lista_productos') }}'">CATÁLOGO</button>
-
-    
-    </div>
-  </div>
-</section>
-
-
-
-<!-- Carrusel de novedades -->
-<div class="container py-5">
-  <h1 class="mb-4"><b>NOVEDADES</b></h1>
-  <div id="multiCardCarousel" class="carousel slide" data-bs-ride="carousel">
-    <div class="carousel-inner">
-      <div class="carousel-item active">
-        <div class="row">
-          <div class="col-md-6 col-lg-4">
-            <div class="card">
-              <img src="{{ url_for('static', filename='img/salacarrusel.png') }}" class="card-img-top" alt="Sala moderna" />
-            </div>
-          </div>
-          <div class="col-md-6 col-lg-4 d-none d-md-block">
-            <div class="card">
-              <img src="{{ url_for('static', filename='img/armariocarrusel.png') }}" class="card-img-top" alt="Armario moderno" />
-            </div>
-          </div>
-          <div class="col-lg-4 d-none d-lg-block">
-            <div class="card">
-              <img src="{{ url_for('static', filename='img/bañocarrusel.png') }}" class="card-img-top" alt="Mueble para baño" />
-            </div>
-          </div>
+    <!-- Filtros -->
+    <form id="filtroPagos" class="row g-3 mb-4">
+        <div class="col-md-3">
+            <label for="metodo" class="form-label fw-bold text-success">Método de Pago</label>
+            <select id="metodo" class="form-select border-success shadow-sm">
+                <option value="">Todos</option>
+                <option value="credito">Tarjeta / Transferencia</option>
+                <option value="nequi">Nequi</option>
+                <option value="daviplata">Daviplata</option>
+                <option value="efectivo">Efectivo</option>
+            </select>
         </div>
-      </div>
-      <div class="carousel-item">
-        <div class="row">
-          <div class="col-md-6 col-lg-4">
-            <div class="card">
-              <img src="{{ url_for('static', filename='img/cocinacarrusel.png') }}" class="card-img-top" alt="Cocina moderna" />
-            </div>
-          </div>
-          <div class="col-md-6 col-lg-4 d-none d-md-block">
-            <div class="card">
-              <img src="{{ url_for('static', filename='img/espejocarrusel.png') }}" class="card-img-top" alt="Espejo decorativo" />
-            </div>
-          </div>
-          <div class="col-lg-4 d-none d-lg-block">
-            <div class="card">
-              <img src="{{ url_for('static', filename='img/pinturacarrusel.png') }}" class="card-img-top" alt="Pintura decorativa" />
-            </div>
-          </div>
+        <div class="col-md-3">
+            <label for="fecha_inicio" class="form-label fw-bold text-success">Fecha Inicio</label>
+            <input type="date" id="fecha_inicio" class="form-control border-success shadow-sm">
         </div>
-      </div>
+        <div class="col-md-3">
+            <label for="fecha_fin" class="form-label fw-bold text-success">Fecha Fin</label>
+            <input type="date" id="fecha_fin" class="form-control border-success shadow-sm">
+        </div>
+        <div class="col-md-3 d-flex align-items-end gap-2">
+            <button type="button" id="btnFiltrar" class="btn btn-success btn-lg w-50 shadow">Filtrar</button>
+            <button type="button" class="btn btn-outline-success btn-lg w-50 shadow" data-bs-toggle="modal" data-bs-target="#detalleModalGeneral">Ver Detalles</button>
+        </div>
+    </form>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="text-success fw-bold" style="text-shadow: 1px 1px 2px #000;">Total Pagos: $<span id="totalPagos">{{ '%.2f'|format(total_pagos) }}</span></h4>
+        <button id="btnExportPDF" class="btn btn-success btn-lg shadow">Exportar PDF</button>
     </div>
 
-    <button class="carousel-control-prev" type="button" data-bs-target="#multiCardCarousel" data-bs-slide="prev">
-      <span class="carousel-control-prev-icon"></span>
-    </button>
-    <button class="carousel-control-next" type="button" data-bs-target="#multiCardCarousel" data-bs-slide="next">
-      <span class="carousel-control-next-icon"></span>
-    </button>
+    <h5 class="text-success fw-bold mb-2">Estadísticas por Método de Pago</h5>
+    <canvas id="chartMetodos" width="400" height="150" class="border rounded p-3 shadow-sm bg-light"></canvas>
+
+    <h5 class="mt-5 text-success fw-bold mb-3">Todos los Pagos</h5>
+    <table class="table table-hover table-striped table-bordered border-success shadow rounded" id="tablaPagos">
+        <thead class="table-success text-success fw-bold">
+            <tr>
+                <th>ID</th>
+                <th>Usuario</th>
+                <th>Método</th>
+                <th>Fecha</th>
+                <th>Monto</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in pagos %}
+            <tr>
+                <td>{{ p.ID_Pagos }}</td>
+                <td>{{ p.pedido.usuario.Nombre }} {{ p.pedido.usuario.Apellido or "" }}</td>
+                <td>{{ p.MetodoPago }}</td>
+                <td>{{ p.FechaPago.strftime('%Y-%m-%d') }}</td>
+                <td>${{ '%.2f'|format(p.Monto) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+<!-- Modal General Detalles -->
+<div class="modal fade" id="detalleModalGeneral" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content border-success shadow">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title fw-bold">Detalle de Todos los Pagos</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" id="modalBodyGeneral" style="max-height:600px; overflow-y:auto;">
+        <!-- Contenido dinámico con JS -->
+      </div>
+    </div>
   </div>
 </div>
 
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const fixedLabels = ['credito','nequi','daviplata','efectivo'];
+const fixedColors = [
+    'rgba(34,139,34,0.7)', // verde bosque
+    'rgba(50,205,50,0.7)', // lima
+    'rgba(144,238,144,0.7)', // verde claro
+    'rgba(0,128,0,0.7)' // verde
+];
 
-<section id="bienvenida" class="py-5" style="background: #f0fdf4;">
-  <div class="container">
-    <div class="row align-items-center g-4">
+let ctx = document.getElementById('chartMetodos').getContext('2d');
+let chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: fixedLabels,
+        datasets: [{
+            label: 'Total Pagos por Método',
+            data: Object.values({{ metodos|tojson }}),
+            backgroundColor: fixedColors,
+            borderColor: fixedColors.map(c => c.replace('0.7','1')),
+            borderWidth: 2,
+            borderRadius: 6
+        }]
+    },
+    options: { 
+        responsive:true,
+        plugins: { legend:{ labels:{color:'#006400', font:{weight:'bold'}} } },
+        scales: { 
+            y:{ beginAtZero:true, ticks:{ color:'#006400', font:{weight:'bold'} } },
+            x:{ ticks:{ color:'#006400', font:{weight:'bold'} } }
+        },
+        animation: { duration: 1000, easing: 'easeOutQuart' }
+    }
+});
 
- 
-      <div class="col-md-5 text-center text-md-start">
-        <div class="shadow rounded overflow-hidden">
-          <img src="{{ url_for('static', filename='img/espejo.png') }}" 
-               class="img-fluid" alt="Casa en el Árbol" style="transition: transform 0.3s ease;">
-        </div>
-      </div>
+// Función actualizar tabla, gráfico y modal general
+async function actualizarDatos() {
+    const metodo = document.getElementById('metodo').value;
+    const fechaInicio = document.getElementById('fecha_inicio').value;
+    const fechaFin = document.getElementById('fecha_fin').value;
 
-     
-      <div class="col-md-7">
-        <h2 class="h4 fw-bold text-success mb-2">Bienvenido a Casa en el Árbol</h2>
-        <p class="text-muted mb-3" style="line-height: 1.6;">
-          Explora nuestra colección de muebles y accesorios para tu hogar.  
-          Calidad, diseño y confort en un solo lugar. Descubre categorías, ofertas y novedades pensadas para ti.
-        </p>
-        <a href="{{ url_for('catalogo') }}" class="btn btn-success btn-sm px-4 py-2 shadow-sm">Ver Catálogo</a>
-      </div>
+    const params = new URLSearchParams({ metodo, fecha_inicio: fechaInicio, fecha_fin: fechaFin });
+    const res = await fetch(`/admin/finanzas/ajax?${params.toString()}`);
+    const data = await res.json();
 
-    </div>
-  </div>
-</section>
+    document.getElementById('totalPagos').textContent = data.total.toFixed(2);
 
+    // Tabla principal
+    const tbody = document.querySelector("#tablaPagos tbody");
+    tbody.innerHTML = '';
+    let modalHtml = '<table class="table table-bordered table-striped"><thead class="table-success text-success fw-bold"><tr><th>ID</th><th>Usuario</th><th>Método</th><th>Fecha</th><th>Monto</th><th>% del total</th></tr></thead><tbody>';
+    data.pagos.forEach(p => {
+        tbody.innerHTML += `
+            <tr class="shadow-sm">
+                <td>${p.ID_Pagos}</td>
+                <td>${p.usuario.Nombre} ${p.usuario.Apellido || ''}</td>
+                <td>${p.MetodoPago}</td>
+                <td>${p.FechaPago}</td>
+                <td>$${p.Monto.toFixed(2)}</td>
+            </tr>
+        `;
+        const porcentaje = data.total ? ((p.Monto / data.total) * 100).toFixed(2) : 0;
+        modalHtml += `
+            <tr>
+                <td>${p.ID_Pagos}</td>
+                <td>${p.usuario.Nombre} ${p.usuario.Apellido || ''}</td>
+                <td>${p.MetodoPago}</td>
+                <td>${p.FechaPago}</td>
+                <td>$${p.Monto.toFixed(2)}</td>
+                <td>${porcentaje}%</td>
+            </tr>
+        `;
+    });
+    modalHtml += '</tbody></table>';
+    document.getElementById('modalBodyGeneral').innerHTML = modalHtml;
 
+    // Gráfico
+    chart.data.datasets[0].data = [
+        data.metodos['credito'] || 0,
+        data.metodos['nequi'] || 0,
+        data.metodos['daviplata'] || 0,
+        data.metodos['efectivo'] || 0
+    ];
+    chart.update();
+}
 
+document.getElementById('btnFiltrar').addEventListener('click', actualizarDatos);
+</script>
 
+<!-- jsPDF + html2canvas -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+document.getElementById('btnExportPDF').addEventListener('click', async () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
 
+    let y = 10;
+    doc.setFontSize(16);
+    doc.setTextColor(0,128,0);
+    doc.text("Control Financiero", 105, y, null, null, "center");
+    y += 10;
 
+    const canvas = document.getElementById('chartMetodos');
+    const chartImg = canvas.toDataURL("image/png", 1.0);
+    doc.addImage(chartImg, 'PNG', 15, y, 180, 80);
+    y += 85;
 
+    const tabla = document.getElementById('tablaPagos');
+    const tablaCanvas = await html2canvas(tabla, { scale: 2 });
+    const tablaImg = tablaCanvas.toDataURL('image/png');
+    doc.addImage(tablaImg, 'PNG', 10, y, 190, tablaCanvas.height * 190 / tablaCanvas.width);
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="{{ url_for('static', filename='js/actualizacion.js') }}"></script>
-<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    const finalY = doc.internal.pageSize.getHeight() - 15;
+    doc.setFontSize(14);
+    doc.setTextColor(0,128,0);
+    doc.text(`Total Pagos: $${document.getElementById('totalPagos').textContent}`, 14, finalY);
+
+    doc.save("reporte_pagos.pdf");
+});
+</script>
 {% endblock %}
