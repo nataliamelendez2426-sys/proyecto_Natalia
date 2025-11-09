@@ -25,51 +25,6 @@
     </div>
 </div>
 
-<!-- Modal de Pago con resumen -->
-<div class="modal fade" id="modalPago" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content border-0 shadow-lg">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title"><i class="bi bi-credit-card-2-back me-2"></i> Pagar Pedido</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <form id="form-pago">
-          <h5>Resumen del Pedido</h5>
-          <ul class="list-group mb-3" id="resumen-productos-modal"></ul>
-          <h5 class="text-end">Total: $<span id="total-modal-pago">0.00</span></h5>
-          <hr>
-
-          <div class="mb-3">
-            <label class="form-label">Método de Pago</label>
-            <select class="form-select" id="metodo-pago" name="metodo" required>
-              <option value="credito">Tarjeta</option>
-              <option value="nequi">Nequi</option>
-              <option value="daviplata">Daviplata</option>
-              <option value="efectivo">Efectivo</option>
-            </select>
-          </div>
-
-          <div id="pago-tarjeta" class="mb-3">
-            <label class="form-label">Número de Tarjeta</label>
-            <input type="text" class="form-control" name="numero_tarjeta" placeholder="Ej: 1111222233334444">
-          </div>
-
-          <div id="pago-digital" class="mb-3" style="display:none;">
-            <label class="form-label">Número de Celular</label>
-            <input type="tel" class="form-control" name="numero_celular" placeholder="Ej: 3001234567">
-          </div>
-
-          <button type="submit" class="btn btn-success w-100">
-            <i class="bi bi-lock-fill me-2"></i> Confirmar y Pagar
-          </button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal de Confirmación -->
 <!-- Modal de Pago con resumen estilo checkout -->
 <div class="modal fade" id="modalPago" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-xl">
@@ -159,6 +114,26 @@
   </div>
 </div>
 
+<!-- Modal de Confirmación -->
+<div class="modal fade" id="modalConfirmacion" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="bi bi-check-circle-fill me-2"></i> ¡Pago Aprobado!</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center py-4">
+        <p class="fs-5 mb-3">Tu pedido ha sido confirmado correctamente.</p>
+        <p id="total-modal" class="fs-6 fw-bold"></p>
+        <i class="bi bi-bag-check display-1 text-success"></i>
+      </div>
+      <div class="modal-footer justify-content-center">
+        <a href="{{ url_for('catalogo') }}" class="btn btn-success btn-lg w-50">Seguir Comprando</a>
+        <button id="btn-pdf" class="btn btn-outline-primary btn-lg w-50">Descargar Recibo PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- jsPDF para PDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
