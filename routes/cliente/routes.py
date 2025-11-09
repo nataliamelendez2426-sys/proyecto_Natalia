@@ -2,7 +2,7 @@ import os
 from openai import OpenAI  
 from dotenv import load_dotenv
 from flask_login import current_user
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session , current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session , abort
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from basedatos.models import db, Usuario, Notificaciones, Direccion, Calendario,Pedido, Producto, Resena, Detalle_Pedido, Pagos,Mensaje,Garantia ,GarantiaArchivo ,Categorias
@@ -169,33 +169,34 @@ def perfil():
 
 # ---------- DETALLE_PEDIDO ----------
 
-
-@cliente.route("/pedido/<int:id_pedido>/detalle")
+@cliente.route('/cliente/pedido/<int:id>/detalle')
 @login_required
-def ver_detalle_pedido(id_pedido):
-    pedido = Pedido.query.get_or_404(id_pedido)
+def detalle_pedido(id):
+    pedido = Pedido.query.filter_by(ID_Pedido=id, ID_Usuario=current_user.ID_Usuario).first()
+    if not pedido:
+        return jsonify({'error': 'Pedido no encontrado'}), 404
 
-    try:
-        detalles = pedido.detalles_pedido or []
+    detalles = []
+    for det in pedido.detalles_pedido:
+        detalles.append({
+            "ProductoNombre": det.producto.NombreProducto if det.producto else "Producto",
+            "Cantidad": det.Cantidad or 0,
+            "PrecioUnidad": det.PrecioUnidad or 0,
+            "Subtotal": (det.Cantidad or 0) * (det.PrecioUnidad or 0)
+        })
 
-        # Evitamos None en PrecioUnidad y Cantidad
-        for d in detalles:
-            d.PrecioUnidad = d.PrecioUnidad or 0
-            d.Cantidad = d.Cantidad or 0
+    direccion = {
+        "Direccion": pedido.Destino or '',
+        "Barrio": '',
+        "Municipio": '',
+        "Departamento": '',
+        "Pais": 'Colombia'
+    }
 
-    except Exception as e:
-        print("Error detalles pedido:", e)
-        detalles = []
-
-    return render_template(
-        "Common/partials/detalle_pedido.html",
-        pedido=pedido,
-        detalles=detalles
-    )
-
-
-
-
+    return jsonify({
+        "detalles": detalles,
+        "direccion": direccion
+    })
 # ---------- AGENDAR_INSTALACION ----------
 
 @cliente.route('/cliente/instalacion', methods=['GET', 'POST'])
