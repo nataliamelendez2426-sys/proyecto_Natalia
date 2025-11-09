@@ -32,6 +32,11 @@ class Usuario(UserMixin, db.Model):
     resenas = db.relationship('Resena', back_populates='usuario', lazy=True)
     mensajes = db.relationship('Mensaje', backref='cliente', lazy=True)
 
+    # Preferencias de catálogo
+    categorias_favoritas = db.relationship('Categorias', secondary='usuario_categoria', lazy='subquery')
+    materiales_preferidos = db.Column(db.Text)  # Lista JSON de materiales preferidos
+    colores_preferidos = db.Column(db.Text)     # Lista JSON de colores preferidos
+
     def get_id(self):
         return str(self.ID_Usuario)
 
