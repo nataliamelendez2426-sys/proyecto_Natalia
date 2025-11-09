@@ -5,7 +5,6 @@
 {% endblock %}
 
 {% block content %}
-
 <div class="container mt-5">
     <h2 class="mb-4 fw-bold" style="color: #07525c;">Tu Carrito de Compras</h2>
     
@@ -35,13 +34,11 @@
       </div>
       <div class="modal-body">
         <form id="form-pago">
-          <!-- Resumen de productos -->
           <h5>Resumen del Pedido</h5>
           <ul class="list-group mb-3" id="resumen-productos-modal"></ul>
           <h5 class="text-end">Total: $<span id="total-modal-pago">0.00</span></h5>
           <hr>
 
-          <!-- Método de Pago -->
           <div class="mb-3">
             <label class="form-label">Método de Pago</label>
             <select class="form-select" id="metodo-pago" name="metodo" required>
@@ -52,13 +49,11 @@
             </select>
           </div>
 
-          <!-- Tarjeta -->
           <div id="pago-tarjeta" class="mb-3">
             <label class="form-label">Número de Tarjeta</label>
             <input type="text" class="form-control" name="numero_tarjeta" placeholder="Ej: 1111222233334444">
           </div>
 
-          <!-- Pago Digital -->
           <div id="pago-digital" class="mb-3" style="display:none;">
             <label class="form-label">Número de Celular</label>
             <input type="tel" class="form-control" name="numero_celular" placeholder="Ej: 3001234567">
@@ -93,6 +88,7 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     let carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
@@ -102,6 +98,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const checkoutBtn = document.getElementById('btn-checkout');
     const resumenModal = document.getElementById('resumen-productos-modal');
     const totalModalPago = document.getElementById('total-modal-pago');
+    const metodoSelect = document.getElementById('metodo-pago');
+    const tarjetaDiv = document.getElementById('pago-tarjeta');
+    const digitalDiv = document.getElementById('pago-digital');
 
     const actualizarTotal = () => {
         const total = carrito.reduce((acc,i)=>acc+i.precio*(i.cantidad||1),0);
@@ -165,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Abrir modal de pago con resumen
+    // Modal de pago
     checkoutBtn.addEventListener('click', ()=>{
         if(!carrito.length){ alert("Carrito vacío"); return;}
 
@@ -188,17 +187,30 @@ document.addEventListener('DOMContentLoaded', () => {
         new bootstrap.Modal(document.getElementById('modalPago')).show();
     });
 
-    // Mostrar/ocultar campos según método
-    const metodoSelect = document.getElementById('metodo-pago');
-    const tarjetaDiv = document.getElementById('pago-tarjeta');
-    const digitalDiv = document.getElementById('pago-digital');
     metodoSelect.addEventListener('change', ()=>{
         const metodo=metodoSelect.value;
         tarjetaDiv.style.display=metodo==='credito'?'block':'none';
         digitalDiv.style.display=(metodo==='nequi'||metodo==='daviplata')?'block':'none';
     });
 
-    // Submit pago
+    const generarPDF = async () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFontSize(18);
+        doc.text("Recibo de Pedido", 105, 20, null, null, "center");
+        let y=35;
+        carrito.forEach(item=>{
+            const cant = item.cantidad||1;
+            doc.setFontSize(12);
+            doc.text(`${item.nombre} x ${cant} - $${(item.precio*cant).toFixed(2)}`, 20, y);
+            y+=10;
+        });
+        const total = actualizarTotal();
+        doc.setFontSize(14);
+        doc.text(`Total: $${total.toFixed(2)}`, 20, y+10);
+        doc.save("recibo.pdf");
+    };
+
     document.getElementById('form-pago').addEventListener('submit', async e=>{
         e.preventDefault();
         const metodo = metodoSelect.value;
@@ -213,6 +225,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await res.json();
             if(data.success){
+                generarPDF();
+                if(numeroCel){
+                    await fetch("{{ url_for('cliente.notificar_pago') }}",{
+                        method:'POST',
+                        headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({numero:numeroCel, carrito, metodo})
+                    });
+                }
                 bootstrap.Modal.getInstance(document.getElementById('modalPago')).hide();
                 localStorage.setItem('carrito','[]');
                 renderizarCarrito();
@@ -226,5 +246,4 @@ document.addEventListener('DOMContentLoaded', () => {
     renderizarCarrito();
 });
 </script>
-
 {% endblock %}

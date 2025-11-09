@@ -401,23 +401,14 @@ def mensajes_cliente_ajax():
 @cliente.route('/carrito')
 @login_required
 def ver_carrito():
-    return render_template('Cliente/carrito.html')
-
-def login_required_json(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated:
-            return jsonify({"success": False, "mensaje": "Usuario no autenticado"}), 401
-        return f(*args, **kwargs)
-    return decorated_function
+   
+    direcciones = [] 
+    return render_template('cliente/carrito.html', direcciones=direcciones)
 
 @cliente.route('/checkout', methods=['POST'])
 @login_required
 def checkout():
     try:
-        if not request.is_json:
-            return jsonify({"success": False, "mensaje": "Se esperaba JSON"}), 400
-        
         data = request.get_json()
         carrito = data.get('carrito', [])
         metodo = data.get('metodo')
@@ -425,28 +416,21 @@ def checkout():
         numero_tarjeta = data.get('numero_tarjeta')
 
         if not carrito:
-            return jsonify({"success": False, "mensaje": "Carrito vacío"}), 400
+            return jsonify({"success": False, "mensaje": "El carrito está vacío."}), 400
+
 
         pedido = Pedido(
             NombreComprador=current_user.Nombre,
-            Destino="Sin dirección",
+            Destino="Dirección ejemplo",
             Estado="pendiente",
             FechaPedido=date.today(),
             ID_Usuario=current_user.id
         )
+
         db.session.add(pedido)
         db.session.commit()
 
-        # Guardar detalles del pedido
-        for item in carrito:
-            detalle = Detalle_Pedido(
-                ID_Pedido=pedido.ID_Pedido,
-                ID_Producto=item['id'],
-                Cantidad=item.get('cantidad',1)
-            )
-            db.session.add(detalle)
-
-        # Guardar pago
+        # Crear pago
         pago = Pagos(
             MetodoPago=metodo,
             Monto=sum([i['precio']*i.get('cantidad',1) for i in carrito]),
@@ -455,21 +439,36 @@ def checkout():
         db.session.add(pago)
         db.session.commit()
 
-        # Enviar notificación (simulado)
-        if metodo in ['nequi','daviplata'] and numero_celular:
-            enviar_notificacion(numero_celular, pedido.ID_Pedido, metodo)
-
-        return jsonify({"success": True})
+        return jsonify({"success": True, "mensaje": "Pago procesado correctamente."})
 
     except Exception as e:
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "mensaje": str(e)}), 500
 
+@cliente.route('/notificar_pago', methods=['POST'])
+@login_required
+def notificar_pago():
+    try:
+        data = request.get_json()
+        numero = data.get('numero')
+        carrito = data.get('carrito')
+        metodo = data.get('metodo')
 
-def enviar_notificacion(numero, id_pedido, metodo):
-    # Aquí puedes integrar Twilio, Nexmo, etc.
-    print(f"Notificación enviada a {numero} sobre pago {metodo} del pedido {id_pedido}")
+        # Enviar correo de confirmación al usuario
+        msg = Message(
+            subject="Confirmación de tu pedido",
+            recipients=[current_user.Email],
+            body=f"Tu pago por ${sum([i['precio']*i.get('cantidad',1) for i in carrito]):.2f} con método {metodo} ha sido recibido."
+        )
+        mail.send(msg)
+
+        # Aquí puedes agregar integración con Nequi/Daviplata si tienen API para enviar notificación
+        print(f"Notificación enviada al número: {numero}")
+
+        return jsonify({"success": True, "mensaje": "Notificación enviada."})
+    except Exception as e:
+        return jsonify({"success": False, "mensaje": str(e)}), 500
 
 # ---------- SEGUIMIENTO ----------
 
