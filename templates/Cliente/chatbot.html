@@ -1,0 +1,83 @@
+{% extends "common/base.html" %}
+{% block content %}
+<div class="container py-4">
+    <div class="chat-container mx-auto mt-4">
+        <div class="chat-header">
+            💬 CasaBot — Atención al Cliente
+        </div>
+
+        <div class="chat-box" id="chat-box"></div>
+
+        <div class="chat-input">
+            <input type="text" id="user-input" placeholder="Escribe tu mensaje..." autocomplete="off">
+            <button id="send-btn">Enviar</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.chat-container {
+    width: 420px;
+    height: 600px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.chat-header {
+    background: #07525c;
+    color: white;
+    text-align: center;
+    padding: 15px;
+    font-weight: bold;
+    font-size: 18px;
+}
+.chat-box {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    background: #f9f9f9;
+    display: flex;
+    flex-direction: column;
+}
+.message {
+    margin-bottom: 15px;
+    padding: 10px 15px;
+    border-radius: 15px;
+    max-width: 80%;
+}
+.user-message {
+    background: #d1f0e3;
+    align-self: flex-end;
+}
+.bot-message {
+    background: #eee;
+    align-self: flex-start;
+}
+.chat-input {
+    display: flex;
+    border-top: 1px solid #ccc;
+}
+.chat-input input {
+    flex: 1;
+    border: none;
+    padding: 10px;
+    outline: none;
+}
+.chat-input button {
+    background: #07525c;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+}
+.chat-input button:hover {
+    background: #094f4b;
+}
+</style>
+
+<script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+
+{% endblock %}

@@ -1,3 +1,4 @@
+import openai
 from flask_login import current_user
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session , current_app
 from flask_login import login_required, current_user
@@ -620,6 +621,44 @@ def mis_garantias():
     return render_template('cliente/garantias.html', garantias=garantias)
 
 
+@cliente.route('/chatbot')
+@login_required
+def chatbot():
+    return render_template('cliente/chatbot.html', usuario=current_user)
 
+# Endpoint para comunicarse con OpenAI
+@cliente.route('/chatbot/mensaje', methods=['POST'])
+@login_required
+def chatbot_mensaje():
+    data = request.get_json()
+    mensaje_usuario = data.get("mensaje", "").strip()
+
+    if not mensaje_usuario:
+        return jsonify({"respuesta": "Por favor, escribe algo para que pueda ayudarte 😊."})
+
+    try:
+        respuesta = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Eres CasaBot, el asistente virtual de la tienda 'Casa en el Árbol'. "
+                        "Tu tarea es ayudar a los clientes con dudas sobre productos, seguimiento de pedidos, "
+                        "y atención al cliente. Sé amable, clara y profesional."
+                    )
+                },
+                {"role": "user", "content": mensaje_usuario}
+            ],
+            max_tokens=350,
+            temperature=0.7
+        )
+
+        texto_respuesta = respuesta.choices[0].message["content"].strip()
+        return jsonify({"respuesta": texto_respuesta})
+
+    except Exception as e:
+        print("Error con OpenAI:", e)
+        return jsonify({"respuesta": "😔 Lo siento, hubo un problema al procesar tu solicitud."}), 500
 
 
