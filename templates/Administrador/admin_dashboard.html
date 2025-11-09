@@ -227,6 +227,12 @@
   {% endif %}
 {% endwith %}
 
+<!-- Botón flotante Control Financiero -->
+<a href="{{ url_for('admin.admin_finanzas') }}" id="botonFinanzas">
+    <i class="fas fa-coins"></i>
+    Control Financiero
+</a>
+
 <!-- Botón flotante Recursos Humanos -->
 <a href="{{ url_for('admin.lista_empleados') }}" id="botonRecursosHumanos">
     <i class="fas fa-users"></i>
@@ -241,6 +247,41 @@
 </a>
 
 <style>
+/* Botón Control Financiero */
+#botonFinanzas {
+    position: fixed;
+    bottom: 170px; /* Ajusta la altura según quieras, sobre los otros botones */
+    right: 30px;
+    background: linear-gradient(135deg, #57a773, #28a745);
+    color: white;
+    border-radius: 50px;
+    padding: 14px 22px;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    transition: transform 0.3s, background 0.3s, box-shadow 0.3s;
+    z-index: 1000;
+}
+
+#botonFinanzas i {
+    font-size: 1.3rem;
+}
+
+#botonFinanzas:hover {
+    background: linear-gradient(135deg, #28a745, #157145);
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 12px 25px rgba(0,0,0,0.35);
+}
+
+#botonFinanzas:active {
+    transform: translateY(0px) scale(0.97);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.25);
+}
+
 /* Botón Recursos Humanos */
 #botonRecursosHumanos {
     position: fixed;
