@@ -16,13 +16,7 @@ from flask import url_for
 from basedatos.decoradores import mail
 from functools import wraps
 
-load_dotenv()
-
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise ValueError("❌ La clave de OpenAI no se ha cargado")
-
-client = OpenAI(api_key=api_key)
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 favoritos_usuario = set() 
 
@@ -644,27 +638,24 @@ def chatbot_mensaje():
     if not mensaje_usuario:
         return jsonify({"respuesta": "Por favor, escribe un mensaje."})
 
-    try:
-        # ✅ Inicializa correctamente el cliente OpenAI con la clave del .env
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return jsonify({"respuesta": "❌ La clave de OpenAI no está configurada."})
 
+    client = OpenAI(api_key=api_key)
+
+    try:
         respuesta_ai = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Eres un asistente virtual amable y profesional para la tienda 'Casa en el Árbol'. "
-                        "Ayudas a los clientes con seguimiento de pedidos, dudas de productos, devoluciones y soporte general."
-                    )
-                },
+                {"role": "system",
+                 "content": "Eres un asistente virtual amable y profesional para la tienda 'Casa en el Árbol'. "
+                            "Ayudas a los clientes con seguimiento de pedidos, dudas de productos, devoluciones y soporte general."},
                 {"role": "user", "content": mensaje_usuario}
             ]
         )
-
         texto_respuesta = respuesta_ai.choices[0].message.content
         return jsonify({"respuesta": texto_respuesta})
-
     except Exception as e:
         print("⚠️ Error en chatbot:", e)
         return jsonify({"respuesta": "😔 Lo siento, hubo un problema al procesar tu solicitud."})
