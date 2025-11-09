@@ -396,14 +396,15 @@ def mensajes_cliente_ajax():
         } for m in mensajes
     ])
 
+# ---------- Ver carrito ----------
 @cliente.route('/carrito')
 @login_required
 def ver_carrito():
-    # Puedes traer direcciones reales de la base de datos
-    direcciones = []  
+    # Aquí traes las direcciones del usuario si existen
+    direcciones = [] 
     return render_template('cliente/carrito.html', direcciones=direcciones)
 
-
+# ---------- Checkout ----------
 @cliente.route('/checkout', methods=['POST'])
 @login_required
 def checkout():
@@ -417,18 +418,18 @@ def checkout():
         if not carrito:
             return jsonify({"success": False, "mensaje": "El carrito está vacío."}), 400
 
-        # Crear pedido
+        # Crear Pedido
         pedido = Pedido(
             NombreComprador=current_user.Nombre,
-            Destino="Dirección ejemplo",
+            Destino="Dirección ejemplo",  # Aquí puedes reemplazar por la dirección real
             Estado="pendiente",
-            FechaPedido=datetime.today(),
-            ID_Usuario=current_user.id
+            FechaPedido=date.today(),
+            ID_Usuario=current_user.ID_Usuario
         )
         db.session.add(pedido)
         db.session.commit()
 
-        # Crear pago
+        # Crear Pago
         total_pago = sum([i['precio']*i.get('cantidad',1) for i in carrito])
         pago = Pagos(
             MetodoPago=metodo,
@@ -437,52 +438,29 @@ def checkout():
         )
         db.session.add(pago)
         db.session.commit()
-
+        
         # Enviar correo de confirmación
         msg = Message(
             subject=f"Confirmación de tu pedido #{pedido.ID_Pedido}",
-            recipients=[current_user.Email],
+            recipients=[current_user.Correo],  # <-- Aquí estaba el error
             body=f"Hola {current_user.Nombre},\n\n"
-                 f"Tu pago por ${total_pago:.2f} con método {metodo} ha sido recibido.\n\n"
-                 "¡Gracias por comprar con nosotros!"
+                f"Tu pago por ${total_pago:.2f} con método {metodo} ha sido recibido.\n\n"
+                "¡Gracias por comprar con nosotros!"
         )
         mail.send(msg)
 
-        return jsonify({"success": True, "mensaje": "Pago procesado correctamente y correo enviado."})
+
+        # Aquí puedes agregar integración con Nequi/Daviplata si tienen API para enviar notificación
+        if metodo in ['nequi','daviplata'] and numero_celular:
+            print(f"Notificación enviada al número: {numero_celular}")
+
+        return jsonify({"success": True, "mensaje": "Pago procesado correctamente."})
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        db.session.rollback()
         return jsonify({"success": False, "mensaje": str(e)}), 500
 
-
-@cliente.route('/notificar_pago', methods=['POST'])
-@login_required
-def notificar_pago():
-    try:
-        data = request.get_json()
-        numero = data.get('numero')
-        carrito = data.get('carrito')
-        metodo = data.get('metodo')
-
-        if not carrito or not numero:
-            return jsonify({"success": False, "mensaje": "Faltan datos"}), 400
-
-        # Simular envío de notificación
-        print(f"Notificación enviada al número {numero} sobre el pago de ${sum([i['precio']*i.get('cantidad',1) for i in carrito]):.2f} con método {metodo}")
-
-        # También puedes enviar correo si quieres redundancia
-        msg = Message(
-            subject="Confirmación de tu pago",
-            recipients=[current_user.Email],
-            body=f"Tu pago por ${sum([i['precio']*i.get('cantidad',1) for i in carrito]):.2f} con método {metodo} ha sido recibido."
-        )
-        mail.send(msg)
-
-        return jsonify({"success": True, "mensaje": "Notificación enviada."})
-    except Exception as e:
-        return jsonify({"success": False, "mensaje": str(e)}), 500
 
 # ---------- SEGUIMIENTO ----------
 

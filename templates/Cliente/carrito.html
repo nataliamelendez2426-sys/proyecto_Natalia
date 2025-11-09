@@ -6,8 +6,6 @@
 
 {% block content %}
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-
 <div class="container mt-5">
     <h2 class="mb-4 fw-bold" style="color: #07525c;">Tu Carrito de Compras</h2>
     
@@ -62,10 +60,9 @@
             <input type="tel" class="form-control" name="numero_celular" placeholder="Ej: 3001234567">
           </div>
 
-          <button type="submit" class="btn btn-success w-100 mb-2">
+          <button type="submit" class="btn btn-success w-100">
             <i class="bi bi-lock-fill me-2"></i> Confirmar y Pagar
           </button>
-          <button type="button" id="btn-pdf" class="btn btn-secondary w-100">Descargar Recibo PDF</button>
         </form>
       </div>
     </div>
@@ -87,12 +84,15 @@
       </div>
       <div class="modal-footer justify-content-center">
         <a href="{{ url_for('catalogo') }}" class="btn btn-success btn-lg w-50">Seguir Comprando</a>
+        <button id="btn-pdf" class="btn btn-outline-primary btn-lg w-50">Descargar Recibo PDF</button>
       </div>
     </div>
   </div>
 </div>
 
+<!-- jsPDF para PDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     let carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
@@ -103,7 +103,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const resumenModal = document.getElementById('resumen-productos-modal');
     const totalModalPago = document.getElementById('total-modal-pago');
 
-    const actualizarTotal = () => carrito.reduce((acc,i)=>acc+i.precio*(i.cantidad||1),0);
+    const actualizarTotal = () => {
+        const total = carrito.reduce((acc,i)=>acc+i.precio*(i.cantidad||1),0);
+        carritoTotalDOM.textContent=`$${total.toFixed(2)}`;
+        return total;
+    };
 
     const renderizarCarrito = () => {
         listaCarritoDOM.innerHTML = '';
@@ -119,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const col = document.createElement('div');
             col.className='col-12 col-md-6 col-lg-4';
             col.innerHTML=`
-                <div class="card h-100">
+                <div class="card card-modern h-100">
                     <img src="${item.imagen||'{{ url_for('static', filename='img/catalogo.png') }}'}" class="card-img-top p-3" alt="${item.nombre}" style="height:200px;object-fit:contain;">
                     <div class="card-body d-flex flex-column">
                         <h5 class="card-title fw-bold">${item.nombre}</h5>
@@ -140,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 carrito[idx].cantidad=nCant;
                 localStorage.setItem('carrito',JSON.stringify(carrito));
                 document.querySelector(`[data-subtotal-index="${idx}"]`).textContent=(carrito[idx].cantidad*precio).toFixed(2);
-                carritoTotalDOM.textContent = '$'+actualizarTotal().toFixed(2);
+                actualizarTotal();
             });
 
             col.querySelector('.btn-eliminar').addEventListener('click', e=>{
@@ -150,19 +154,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderizarCarrito();
             });
         });
-        carritoTotalDOM.textContent = '$'+actualizarTotal().toFixed(2);
+        actualizarTotal();
     };
 
     vaciarCarritoBtn.addEventListener('click', ()=>{
         if(carrito.length>0 && confirm('¿Vaciar carrito?')){
-            carrito=[]; localStorage.setItem('carrito',JSON.stringify(carrito));
+            carrito=[];
+            localStorage.setItem('carrito',JSON.stringify(carrito));
             renderizarCarrito();
         }
     });
 
     checkoutBtn.addEventListener('click', ()=>{
         if(!carrito.length){ alert("Carrito vacío"); return;}
-
         resumenModal.innerHTML='';
         let totalFinal=0;
         carrito.forEach(item=>{
@@ -190,7 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
         digitalDiv.style.display=(metodo==='nequi'||metodo==='daviplata')?'block':'none';
     });
 
-    // Procesar pago y enviar correo (requiere backend)
     document.getElementById('form-pago').addEventListener('submit', async e=>{
         e.preventDefault();
         const metodo = metodoSelect.value;
@@ -219,15 +222,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-pdf').addEventListener('click', ()=>{
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        doc.setFontSize(16); doc.text("Recibo de Compra",20,20);
-        let y=30;
+        doc.setFontSize(16);
+        doc.text("Recibo de Pedido", 105, 20, null, null, "center");
+        let y = 40;
         carrito.forEach(item=>{
-            const cant=item.cantidad||1;
-            doc.text(`${item.nombre} x ${cant} - $${(item.precio*cant).toFixed(2)}`,20,y);
+            const cant = item.cantidad||1;
+            doc.text(`${item.nombre} x ${cant} - $${(item.precio*cant).toFixed(2)}`, 20, y);
             y+=10;
         });
-        doc.text(`Total: $${actualizarTotal().toFixed(2)}`,20,y+10);
-        doc.save("recibo.pdf");
+        doc.text(`Total: $${actualizarTotal().toFixed(2)}`, 20, y+10);
+        doc.save(`Recibo_${Date.now()}.pdf`);
     });
 
     renderizarCarrito();
