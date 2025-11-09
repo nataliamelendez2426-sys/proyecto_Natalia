@@ -93,10 +93,10 @@ let ctx = document.getElementById('chartMetodos').getContext('2d');
 let chart = new Chart(ctx, {
     type: 'bar',
     data: {
-        labels: ['credito','nequi','daviplata','efectivo'],
+        labels: Object.keys({{ metodos|tojson }}),
         datasets: [{
             label: 'Total Pagos por Método',
-            data: {{ metodos.values()|list|tojson }},
+            data: Object.values({{ metodos|tojson }}),
             backgroundColor: [
                 'rgba(54, 162, 235, 0.6)',
                 'rgba(255, 206, 86, 0.6)',
@@ -148,8 +148,12 @@ async function actualizarDatos() {
         `;
     });
 
-    // Actualizar gráfico
-    chart.data.datasets[0].data = Object.values(data.metodos);
+    // Actualizar gráfico solo con métodos que tienen pagos
+    const labels = Object.keys(data.metodos).filter(k => data.metodos[k] > 0);
+    const values = labels.map(l => data.metodos[l]);
+
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = values;
     chart.update();
 }
 
