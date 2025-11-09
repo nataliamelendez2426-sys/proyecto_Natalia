@@ -372,7 +372,8 @@ document.addEventListener('DOMContentLoaded', () => {
     doc.setTextColor(100, 100, 100);
     doc.text("Gracias por tu compra ", 105, 285, { align: "center" });
 
-    doc.save(`Recibo_${Date.now()}.pdf`);
+    doc.save(`Recibo_${pedido.cliente.nombre.replace(/\s+/g, '_')}_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`);
+
   }
 
   renderizarCarrito();
