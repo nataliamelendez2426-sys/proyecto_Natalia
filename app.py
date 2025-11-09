@@ -7,8 +7,7 @@ from flask_login import current_user
 from dotenv import load_dotenv
 import os
 
-load_dotenv()  # carga .env de la raíz del proyecto
-
+load_dotenv()  # carga las variables del .env
 print("Clave cargada:", os.getenv("OPENAI_API_KEY")) 
 
 # ------------------ MODELOS ------------------ #
