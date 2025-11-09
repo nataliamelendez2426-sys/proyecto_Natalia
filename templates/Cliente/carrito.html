@@ -7,24 +7,24 @@
 {% block content %}
 
 <div class="container mt-5">
-    <h2 class="mb-4 fw-bold text-primary">Tu Carrito de Compras</h2>
+  <h2 class="mb-4 fw-bold text-primary">Tu Carrito de Compras</h2>
 
-    <div id="lista-carrito" class="row g-4 mb-4"></div>
+  <div id="lista-carrito" class="row g-4 mb-4"></div>
 
-    <div class="d-flex justify-content-between align-items-center mb-5">
-        <button id="vaciar-carrito" class="btn btn-danger btn-lg shadow">
-            <i class="bi bi-trash me-2"></i> Vaciar Carrito
-        </button>
-        <h3 class="m-0">
-            Total: <span class="fw-bold text-success" id="carrito-total">$0.00</span>
-        </h3>
-    </div>
+  <div class="d-flex justify-content-between align-items-center mb-5">
+    <button id="vaciar-carrito" class="btn btn-danger btn-lg shadow">
+      <i class="bi bi-trash me-2"></i> Vaciar Carrito
+    </button>
+    <h3 class="m-0">
+      Total: <span class="fw-bold text-success" id="carrito-total">$0.00</span>
+    </h3>
+  </div>
 
-    <div class="text-end mb-5" id="checkout-container">
-        <button id="btn-checkout" class="btn btn-success btn-lg shadow">
-            <i class="bi bi-credit-card me-2"></i> Procesar Pago
-        </button>
-    </div>
+  <div class="text-end mb-5" id="checkout-container">
+    <button id="btn-checkout" class="btn btn-success btn-lg shadow">
+      <i class="bi bi-credit-card me-2"></i> Procesar Pago
+    </button>
+  </div>
 </div>
 
 <!-- Modal de Pago -->
@@ -40,11 +40,9 @@
 
       <div class="modal-body bg-light">
         <form id="form-pago" class="row g-4">
-
           <!-- Columna izquierda -->
           <div class="col-12 col-lg-8">
-
-            <!-- Dirección de envío -->
+            <!-- Dirección -->
             <div class="card border-0 shadow-sm mb-4">
               <div class="card-header bg-white fw-bold fs-5">
                 <i class="bi bi-geo-alt-fill me-2 text-primary"></i> Dirección de Envío
@@ -63,7 +61,11 @@
                   <select class="form-select" name="direccion" required>
                     {% if direcciones %}
                       {% for d in direcciones %}
-                        <option value="{{ d.Direccion }}" data-id="{{ d.ID_Direccion }}">
+                        <option value="{{ d.Direccion }}" 
+                                data-id="{{ d.ID_Direccion }}" 
+                                data-ciudad="{{ d.Ciudad }}" 
+                                data-departamento="{{ d.Departamento }}" 
+                                data-destinatario="{{ d.Destinatario or current_user.Nombre }}">
                           {{ d.Direccion }} ({{ d.Ciudad }}, {{ d.Departamento }})
                         </option>
                       {% endfor %}
@@ -101,10 +103,9 @@
                 </div>
               </div>
             </div>
-
           </div>
 
-          <!-- Columna derecha: Resumen -->
+          <!-- Columna derecha -->
           <div class="col-12 col-lg-4">
             <div class="card border-0 shadow-sm sticky-top" style="top: 1rem;">
               <div class="card-header bg-success text-white fw-bold">
@@ -123,7 +124,6 @@
               </div>
             </div>
           </div>
-
         </form>
       </div>
     </div>
@@ -158,163 +158,191 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    let carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
-    const listaCarritoDOM = document.getElementById('lista-carrito');
-    const carritoTotalDOM = document.getElementById('carrito-total');
-    const vaciarCarritoBtn = document.getElementById('vaciar-carrito');
-    const checkoutBtn = document.getElementById('btn-checkout');
-    const resumenModal = document.getElementById('resumen-productos-modal');
-    const totalModalPago = document.getElementById('total-modal-pago');
+  let carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
+  const listaCarritoDOM = document.getElementById('lista-carrito');
+  const carritoTotalDOM = document.getElementById('carrito-total');
+  const vaciarCarritoBtn = document.getElementById('vaciar-carrito');
+  const checkoutBtn = document.getElementById('btn-checkout');
+  const resumenModal = document.getElementById('resumen-productos-modal');
+  const totalModalPago = document.getElementById('total-modal-pago');
+  const btnPDF = document.getElementById('btn-pdf');
 
-    const actualizarTotal = () => {
-        const total = carrito.reduce((acc, i) => acc + i.precio * (i.cantidad || 1), 0);
-        carritoTotalDOM.textContent = `$${total.toFixed(2)}`;
-        return total;
-    };
+  const actualizarTotal = () => carrito.reduce((acc, i) => acc + i.precio * (i.cantidad || 1), 0);
 
-    const renderizarCarrito = () => {
-        listaCarritoDOM.innerHTML = '';
-        if (!carrito.length) {
-            listaCarritoDOM.innerHTML = `<div class="col-12"><div class="alert alert-info text-center">El carrito está vacío</div></div>`;
-            carritoTotalDOM.textContent = '$0.00';
-            return;
-        }
+  const renderizarCarrito = () => {
+    listaCarritoDOM.innerHTML = '';
+    if (!carrito.length) {
+      listaCarritoDOM.innerHTML = `
+        <div class="col-12">
+          <div class="alert alert-info text-center">El carrito está vacío</div>
+        </div>`;
+      carritoTotalDOM.textContent = '$0.00';
+      return;
+    }
 
-        carrito.forEach((item, index) => {
-            const precio = parseFloat(item.precio || 0);
-            const cantidad = parseInt(item.cantidad || 1);
-            const col = document.createElement('div');
-            col.className = 'col-12 col-md-6 col-lg-4';
-            col.innerHTML = `
-                <div class="card card-modern h-100">
-                    <img src="${item.imagen || '{{ url_for('static', filename='img/catalogo.png') }}'}" 
-                         class="card-img-top p-3" alt="${item.nombre}" 
-                         style="height:200px;object-fit:contain;">
-                    <div class="card-body d-flex flex-column">
-                        <h5 class="card-title fw-bold">${item.nombre}</h5>
-                        <p class="mb-1">Precio Unitario: $${precio.toFixed(2)}</p>
-                        <p class="mb-3">Subtotal: $<span data-subtotal-index="${index}">
-                            ${(precio * cantidad).toFixed(2)}</span></p>
-                        <div class="d-flex align-items-center gap-3 mb-3 mt-auto">
-                            <label class="mb-0">Cantidad:</label>
-                            <input type="number" min="1" value="${cantidad}" 
-                                   class="form-control form-control-sm w-50 input-cantidad" 
-                                   data-index="${index}">
-                        </div>
-                        <button class="btn btn-outline-danger btn-eliminar" data-index="${index}">Eliminar</button>
-                    </div>
-                </div>`;
-            listaCarritoDOM.appendChild(col);
+    carrito.forEach((item, index) => {
+      const precio = parseFloat(item.precio || 0);
+      const cantidad = parseInt(item.cantidad || 1);
+      const col = document.createElement('div');
+      col.className = 'col-12 col-md-6 col-lg-4';
+      col.innerHTML = `
+        <div class="card card-modern h-100">
+          <img src="${item.imagen || '{{ url_for('static', filename='img/catalogo.png') }}'}" 
+               class="card-img-top p-3" alt="${item.nombre}" 
+               style="height:200px;object-fit:contain;">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title fw-bold">${item.nombre}</h5>
+            <p class="mb-1">Precio Unitario: $${precio.toFixed(2)}</p>
+            <p class="mb-3">Subtotal: $<span data-subtotal-index="${index}">
+                ${(precio * cantidad).toFixed(2)}</span></p>
+            <div class="d-flex align-items-center gap-3 mb-3 mt-auto">
+              <label class="mb-0">Cantidad:</label>
+              <input type="number" min="1" value="${cantidad}" 
+                     class="form-control form-control-sm w-50 input-cantidad" 
+                     data-index="${index}">
+            </div>
+            <button class="btn btn-outline-danger btn-eliminar" data-index="${index}">Eliminar</button>
+          </div>
+        </div>`;
+      listaCarritoDOM.appendChild(col);
 
-            col.querySelector('.input-cantidad').addEventListener('change', e => {
-                let idx = parseInt(e.target.dataset.index);
-                let nCant = parseInt(e.target.value);
-                if (nCant < 1) nCant = 1;
-                carrito[idx].cantidad = nCant;
-                localStorage.setItem('carrito', JSON.stringify(carrito));
-                document.querySelector(`[data-subtotal-index="${idx}"]`).textContent = (carrito[idx].cantidad * precio).toFixed(2);
-                actualizarTotal();
-            });
+      col.querySelector('.input-cantidad').addEventListener('change', e => {
+        let idx = parseInt(e.target.dataset.index);
+        let nCant = parseInt(e.target.value);
+        if (nCant < 1) nCant = 1;
+        carrito[idx].cantidad = nCant;
+        localStorage.setItem('carrito', JSON.stringify(carrito));
+        document.querySelector(`[data-subtotal-index="${idx}"]`).textContent = (carrito[idx].cantidad * precio).toFixed(2);
+        carritoTotalDOM.textContent = `$${actualizarTotal().toFixed(2)}`;
+      });
 
-            col.querySelector('.btn-eliminar').addEventListener('click', e => {
-                const idx = parseInt(e.target.dataset.index);
-                carrito.splice(idx, 1);
-                localStorage.setItem('carrito', JSON.stringify(carrito));
-                renderizarCarrito();
-            });
+      col.querySelector('.btn-eliminar').addEventListener('click', e => {
+        const idx = parseInt(e.target.dataset.index);
+        carrito.splice(idx, 1);
+        localStorage.setItem('carrito', JSON.stringify(carrito));
+        renderizarCarrito();
+      });
+    });
+    carritoTotalDOM.textContent = `$${actualizarTotal().toFixed(2)}`;
+  };
+
+  vaciarCarritoBtn.addEventListener('click', () => {
+    if (carrito.length > 0 && confirm('¿Vaciar carrito?')) {
+      carrito = [];
+      localStorage.setItem('carrito', JSON.stringify(carrito));
+      renderizarCarrito();
+    }
+  });
+
+  checkoutBtn.addEventListener('click', () => {
+    if (!carrito.length) {
+      alert("Carrito vacío");
+      return;
+    }
+    resumenModal.innerHTML = '';
+    let totalFinal = 0;
+    carrito.forEach(item => {
+      const cant = item.cantidad || 1;
+      const subtotal = cant * item.precio;
+      totalFinal += subtotal;
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex justify-content-between align-items-center';
+      li.textContent = `${item.nombre} x ${cant}`;
+      const span = document.createElement('span');
+      span.textContent = `$${subtotal.toFixed(2)}`;
+      li.appendChild(span);
+      resumenModal.appendChild(li);
+    });
+    totalModalPago.textContent = `$${totalFinal.toFixed(2)}`;
+    new bootstrap.Modal(document.getElementById('modalPago')).show();
+  });
+
+  const metodoSelect = document.getElementById('metodo-pago');
+  const tarjetaDiv = document.getElementById('pago-tarjeta');
+  const digitalDiv = document.getElementById('pago-digital');
+  metodoSelect.addEventListener('change', () => {
+    const metodo = metodoSelect.value;
+    tarjetaDiv.style.display = metodo === 'credito' ? 'block' : 'none';
+    digitalDiv.style.display = (metodo === 'nequi' || metodo === 'daviplata') ? 'block' : 'none';
+  });
+
+  document.getElementById('form-pago').addEventListener('submit', async e => {
+    e.preventDefault();
+    const metodo = metodoSelect.value;
+    const numeroCel = e.target.numero_celular?.value || null;
+    const numeroTarjeta = e.target.numero_tarjeta?.value || null;
+    const direccionSelect = e.target.direccion;
+    const direccion_id = direccionSelect.options[direccionSelect.selectedIndex]?.getAttribute('data-id');
+    const direccion = direccionSelect.value;
+    const ciudad = direccionSelect.options[direccionSelect.selectedIndex]?.dataset.ciudad;
+    const destinatario = direccionSelect.options[direccionSelect.selectedIndex]?.dataset.destinatario;
+    const totalCompra = actualizarTotal();
+
+    try {
+      const res = await fetch("{{ url_for('cliente.checkout') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ carrito, metodo, numero_celular: numeroCel, numero_tarjeta: numeroTarjeta, direccion_id })
+      });
+      const data = await res.json();
+      if (data.success) {
+        bootstrap.Modal.getInstance(document.getElementById('modalPago')).hide();
+        localStorage.setItem('carrito', '[]');
+        renderizarCarrito();
+        document.getElementById('total-modal').textContent = `Total: $${totalCompra.toFixed(2)}`;
+        btnPDF.classList.remove('d-none');
+        new bootstrap.Modal(document.getElementById('modalConfirmacion')).show();
+
+        btnPDF.onclick = () => generarReciboPDF({
+          cliente: { nombre: "{{ current_user.Nombre }} {{ current_user.Apellido or '' }}", telefono: "{{ current_user.Telefono or 'No disponible' }}" },
+          direccion: { direccion, ciudad, destinatario },
+          metodoPago: metodo,
+          total: totalCompra,
+          carrito
         });
-        actualizarTotal();
-    };
+      } else {
+        alert(data.mensaje || 'Error procesando pago');
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  });
 
-    vaciarCarritoBtn.addEventListener('click', () => {
-        if (carrito.length > 0 && confirm('¿Vaciar carrito?')) {
-            carrito = [];
-            localStorage.setItem('carrito', JSON.stringify(carrito));
-            renderizarCarrito();
-        }
+  function generarReciboPDF(pedido) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const nombreEmpresa = "Casa en el Árbol";
+    const fecha = new Date().toLocaleDateString();
+    const total = pedido.total.toLocaleString("es-CO", { style: "currency", currency: "COP" });
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text(nombreEmpresa, 105, 20, { align: "center" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+    doc.text(`Fecha: ${fecha}`, 20, 35);
+    doc.text(`Cliente: ${pedido.cliente.nombre}`, 20, 45);
+    doc.text(`Teléfono: ${pedido.cliente.telefono}`, 20, 52);
+    doc.text(`Dirección: ${pedido.direccion.direccion}, ${pedido.direccion.ciudad}`, 20, 59);
+
+    doc.text("Detalles del Pedido:", 20, 75);
+    let y = 85;
+    pedido.carrito.forEach(item => {
+      doc.text(`• ${item.nombre} x${item.cantidad} - $${(item.precio * item.cantidad).toFixed(2)}`, 25, y);
+      y += 8;
     });
 
-    checkoutBtn.addEventListener('click', () => {
-        if (!carrito.length) {
-            alert("Carrito vacío");
-            return;
-        }
-        resumenModal.innerHTML = '';
-        let totalFinal = 0;
-        carrito.forEach(item => {
-            const cant = item.cantidad || 1;
-            const subtotal = cant * item.precio;
-            totalFinal += subtotal;
-            const li = document.createElement('li');
-            li.className = 'list-group-item d-flex justify-content-between align-items-center';
-            li.textContent = `${item.nombre} x ${cant}`;
-            const span = document.createElement('span');
-            span.textContent = `$${subtotal.toFixed(2)}`;
-            li.appendChild(span);
-            resumenModal.appendChild(li);
-        });
-        totalModalPago.textContent = `$${totalFinal.toFixed(2)}`;
-        new bootstrap.Modal(document.getElementById('modalPago')).show();
-    });
+    doc.setFont("helvetica", "bold");
+    doc.text(`Método de pago: ${pedido.metodoPago}`, 20, y + 10);
+    doc.text(`Total: ${total}`, 20, y + 18);
+    doc.setFont("helvetica", "italic");
+    doc.text("Gracias por tu compra 💚 — Casa en el Árbol", 105, 280, { align: "center" });
 
-    const metodoSelect = document.getElementById('metodo-pago');
-    const tarjetaDiv = document.getElementById('pago-tarjeta');
-    const digitalDiv = document.getElementById('pago-digital');
-    metodoSelect.addEventListener('change', () => {
-        const metodo = metodoSelect.value;
-        tarjetaDiv.style.display = metodo === 'credito' ? 'block' : 'none';
-        digitalDiv.style.display = (metodo === 'nequi' || metodo === 'daviplata') ? 'block' : 'none';
-    });
+    doc.save(`Recibo_${Date.now()}.pdf`);
+  }
 
-    document.getElementById('form-pago').addEventListener('submit', async e => {
-        e.preventDefault();
-        const metodo = metodoSelect.value;
-        const numeroCel = e.target.numero_celular?.value || null;
-        const numeroTarjeta = e.target.numero_tarjeta?.value || null;
-        const direccionSelect = e.target.direccion;
-        const direccion_id = direccionSelect.options[direccionSelect.selectedIndex]?.getAttribute('data-id');
-        const totalCompra = actualizarTotal();
-
-        try {
-            const res = await fetch("{{ url_for('cliente.checkout') }}", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ carrito, metodo, numero_celular: numeroCel, numero_tarjeta: numeroTarjeta, direccion_id })
-            });
-            const data = await res.json();
-            if (data.success) {
-                bootstrap.Modal.getInstance(document.getElementById('modalPago')).hide();
-                localStorage.setItem('carrito', '[]');
-                renderizarCarrito();
-                const modalConfirm = new bootstrap.Modal(document.getElementById('modalConfirmacion'));
-                document.getElementById('total-modal').textContent = `Total: $${totalCompra.toFixed(2)}`;
-                document.getElementById('btn-pdf').classList.remove('d-none');
-                modalConfirm.show();
-            } else {
-                alert(data.mensaje || 'Error procesando pago');
-            }
-        } catch (err) {
-            alert('Error: ' + err.message);
-        }
-    });
-
-    // Generar PDF
-    document.getElementById('btn-pdf').addEventListener('click', () => {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        doc.setFontSize(16);
-        doc.text("Recibo de Pedido", 105, 20, null, null, "center");
-        let y = 40;
-        carrito.forEach(item => {
-            const cant = item.cantidad || 1;
-            doc.text(`${item.nombre} x ${cant} - $${(item.precio * cant).toFixed(2)}`, 20, y);
-            y += 10;
-        });
-        doc.text(`Total: $${actualizarTotal().toFixed(2)}`, 20, y + 10);
-        doc.save(`Recibo_${Date.now()}.pdf`);
-    });
-
-    renderizarCarrito();
+  renderizarCarrito();
 });
 </script>
 
