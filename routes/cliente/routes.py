@@ -396,13 +396,13 @@ def mensajes_cliente_ajax():
         } for m in mensajes
     ])
 
-# ---------- Ver carrito ----------
 @cliente.route('/carrito')
 @login_required
 def ver_carrito():
-    # Aquí traes las direcciones del usuario si existen
-    direcciones = [] 
+    # Obtiene las direcciones del usuario logueado
+    direcciones = current_user.direcciones  # relación desde Usuario
     return render_template('cliente/carrito.html', direcciones=direcciones)
+
 
 # ---------- Checkout ----------
 @cliente.route('/checkout', methods=['POST'])
@@ -414,14 +414,26 @@ def checkout():
         metodo = data.get('metodo')
         numero_celular = data.get('numero_celular')
         numero_tarjeta = data.get('numero_tarjeta')
+        direccion_id = data.get('direccion_id')
+        direccion_envio = None
 
         if not carrito:
             return jsonify({"success": False, "mensaje": "El carrito está vacío."}), 400
 
+        # Buscar la dirección seleccionada por el usuario
+        if direccion_id:
+            direccion = Direccion.query.filter_by(ID_Direccion=direccion_id, ID_Usuario=current_user.ID_Usuario).first()
+            if direccion:
+                direccion_envio = f"{direccion.Direccion}, {direccion.Barrio or ''}, {direccion.Ciudad or ''}"
+            else:
+                direccion_envio = "Dirección no encontrada"
+        else:
+            direccion_envio = "Dirección no especificada"
+
         # Crear Pedido
         pedido = Pedido(
-            NombreComprador=current_user.Nombre,
-            Destino="Dirección ejemplo",  # Aquí puedes reemplazar por la dirección real
+            NombreComprador=f"{current_user.Nombre} {current_user.Apellido or ''}",
+            Destino=direccion_envio,
             Estado="pendiente",
             FechaPedido=date.today(),
             ID_Usuario=current_user.ID_Usuario
@@ -430,7 +442,7 @@ def checkout():
         db.session.commit()
 
         # Crear Pago
-        total_pago = sum([i['precio']*i.get('cantidad',1) for i in carrito])
+        total_pago = sum([i['precio'] * i.get('cantidad', 1) for i in carrito])
         pago = Pagos(
             MetodoPago=metodo,
             Monto=total_pago,
@@ -438,20 +450,22 @@ def checkout():
         )
         db.session.add(pago)
         db.session.commit()
-        
-        # Enviar correo de confirmación
+
+        # Enviar correo
         msg = Message(
             subject=f"Confirmación de tu pedido #{pedido.ID_Pedido}",
-            recipients=[current_user.Correo],  # <-- Aquí estaba el error
-            body=f"Hola {current_user.Nombre},\n\n"
-                f"Tu pago por ${total_pago:.2f} con método {metodo} ha sido recibido.\n\n"
+            recipients=[current_user.Correo],
+            body=(
+                f"Hola {current_user.Nombre},\n\n"
+                f"Tu pago por ${total_pago:.2f} con método {metodo} ha sido recibido.\n"
+                f"Enviaremos tu pedido a: {direccion_envio}\n\n"
                 "¡Gracias por comprar con nosotros!"
+            )
         )
         mail.send(msg)
 
-
-        # Aquí puedes agregar integración con Nequi/Daviplata si tienen API para enviar notificación
-        if metodo in ['nequi','daviplata'] and numero_celular:
+        # Notificación opcional
+        if metodo in ['nequi', 'daviplata'] and numero_celular:
             print(f"Notificación enviada al número: {numero_celular}")
 
         return jsonify({"success": True, "mensaje": "Pago procesado correctamente."})
@@ -460,6 +474,7 @@ def checkout():
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "mensaje": str(e)}), 500
+
 
 
 # ---------- SEGUIMIENTO ----------

@@ -8,16 +8,18 @@
 
 <div class="container mt-5">
     <h2 class="mb-4 fw-bold" style="color: #07525c;">Tu Carrito de Compras</h2>
-    
+
     <div id="lista-carrito" class="row g-4 mb-4"></div>
-    
+
     <div class="d-flex justify-content-between align-items-center mb-5">
         <button id="vaciar-carrito" class="btn btn-danger btn-lg shadow">
             <i class="bi bi-trash me-2"></i> Vaciar Carrito
         </button>
-        <h3 class="m-0">Total: <span class="fw-bold" id="carrito-total" style="color:#57a773;">$0.00</span></h3>
+        <h3 class="m-0">
+            Total: <span class="fw-bold" id="carrito-total" style="color:#57a773;">$0.00</span>
+        </h3>
     </div>
-    
+
     <div class="text-end mb-5" id="checkout-container">
         <button id="btn-checkout" class="btn btn-success btn-lg shadow">
             <i class="bi bi-credit-card me-2"></i> Procesar Pago
@@ -25,7 +27,7 @@
     </div>
 </div>
 
-<!-- Modal de Pago con resumen estilo checkout -->
+<!-- Modal de Pago -->
 <div class="modal fade" id="modalPago" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-xl">
     <div class="modal-content border-0 shadow-lg">
@@ -39,7 +41,7 @@
       <div class="modal-body bg-light">
         <form id="form-pago" class="row g-4">
 
-          <!-- Columna izquierda: Dirección y método de pago -->
+          <!-- Columna izquierda -->
           <div class="col-12 col-lg-8">
 
             <!-- Dirección de envío -->
@@ -50,11 +52,25 @@
               <div class="card-body">
                 <div class="mb-3">
                   <label class="form-label">Nombre Completo</label>
-                  <input type="text" class="form-control" name="nombre" placeholder="Ej: Kenia" required>
+                  <input type="text" class="form-control"
+                         name="nombre"
+                         value="{{ current_user.Nombre }} {{ current_user.Apellido or '' }}"
+                         readonly>
                 </div>
+
                 <div class="mb-3">
-                  <label class="form-label">Dirección</label>
-                  <input type="text" class="form-control" name="direccion" placeholder="Ej: Calle 80 sur #78g - 85, Bosa, Bogotá" required>
+                  <label class="form-label">Seleccionar Dirección</label>
+                  <select class="form-select" name="direccion" required>
+                    {% if direcciones %}
+                      {% for d in direcciones %}
+                        <option value="{{ d.Direccion }}">
+                          {{ d.Direccion }} ({{ d.Ciudad }}, {{ d.Departamento }})
+                        </option>
+                      {% endfor %}
+                    {% else %}
+                      <option value="">No tienes direcciones guardadas</option>
+                    {% endif %}
+                  </select>
                 </div>
               </div>
             </div>
@@ -74,13 +90,11 @@
                   </select>
                 </div>
 
-                <!-- Tarjeta -->
                 <div id="pago-tarjeta" class="mb-3">
                   <label class="form-label">Número de Tarjeta</label>
                   <input type="text" class="form-control" name="numero_tarjeta" placeholder="Ej: 1111222233334444">
                 </div>
 
-                <!-- Celular para Nequi/Daviplata -->
                 <div id="pago-digital" class="mb-3" style="display:none;">
                   <label class="form-label">Número de Celular</label>
                   <input type="tel" class="form-control" name="numero_celular" placeholder="Ej: 3001234567">
@@ -90,7 +104,7 @@
 
           </div>
 
-          <!-- Columna derecha: Resumen del pedido -->
+          <!-- Columna derecha: Resumen -->
           <div class="col-12 col-lg-4">
             <div class="card border-0 shadow-sm sticky-top" style="top: 1rem;">
               <div class="card-header bg-success text-white fw-bold">
@@ -98,7 +112,9 @@
               </div>
               <div class="card-body">
                 <ul class="list-group mb-3" id="resumen-productos-modal"></ul>
-                <h5 class="text-end">Total: <span class="fw-bold" id="total-modal-pago">$0.00</span></h5>
+                <h5 class="text-end">
+                  Total: <span class="fw-bold" id="total-modal-pago">$0.00</span>
+                </h5>
               </div>
               <div class="card-footer bg-white border-0">
                 <button type="submit" class="btn btn-success w-100 btn-lg shadow">
@@ -135,7 +151,7 @@
   </div>
 </div>
 
-<!-- jsPDF para PDF -->
+<!-- jsPDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
@@ -149,133 +165,146 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalModalPago = document.getElementById('total-modal-pago');
 
     const actualizarTotal = () => {
-        const total = carrito.reduce((acc,i)=>acc+i.precio*(i.cantidad||1),0);
-        carritoTotalDOM.textContent=`$${total.toFixed(2)}`;
+        const total = carrito.reduce((acc, i) => acc + i.precio * (i.cantidad || 1), 0);
+        carritoTotalDOM.textContent = `$${total.toFixed(2)}`;
         return total;
     };
 
     const renderizarCarrito = () => {
         listaCarritoDOM.innerHTML = '';
-        if(!carrito.length){
+        if (!carrito.length) {
             listaCarritoDOM.innerHTML = `<div class="col-12"><div class="alert alert-info text-center">El carrito está vacío</div></div>`;
             carritoTotalDOM.textContent = '$0.00';
             return;
         }
 
-        carrito.forEach((item,index)=>{
-            const precio = parseFloat(item.precio||0);
-            const cantidad = parseInt(item.cantidad||1);
+        carrito.forEach((item, index) => {
+            const precio = parseFloat(item.precio || 0);
+            const cantidad = parseInt(item.cantidad || 1);
             const col = document.createElement('div');
-            col.className='col-12 col-md-6 col-lg-4';
-            col.innerHTML=`
+            col.className = 'col-12 col-md-6 col-lg-4';
+            col.innerHTML = `
                 <div class="card card-modern h-100">
-                    <img src="${item.imagen||'{{ url_for('static', filename='img/catalogo.png') }}'}" class="card-img-top p-3" alt="${item.nombre}" style="height:200px;object-fit:contain;">
+                    <img src="${item.imagen || '{{ url_for('static', filename='img/catalogo.png') }}'}" 
+                         class="card-img-top p-3" alt="${item.nombre}" 
+                         style="height:200px;object-fit:contain;">
                     <div class="card-body d-flex flex-column">
                         <h5 class="card-title fw-bold">${item.nombre}</h5>
                         <p class="mb-1">Precio Unitario: $${precio.toFixed(2)}</p>
-                        <p class="mb-3">Subtotal: $<span data-subtotal-index="${index}">${(precio*cantidad).toFixed(2)}</span></p>
+                        <p class="mb-3">Subtotal: $<span data-subtotal-index="${index}">
+                            ${(precio * cantidad).toFixed(2)}</span></p>
                         <div class="d-flex align-items-center gap-3 mb-3 mt-auto">
                             <label class="mb-0">Cantidad:</label>
-                            <input type="number" min="1" value="${cantidad}" class="form-control form-control-sm w-50 input-cantidad" data-index="${index}">
+                            <input type="number" min="1" value="${cantidad}" 
+                                   class="form-control form-control-sm w-50 input-cantidad" 
+                                   data-index="${index}">
                         </div>
                         <button class="btn btn-outline-danger btn-eliminar" data-index="${index}">Eliminar</button>
                     </div>
                 </div>`;
             listaCarritoDOM.appendChild(col);
 
-            col.querySelector('.input-cantidad').addEventListener('change', e=>{
-                let idx=parseInt(e.target.dataset.index);
-                let nCant=parseInt(e.target.value); if(nCant<1)nCant=1;
-                carrito[idx].cantidad=nCant;
-                localStorage.setItem('carrito',JSON.stringify(carrito));
-                document.querySelector(`[data-subtotal-index="${idx}"]`).textContent=(carrito[idx].cantidad*precio).toFixed(2);
+            col.querySelector('.input-cantidad').addEventListener('change', e => {
+                let idx = parseInt(e.target.dataset.index);
+                let nCant = parseInt(e.target.value);
+                if (nCant < 1) nCant = 1;
+                carrito[idx].cantidad = nCant;
+                localStorage.setItem('carrito', JSON.stringify(carrito));
+                document.querySelector(`[data-subtotal-index="${idx}"]`).textContent = (carrito[idx].cantidad * precio).toFixed(2);
                 actualizarTotal();
             });
 
-            col.querySelector('.btn-eliminar').addEventListener('click', e=>{
-                const idx=parseInt(e.target.dataset.index);
-                carrito.splice(idx,1);
-                localStorage.setItem('carrito',JSON.stringify(carrito));
+            col.querySelector('.btn-eliminar').addEventListener('click', e => {
+                const idx = parseInt(e.target.dataset.index);
+                carrito.splice(idx, 1);
+                localStorage.setItem('carrito', JSON.stringify(carrito));
                 renderizarCarrito();
             });
         });
         actualizarTotal();
     };
 
-    vaciarCarritoBtn.addEventListener('click', ()=>{
-        if(carrito.length>0 && confirm('¿Vaciar carrito?')){
-            carrito=[];
-            localStorage.setItem('carrito',JSON.stringify(carrito));
+    vaciarCarritoBtn.addEventListener('click', () => {
+        if (carrito.length > 0 && confirm('¿Vaciar carrito?')) {
+            carrito = [];
+            localStorage.setItem('carrito', JSON.stringify(carrito));
             renderizarCarrito();
         }
     });
 
-    checkoutBtn.addEventListener('click', ()=>{
-        if(!carrito.length){ alert("Carrito vacío"); return;}
-        resumenModal.innerHTML='';
-        let totalFinal=0;
-        carrito.forEach(item=>{
-            const cant = item.cantidad ||1;
-            const subtotal = cant*item.precio;
-            totalFinal+=subtotal;
+    checkoutBtn.addEventListener('click', () => {
+        if (!carrito.length) {
+            alert("Carrito vacío");
+            return;
+        }
+        resumenModal.innerHTML = '';
+        let totalFinal = 0;
+        carrito.forEach(item => {
+            const cant = item.cantidad || 1;
+            const subtotal = cant * item.precio;
+            totalFinal += subtotal;
             const li = document.createElement('li');
-            li.className='list-group-item d-flex justify-content-between align-items-center';
+            li.className = 'list-group-item d-flex justify-content-between align-items-center';
             li.textContent = `${item.nombre} x ${cant}`;
             const span = document.createElement('span');
-            span.textContent=`$${subtotal.toFixed(2)}`;
+            span.textContent = `$${subtotal.toFixed(2)}`;
             li.appendChild(span);
             resumenModal.appendChild(li);
         });
-        totalModalPago.textContent = totalFinal.toFixed(2);
+        totalModalPago.textContent = `$${totalFinal.toFixed(2)}`;
         new bootstrap.Modal(document.getElementById('modalPago')).show();
     });
 
     const metodoSelect = document.getElementById('metodo-pago');
     const tarjetaDiv = document.getElementById('pago-tarjeta');
     const digitalDiv = document.getElementById('pago-digital');
-    metodoSelect.addEventListener('change', ()=>{
-        const metodo=metodoSelect.value;
-        tarjetaDiv.style.display=metodo==='credito'?'block':'none';
-        digitalDiv.style.display=(metodo==='nequi'||metodo==='daviplata')?'block':'none';
+    metodoSelect.addEventListener('change', () => {
+        const metodo = metodoSelect.value;
+        tarjetaDiv.style.display = metodo === 'credito' ? 'block' : 'none';
+        digitalDiv.style.display = (metodo === 'nequi' || metodo === 'daviplata') ? 'block' : 'none';
     });
 
-    document.getElementById('form-pago').addEventListener('submit', async e=>{
+    document.getElementById('form-pago').addEventListener('submit', async e => {
         e.preventDefault();
         const metodo = metodoSelect.value;
         const numeroCel = e.target.numero_celular?.value || null;
         const numeroTarjeta = e.target.numero_tarjeta?.value || null;
 
-        try{
-            const res = await fetch("{{ url_for('cliente.checkout') }}",{
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({carrito, metodo, numero_celular:numeroCel, numero_tarjeta:numeroTarjeta})
+        try {
+            const res = await fetch("{{ url_for('cliente.checkout') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ carrito, metodo, numero_celular: numeroCel, numero_tarjeta: numeroTarjeta })
             });
             const data = await res.json();
-            if(data.success){
+            if (data.success) {
                 bootstrap.Modal.getInstance(document.getElementById('modalPago')).hide();
-                localStorage.setItem('carrito','[]');
+                localStorage.setItem('carrito', '[]');
                 renderizarCarrito();
                 const modalConfirm = new bootstrap.Modal(document.getElementById('modalConfirmacion'));
-                document.getElementById('total-modal').textContent=`Total: $${actualizarTotal().toFixed(2)}`;
+                document.getElementById('total-modal').textContent = `Total: $${actualizarTotal().toFixed(2)}`;
                 modalConfirm.show();
-            } else alert(data.mensaje||'Error procesando pago');
-        }catch(err){ alert('Error: '+err.message);}
+            } else {
+                alert(data.mensaje || 'Error procesando pago');
+            }
+        } catch (err) {
+            alert('Error: ' + err.message);
+        }
     });
 
     // Generar PDF
-    document.getElementById('btn-pdf').addEventListener('click', ()=>{
+    document.getElementById('btn-pdf').addEventListener('click', () => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         doc.setFontSize(16);
         doc.text("Recibo de Pedido", 105, 20, null, null, "center");
         let y = 40;
-        carrito.forEach(item=>{
-            const cant = item.cantidad||1;
-            doc.text(`${item.nombre} x ${cant} - $${(item.precio*cant).toFixed(2)}`, 20, y);
-            y+=10;
+        carrito.forEach(item => {
+            const cant = item.cantidad || 1;
+            doc.text(`${item.nombre} x ${cant} - $${(item.precio * cant).toFixed(2)}`, 20, y);
+            y += 10;
         });
-        doc.text(`Total: $${actualizarTotal().toFixed(2)}`, 20, y+10);
+        doc.text(`Total: $${actualizarTotal().toFixed(2)}`, 20, y + 10);
         doc.save(`Recibo_${Date.now()}.pdf`);
     });
 
