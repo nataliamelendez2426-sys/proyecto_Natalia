@@ -1,4 +1,5 @@
 import os
+import json
 from flask import Flask, render_template, session, redirect, request, flash, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
@@ -83,63 +84,66 @@ def index():
 def nosotros():
     return render_template("common/nosotros.html")
 
-@app.route("/catalogo")
+@app.route('/catalogo')
 def catalogo():
-    # Obtener filtros del query string
+    usuario = current_user  # supondremos que está logueado
+
+    # Obtener filtros de query params
     categorias_seleccionadas = request.args.getlist('categoria')
     materiales_seleccionados = request.args.getlist('material')
     colores_seleccionados = request.args.getlist('color')
     precio_min = request.args.get('precio_min', type=float)
     precio_max = request.args.get('precio_max', type=float)
 
-    # Convertir categorías a enteros
-    try:
-        categorias_seleccionadas = [int(c) for c in categorias_seleccionadas]
-    except ValueError:
-        categorias_seleccionadas = []
-
     # Base query
-    query = Producto.query
+    productos_query = Producto.query
 
-    # Filtrar por categorías
+    # Aplicar filtros
     if categorias_seleccionadas:
-        query = query.filter(Producto.ID_Categoria.in_(categorias_seleccionadas))
-
-    # Filtrar por material
+        productos_query = productos_query.filter(Producto.ID_Categoria.in_(categorias_seleccionadas))
     if materiales_seleccionados:
-        query = query.filter(Producto.Material.in_(materiales_seleccionados))
-
-    # Filtrar por color
+        productos_query = productos_query.filter(Producto.Material.in_(materiales_seleccionados))
     if colores_seleccionados:
-        query = query.filter(Producto.Color.in_(colores_seleccionados))
-
-    # Filtrar por precio
+        productos_query = productos_query.filter(Producto.Color.in_(colores_seleccionados))
     if precio_min is not None:
-        query = query.filter(Producto.PrecioUnidad >= precio_min)
+        productos_query = productos_query.filter(Producto.PrecioUnidad >= precio_min)
     if precio_max is not None:
-        query = query.filter(Producto.PrecioUnidad <= precio_max)
+        productos_query = productos_query.filter(Producto.PrecioUnidad <= precio_max)
 
-    productos = query.all()
+    productos = productos_query.all()
 
-    # Datos para los filtros en el sidebar
-    todas_categorias = Categorias.query.order_by(Categorias.NombreCategoria).all()
-    todos_materiales = [m[0] for m in db.session.query(Producto.Material).distinct().all() if m[0]]
-    todos_colores = [c[0] for c in db.session.query(Producto.Color).distinct().all() if c[0]]
+    # Priorizar según preferencias del usuario
+    categorias_fav = [c.ID_Categoria for c in usuario.categorias_favoritas] if usuario.is_authenticated else []
+    materiales_fav = json.loads(usuario.materiales_preferidos or '[]') if usuario.is_authenticated else []
+    colores_fav = json.loads(usuario.colores_preferidos or '[]') if usuario.is_authenticated else []
 
-    return render_template(
-        "common/catalogo.html",
-        productos=productos,
-        todas_etiquetas=todas_categorias,
-        etiquetas_seleccionadas=[str(c) for c in categorias_seleccionadas],
-        materiales=todos_materiales,
-        materiales_seleccionados=materiales_seleccionados,
-        colores=todos_colores,
-        colores_seleccionados=colores_seleccionados,
-        precio_min=precio_min,
-        precio_max=precio_max
-    )
+    def score_producto(p):
+        score = 0
+        if p.ID_Categoria in categorias_fav:
+            score += 3
+        if p.Material in materiales_fav:
+            score += 2
+        if p.Color in colores_fav:
+            score += 1
+        return score
 
+    productos.sort(key=score_producto, reverse=True)  # los más relevantes primero
 
+    # Datos para filtros
+    todas_etiquetas = Categorias.query.all()
+    materiales = list(set([p.Material for p in Producto.query.all() if p.Material]))
+    colores = list(set([p.Color for p in Producto.query.all() if p.Color]))
+
+    return render_template('common/catalogo.html',
+                           productos=productos,
+                           todas_etiquetas=todas_etiquetas,
+                           categorias_seleccionadas=categorias_seleccionadas,
+                           materiales=materiales,
+                           materiales_seleccionados=materiales_seleccionados,
+                           colores=colores,
+                           colores_seleccionados=colores_seleccionados,
+                           precio_min=precio_min,
+                           precio_max=precio_max)
 
 
 

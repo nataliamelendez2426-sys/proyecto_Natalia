@@ -1,3 +1,4 @@
+import json
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from sqlalchemy import CheckConstraint, Enum
@@ -5,7 +6,12 @@ from datetime import datetime, date, time
 
 db = SQLAlchemy()
 
-# ------------------ Usuario ------------------
+usuario_categoria = db.Table(
+    'usuario_categoria',
+    db.Column('usuario_id', db.Integer, db.ForeignKey('Usuario.ID_Usuario'), primary_key=True),
+    db.Column('categoria_id', db.Integer, db.ForeignKey('Categorias.ID_Categoria'), primary_key=True)
+)
+
 class Usuario(UserMixin, db.Model):
     __tablename__ = 'Usuario'
 
@@ -33,9 +39,15 @@ class Usuario(UserMixin, db.Model):
     mensajes = db.relationship('Mensaje', backref='cliente', lazy=True)
 
     # Preferencias de catálogo
-    categorias_favoritas = db.relationship('Categorias', secondary='usuario_categoria', lazy='subquery')
-    materiales_preferidos = db.Column(db.Text)  # Lista JSON de materiales preferidos
-    colores_preferidos = db.Column(db.Text)     # Lista JSON de colores preferidos
+    categorias_favoritas = db.relationship('Categorias', secondary=usuario_categoria, lazy='subquery')
+    materiales_preferidos = db.Column(db.Text)  # JSON de materiales preferidos
+    colores_preferidos = db.Column(db.Text)     # JSON de colores preferidos
+
+    def get_materiales_favoritos(self):
+        return json.loads(self.materiales_preferidos or "[]")
+
+    def get_colores_favoritos(self):
+        return json.loads(self.colores_preferidos or "[]")
 
     def get_id(self):
         return str(self.ID_Usuario)

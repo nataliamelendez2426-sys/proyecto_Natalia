@@ -43,7 +43,7 @@
             <input class="form-check-input" type="checkbox" 
                    name="categoria" value="{{ categoria.ID_Categoria }}"
                    id="categoria-{{ categoria.ID_Categoria }}"
-                   {% if categoria.ID_Categoria|string in etiquetas_seleccionadas %} checked {% endif %}>
+                   {% if categoria.ID_Categoria|string in categorias_seleccionadas %} checked {% endif %}>
             <label class="form-check-label" for="categoria-{{ categoria.ID_Categoria }}">
               {{ categoria.NombreCategoria }}
             </label>
@@ -95,6 +95,16 @@
         {% for producto in productos %}
         <div class="col">
           <div class="card h-100 shadow-sm position-relative">
+            
+            <!-- Badge Recomendado -->
+            {% set score = 0 %}
+            {% if producto.ID_Categoria in categorias_favoritas %}{% set score = score + 3 %}{% endif %}
+            {% if producto.Material in materiales_preferidos %}{% set score = score + 2 %}{% endif %}
+            {% if producto.Color in colores_preferidos %}{% set score = score + 1 %}{% endif %}
+            {% if score > 0 %}
+              <span class="badge bg-success position-absolute top-0 start-0 m-2">Recomendado</span>
+            {% endif %}
+
             <img src="{{ url_for('static', filename=producto.ImagenPrincipal or 'img/catalogo.png') }}" class="card-img-top" alt="Imagen de {{ producto.NombreProducto }}">
 
             <!-- Botón favorito -->
@@ -108,6 +118,7 @@
               {% if producto.Stock <= 10 and producto.Stock > 0 %}
                 <p class="card-text text-danger"><b>Últimas unidades: {{ producto.Stock }}</b></p>
               {% endif %}
+
               <div class="mb-2">
                 {% if producto.categoria %}
                   <span class="badge bg-secondary me-1">{{ producto.categoria.NombreCategoria }}</span>
@@ -119,6 +130,7 @@
                   <span class="badge bg-warning text-dark me-1">{{ producto.Color }}</span>
                 {% endif %}
               </div>
+
               <a href="{{ url_for('cliente.detalle_producto_catalogo', id=producto.ID_Producto) }}" class="btn btn-outline-primary mt-auto mb-2">Ver más</a>
               <a href="{{ url_for('cliente.escribir_resena', id=producto.ID_Producto) }}" class="btn btn-outline-warning mb-2">
                 <i class="bi bi-star me-1"></i> Añadir reseña
