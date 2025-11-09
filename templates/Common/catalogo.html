@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/catalogo.css') }}">
 
+<!-- Mensajes flash -->
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
     {% for category, message in messages %}
@@ -23,48 +24,81 @@
   {% endif %}
 {% endwith %}
 
-<!-- Botones flotantes -->
+<!-- Botón flotante comparar productos -->
 <a href="{{ url_for('cliente.comparar') }}" class="btn btn-warning shadow-lg position-fixed rounded-pill px-4 py-2" style="bottom: 30px; right: 100px; z-index: 1050;">
   <i class="bi bi-bar-chart me-1"></i> Comparar productos
 </a>
 
 <div class="container mt-5">
   <h2 class="mb-4 text-center text-success"><b>Catálogo de Productos</b></h2>
-  <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
-    {% for producto in productos %}
-    <div class="col">
-      <div class="card h-100 shadow-sm position-relative">
-        <img src="{{ url_for('static', filename=producto.ImagenPrincipal or 'img/catalogo.png') }}" class="card-img-top" alt="Imagen de {{ producto.NombreProducto }}">
+  <div class="row">
+    <!-- Sidebar de filtros por etiquetas -->
+    <div class="col-md-3 mb-4">
+      <h5>Filtrar por etiquetas</h5>
+      <form method="get" id="filtro-etiquetas">
+        {% for etiqueta in todas_etiquetas %}
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" 
+                   name="etiqueta" value="{{ etiqueta.ID_Etiqueta }}"
+                   id="etiqueta-{{ etiqueta.ID_Etiqueta }}"
+                   {% if etiqueta.ID_Etiqueta|string in etiquetas_seleccionadas %} checked {% endif %}>
+            <label class="form-check-label" for="etiqueta-{{ etiqueta.ID_Etiqueta }}">
+              {{ etiqueta.NombreEtiqueta }}
+            </label>
+          </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary btn-sm mt-2">Filtrar</button>
+      </form>
+    </div>
 
-        <button type="button" class="btn btn-light btn-favorite position-absolute top-0 end-0 m-2" title="Agregar a favoritos" data-id="{{ producto.ID_Producto|string }}">
-          <i class="bi bi-heart"></i>
-        </button>
+    <!-- Catálogo de productos -->
+    <div class="col-md-9">
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
+        {% for producto in productos %}
+        <div class="col">
+          <div class="card h-100 shadow-sm position-relative">
+            <img src="{{ url_for('static', filename=producto.ImagenPrincipal or 'img/catalogo.png') }}" class="card-img-top" alt="Imagen de {{ producto.NombreProducto }}">
 
-        <div class="card-body d-flex flex-column">
-          <h5 class="card-title">{{ producto.NombreProducto }}</h5>
-          <p class="card-text">${{ '%.2f'|format(producto.PrecioUnidad) }}</p>
+            <!-- Botón favorito -->
+            <button type="button" class="btn btn-light btn-favorite position-absolute top-0 end-0 m-2" title="Agregar a favoritos" data-id="{{ producto.ID_Producto|string }}">
+              <i class="bi bi-heart"></i>
+            </button>
 
-          {% if producto.Stock <= 10 and producto.Stock > 0 %}
-            <p class="card-text text-danger"><b>Últimas unidades: {{ producto.Stock }}</b></p>
-          {% endif %}
+            <div class="card-body d-flex flex-column">
+              <h5 class="card-title">{{ producto.NombreProducto }}</h5>
 
-          <a href="{{ url_for('cliente.detalle_producto_catalogo', id=producto.ID_Producto) }}" class="btn btn-outline-primary mt-auto mb-2">Ver más</a>
-          <a href="{{ url_for('cliente.escribir_resena', id=producto.ID_Producto) }}" class="btn btn-outline-warning mb-2">
-            <i class="bi bi-star me-1"></i> Añadir reseña
-          </a>
+              <!-- Precio y stock -->
+              <p class="card-text">${{ '%.2f'|format(producto.PrecioUnidad) }}</p>
+              {% if producto.Stock <= 10 and producto.Stock > 0 %}
+                <p class="card-text text-danger"><b>Últimas unidades: {{ producto.Stock }}</b></p>
+              {% endif %}
 
-          <button type="button" class="btn btn-primary btn-add-cart"
-            {% if producto.Stock == 0 %} disabled {% endif %}
-            data-id="{{ producto.ID_Producto|string }}"
-            data-nombre="{{ producto.NombreProducto }}"
-            data-precio="{{ '%.2f'|format(producto.PrecioUnidad) }}"
-            data-imagen="{{ url_for('static', filename=producto.ImagenPrincipal or 'img/catalogo.png') }}">
-            <i class="bi bi-cart-plus me-2"></i> Agregar al carrito
-          </button>
+              <!-- Etiquetas del producto -->
+              <div class="mb-2">
+                {% for etiqueta in producto.etiquetas %}
+                  <span class="badge bg-secondary me-1">{{ etiqueta.NombreEtiqueta }}</span>
+                {% endfor %}
+              </div>
+
+              <!-- Botones de acción -->
+              <a href="{{ url_for('cliente.detalle_producto_catalogo', id=producto.ID_Producto) }}" class="btn btn-outline-primary mt-auto mb-2">Ver más</a>
+              <a href="{{ url_for('cliente.escribir_resena', id=producto.ID_Producto) }}" class="btn btn-outline-warning mb-2">
+                <i class="bi bi-star me-1"></i> Añadir reseña
+              </a>
+              <button type="button" class="btn btn-primary btn-add-cart"
+                {% if producto.Stock == 0 %} disabled {% endif %}
+                data-id="{{ producto.ID_Producto|string }}"
+                data-nombre="{{ producto.NombreProducto }}"
+                data-precio="{{ '%.2f'|format(producto.PrecioUnidad) }}"
+                data-imagen="{{ url_for('static', filename=producto.ImagenPrincipal or 'img/catalogo.png') }}">
+                <i class="bi bi-cart-plus me-2"></i> Agregar al carrito
+              </button>
+            </div>
+          </div>
         </div>
+        {% endfor %}
       </div>
     </div>
-    {% endfor %}
   </div>
 </div>
 
@@ -131,7 +165,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const agregarAlCarrito = (btn) => {
     const id = btn.dataset.id.toString();
-    // Revisar si ya existe
     let productoExistente = carrito.find(p=>p.id === id);
     if(productoExistente){
       productoExistente.cantidad += 1;

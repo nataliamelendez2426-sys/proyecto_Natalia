@@ -8,7 +8,7 @@ from flask_login import current_user
 
 
 # ------------------ MODELOS ------------------ #
-from basedatos.models import db, Usuario, Producto,Pedido
+from basedatos.models import db, Usuario, Producto,Pedido,Etiqueta
 
 # ------------------ EXTENSIONES ------------------ #
 from basedatos.decoradores import mail
@@ -85,8 +85,23 @@ def nosotros():
 
 @app.route("/catalogo")
 def catalogo():
-    productos = Producto.query.all()
-    return render_template("common/catalogo.html", productos=productos)
+    # Obtener etiquetas seleccionadas del query string
+    etiquetas_seleccionadas = request.args.getlist('etiqueta')  # lista de strings
+
+    # Todas las etiquetas para mostrar en el sidebar
+    todas_etiquetas = Etiqueta.query.order_by(Etiqueta.NombreEtiqueta).all()
+
+    if etiquetas_seleccionadas:
+        # Filtrar productos que tengan alguna de las etiquetas seleccionadas
+        productos = Producto.query.join(Producto.etiquetas).filter(Etiqueta.ID_Etiqueta.in_(etiquetas_seleccionadas)).all()
+    else:
+        productos = Producto.query.all()
+
+    return render_template("common/catalogo.html",
+                           productos=productos,
+                           todas_etiquetas=todas_etiquetas,
+                           etiquetas_seleccionadas=etiquetas_seleccionadas)
+
 
 @app.route("/favoritos", methods=["POST"])
 def favoritos():
