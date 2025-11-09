@@ -295,3 +295,29 @@ class GarantiaArchivo(db.Model):
     NombreArchivo = db.Column(db.String(200))
     RutaArchivo = db.Column(db.String(500), nullable=False)
     FechaSubida = db.Column(db.DateTime, default=datetime.utcnow)
+
+# ------------------ Etiqueta ------------------
+class Etiqueta(db.Model):
+    __tablename__ = 'Etiqueta'
+
+    ID_Etiqueta = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    NombreEtiqueta = db.Column(db.String(100), nullable=False)
+    ID_Categoria = db.Column(db.Integer, db.ForeignKey('Categorias.ID_Categoria'), nullable=False)
+
+    # Relación con Categoría
+    categoria = db.relationship('Categorias', backref='etiquetas', lazy=True)
+
+# ------------------ Tabla intermedia producto_etiqueta ------------------
+producto_etiqueta = db.Table(
+    'producto_etiqueta',
+    db.Column('ID_Producto', db.Integer, db.ForeignKey('Producto.ID_Producto'), primary_key=True),
+    db.Column('ID_Etiqueta', db.Integer, db.ForeignKey('Etiqueta.ID_Etiqueta'), primary_key=True)
+)
+
+# ------------------ Relación en Producto ------------------
+Producto.etiquetas = db.relationship(
+    'Etiqueta',
+    secondary=producto_etiqueta,
+    backref=db.backref('productos', lazy='dynamic'),
+    lazy='dynamic'
+)
