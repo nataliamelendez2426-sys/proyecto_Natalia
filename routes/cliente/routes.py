@@ -16,6 +16,7 @@ from flask import url_for
 from werkzeug.utils import secure_filename
 from basedatos.decoradores import mail
 from functools import wraps
+from datetime import date
 
 UPLOAD_FOLDER_DEFECTUOSO = 'static/uploads/productos_defectuosos'
 UPLOAD_FOLDER = 'static/uploads/garantias'
@@ -837,24 +838,33 @@ def registrar_defectuoso(pedido_id, id_producto):
     return render_template('cliente/registrar_defectuoso.html', detalle=detalle)
 
 
-@cliente.route('/cliente/agendar_cita/<int:id_defecto>', methods=['POST'])
+@cliente.route('/cliente/agendar_cita/<int:notificacion_id>', methods=['POST'])
 @login_required
-def agendar_cita(id_defecto):
-    defecto = ProductoDefectuoso.query.get_or_404(id_defecto)
-    if defecto.ID_Usuario != current_user.ID_Usuario:
-        flash("No puedes modificar esta cita.", "danger")
+def agendar_cita_tecnico(notificacion_id):
+    notificacion = Notificaciones.query.get_or_404(notificacion_id)
+
+    fecha_str = request.form.get('fecha')
+    hora_str = request.form.get('hora')
+
+    if not fecha_str or not hora_str:
+        flash("Debes seleccionar fecha y hora para la cita.", "danger")
         return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
-    fecha = request.form.get('fecha')
-    hora = request.form.get('hora')
-
-    if not fecha or not hora:
-        flash("Debes seleccionar una fecha y hora.", "warning")
+    try:
+        fecha_cita = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        hora_cita = datetime.strptime(hora_str, "%H:%M").time()
+    except ValueError:
+        flash("Formato de fecha u hora inválido.", "danger")
         return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
-    # Guardar la cita en el producto defectuoso
-    defecto.FechaCita = f"{fecha} {hora}"
+    cita = CitaTecnico(
+        Fecha_Cita=fecha_cita,
+        Hora_Cita=hora_cita,
+        ID_Notificacion=notificacion_id
+    )
+
+    db.session.add(cita)
     db.session.commit()
 
-    flash("Tu cita ha sido agendada correctamente.", "success")
+    flash("Cita agendada correctamente con el técnico.", "success")
     return redirect(url_for('cliente.ver_notificaciones_cliente'))
