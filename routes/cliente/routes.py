@@ -464,90 +464,91 @@ def enviar_correo_confirmacion(usuario, pedido, total_pago, metodo, direccion_en
 @cliente.route('/checkout', methods=['POST'])
 @login_required
 def checkout():
+    data = request.get_json()
+    carrito = data.get('carrito', [])
+    metodo = data.get('metodo')
+    direccion_id = data.get('direccion_id')
+
+    if not carrito:
+        return jsonify({"success": False, "mensaje": "Carrito vacío"})
+
     try:
-        data = request.get_json()
-        carrito = data.get('carrito', [])
-        metodo = data.get('metodo')
-        numero_celular = data.get('numero_celular')
-        numero_tarjeta = data.get('numero_tarjeta')
-        direccion_id = data.get('direccion_id')
-
-        if not carrito:
-            return jsonify({"success": False, "mensaje": "El carrito está vacío."}), 400
-
-        # 1️⃣ Buscar dirección seleccionada
-        direccion_envio = "Dirección no especificada"
-        if direccion_id:
-            direccion = Direccion.query.filter_by(
-                ID_Direccion=direccion_id,
-                ID_Usuario=current_user.ID_Usuario
-            ).first()
-            if direccion:
-                direccion_envio = f"{direccion.Direccion}, {direccion.Barrio or ''}, {direccion.Ciudad or ''}"
-            else:
-                direccion_envio = "Dirección no encontrada"
-
-        # 2️⃣ Crear pedido
+        # 1️⃣ Crear el pedido
         pedido = Pedido(
-            NombreComprador=f"{current_user.Nombre} {current_user.Apellido or ''}".strip(),
-            Destino=direccion_envio,
-            Estado="pendiente",
+            NombreComprador=f"{current_user.Nombre} {current_user.Apellido or ''}",
+            Estado='pendiente',
             FechaPedido=date.today(),
+            Destino=str(direccion_id),
             ID_Usuario=current_user.ID_Usuario
         )
         db.session.add(pedido)
-        db.session.flush()  # 🔹 Necesario para que pedido.ID_Pedido exista antes de insertar detalles
+        db.session.flush()  # 🔹 Necesario para obtener pedido.ID_Pedido
 
-        # 3️⃣ Registrar detalles del pedido
-        total_pago = 0
+        total_compra = 0
+        detalles = []
+
+        # 2️⃣ Crear los detalles del pedido y actualizar stock
         for item in carrito:
-            id_producto = item.get('ID_Producto')
-            cantidad = item.get('cantidad', 1)
-            precio = item.get('precio', 0)
+            producto = Producto.query.get(item['ID_Producto'])
+            if not producto:
+                continue
 
-            if not id_producto:
-                continue  # evita errores si falta ID_Producto
+            cantidad = int(item['cantidad'] or 1)
+            precio = float(item['precio'] or 0)
+            subtotal = cantidad * precio
+            total_compra += subtotal
 
+            # Guardar detalle
             detalle = Detalle_Pedido(
                 ID_Pedido=pedido.ID_Pedido,
-                ID_Producto=id_producto,
+                ID_Producto=producto.ID_Producto,
                 Cantidad=cantidad,
                 PrecioUnidad=precio
             )
             db.session.add(detalle)
-            total_pago += cantidad * precio
 
-        # 4️⃣ Registrar pago
+            detalles.append({
+                "nombre": producto.NombreProducto,
+                "cantidad": cantidad,
+                "subtotal": subtotal
+            })
+
+            # Actualizar stock
+            producto.Stock -= cantidad
+            if producto.Stock < 0:
+                producto.Stock = 0
+
+        # 3️⃣ Guardar método de pago
         pago = Pagos(
             MetodoPago=metodo,
-            Monto=total_pago,
+            Monto=total_compra,
             ID_Pedido=pedido.ID_Pedido
         )
         db.session.add(pago)
 
-        # 5️⃣ Confirmar todos los cambios
+        # 4️⃣ Confirmar la transacción
         db.session.commit()
 
-        # 6️⃣ Enviar correo de confirmación (función externa)
+        # 5️⃣ Enviar correo de confirmación
+        from app import mail  # Asegúrate de importar mail si no está global
         enviar_correo_confirmacion(
             usuario=current_user,
             pedido=pedido,
-            total_pago=total_pago,
+            total_pago=total_compra,
             metodo=metodo,
-            direccion_envio=direccion_envio
+            direccion_envio=direccion_id
         )
 
-        # 7️⃣ Notificación opcional para Nequi/Daviplata
-        if metodo in ['nequi', 'daviplata'] and numero_celular:
-            print(f"📱 Notificación enviada al número: {numero_celular}")
-
-        return jsonify({"success": True, "mensaje": "Pago procesado correctamente."})
+        return jsonify({
+            "success": True,
+            "total": total_compra,
+            "pedido_id": pedido.ID_Pedido,
+            "detalles": detalles
+        })
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         db.session.rollback()
-        return jsonify({"success": False, "mensaje": str(e)}), 500
+        return jsonify({"success": False, "mensaje": str(e)})
 
 
 # ---------- SEGUIMIENTO ----------

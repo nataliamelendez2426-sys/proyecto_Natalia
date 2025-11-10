@@ -229,6 +229,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  const generarPDF = (items, total) => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Recibo de Compra", 105, 15, { align: "center" });
+    doc.setFontSize(12);
+    let y = 30;
+    items.forEach(item => {
+      doc.text(`${item.nombre} x ${item.cantidad} = $${(item.precio*item.cantidad).toFixed(2)}`, 20, y);
+      y += 10;
+    });
+    doc.text(`Total: $${total.toFixed(2)}`, 20, y + 10);
+    doc.save("recibo.pdf");
+  };
+
   checkoutBtn.addEventListener('click', () => {
     if (!carrito.length) {
       alert("Carrito vacío");
@@ -268,12 +283,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const numeroTarjeta = e.target.numero_tarjeta?.value || null;
     const direccionSelect = e.target.direccion;
     const direccion_id = direccionSelect.options[direccionSelect.selectedIndex]?.getAttribute('data-id');
-    const direccion = direccionSelect.value;
-    const ciudad = direccionSelect.options[direccionSelect.selectedIndex]?.dataset.ciudad;
-    const destinatario = direccionSelect.options[direccionSelect.selectedIndex]?.dataset.destinatario;
     const totalCompra = actualizarTotal();
 
-    // 🔹 Aseguramos que cada item tenga ID_Producto
     const carritoParaBackend = carrito.map(item => ({
       ID_Producto: item.ID_Producto,
       cantidad: item.cantidad || 1,
@@ -295,6 +306,9 @@ document.addEventListener('DOMContentLoaded', () => {
         renderizarCarrito();
         document.getElementById('total-modal').textContent = `Total: $${totalCompra.toFixed(2)}`;
         btnPDF.classList.remove('d-none');
+
+        btnPDF.onclick = () => generarPDF(data.detalles, totalCompra);
+
         new bootstrap.Modal(document.getElementById('modalConfirmacion')).show();
       } else {
         alert(data.mensaje || 'Error procesando pago');
