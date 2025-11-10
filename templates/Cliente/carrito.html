@@ -177,6 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     carrito.forEach((item, index) => {
+      if (!item.ID_Producto) console.error("Producto sin ID_Producto:", item);
       const precio = parseFloat(item.precio || 0);
       const cantidad = parseInt(item.cantidad || 1);
       const col = document.createElement('div');
@@ -286,10 +287,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalCompra = actualizarTotal();
 
     const carritoParaBackend = carrito.map(item => ({
-      ID_Producto: item.ID_Producto,
-      cantidad: item.cantidad || 1,
-      precio: item.precio
+    ID_Producto: item.id,  // <-- aquí usamos item.id
+    cantidad: item.cantidad || 1,
+    precio: item.precio
     }));
+
 
     try {
       const res = await fetch("{{ url_for('cliente.checkout') }}", {
@@ -307,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('total-modal').textContent = `Total: $${totalCompra.toFixed(2)}`;
         btnPDF.classList.remove('d-none');
 
-        btnPDF.onclick = () => generarPDF(data.detalles, totalCompra);
+        btnPDF.onclick = () => generarPDF(carritoParaBackend, totalCompra);
 
         new bootstrap.Modal(document.getElementById('modalConfirmacion')).show();
       } else {
