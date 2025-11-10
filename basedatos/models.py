@@ -169,7 +169,10 @@ class Detalle_Pedido(db.Model):
 
     @property
     def subtotal(self):
-        return self.Cantidad * self.PrecioUnidad
+        precio = self.PrecioUnidad or 0
+        cantidad = self.Cantidad or 0
+        return cantidad * precio
+
 
 # ------------------ Pagos ------------------
 class Pagos(db.Model):
