@@ -1,13 +1,32 @@
 {% extends "common/base.html" %}
 
 {% block content %}
-<h2>Historial de actividades de {{ historial.usuario.Nombre }} {{ historial.usuario.Apellido }}</h2>
+<h2 class="historial-title">Historial de actividades de {{ historial.usuario.Nombre }} {{ historial.usuario.Apellido }}</h2>
 
+<!-- Filtro por tipo -->
+<div class="filtro-container">
+    <label for="filtroTipo">Filtrar por tipo:</label>
+    <select id="filtroTipo">
+        <option value="todos">Todos</option>
+        <option value="pedido">Pedidos</option>
+        <option value="pago">Pagos</option>
+        <option value="resena">Reseñas</option>
+        <option value="mensaje">Mensajes</option>
+        <option value="garantia">Garantías</option>
+        <option value="notificacion">Notificaciones</option>
+        <option value="novedad">Novedades</option>
+        <option value="comentario">Comentarios</option>
+    </select>
+</div>
+
+<!-- Contenedor de actividades -->
 <div class="historial-container">
     {% for act in historial.actividades %}
-        <div class="actividad-card" style="border:1px solid #ccc; padding:10px; margin-bottom:10px; border-radius:5px;">
-            <strong>[{{ act.tipo|capitalize }}]</strong> - {{ act.fecha }}
-            <div style="margin-left:15px; margin-top:5px;">
+        <div class="actividad-card {{ act.tipo }}">
+            <div class="actividad-header">
+                <strong>[{{ act.tipo|capitalize }}]</strong> - {{ act.fecha }}
+            </div>
+            <div class="actividad-body">
                 {% if act.tipo == 'pedido' %}
                     Pedido #{{ act.detalle.ID_Pedido }} - Estado: {{ act.detalle.Estado }} - Destino: {{ act.detalle.Destino }}
                     <ul>
@@ -34,4 +53,113 @@
         </div>
     {% endfor %}
 </div>
+
+<!-- Estilos CSS incluidos -->
+<style>
+/* Contenedor principal */
+.historial-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-width: 900px;
+    margin: 0 auto;
+    padding-bottom: 30px;
+}
+
+/* Tarjeta de actividad */
+.actividad-card {
+    border-radius: 8px;
+    padding: 15px 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    background-color: #f9f9f9;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.actividad-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.actividad-header {
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.actividad-body ul {
+    margin-top: 5px;
+    margin-left: 20px;
+}
+
+/* Colores por tipo de actividad */
+.actividad-card.pedido {
+    border-left: 5px solid #3498db;
+}
+
+.actividad-card.pago {
+    border-left: 5px solid #2ecc71;
+}
+
+.actividad-card.resena {
+    border-left: 5px solid #f39c12;
+}
+
+.actividad-card.mensaje {
+    border-left: 5px solid #9b59b6;
+}
+
+.actividad-card.garantia {
+    border-left: 5px solid #e74c3c;
+}
+
+.actividad-card.notificacion {
+    border-left: 5px solid #1abc9c;
+}
+
+.actividad-card.novedad {
+    border-left: 5px solid #34495e;
+}
+
+.actividad-card.comentario {
+    border-left: 5px solid #e67e22;
+}
+
+/* Título */
+.historial-title {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Filtro */
+.filtro-container {
+    max-width: 900px;
+    margin: 0 auto 20px auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.filtro-container select {
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+</style>
+
+<!-- Script para filtro -->
+<script>
+const filtro = document.getElementById('filtroTipo');
+filtro.addEventListener('change', function() {
+    const tipoSeleccionado = this.value;
+    const cards = document.querySelectorAll('.actividad-card');
+
+    cards.forEach(card => {
+        if (tipoSeleccionado === 'todos' || card.classList.contains(tipoSeleccionado)) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+});
+</script>
+
 {% endblock %}

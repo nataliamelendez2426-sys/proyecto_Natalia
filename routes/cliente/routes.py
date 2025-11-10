@@ -553,6 +553,94 @@ def confirmar_entrega(pedido_id):
 
 # ---------- HISTORIAL_TRANSACCIONES ----------
 
+@cliente.route('/historial')
+@login_required
+def historial():
+    cliente_id = current_user.ID_Usuario
+    
+    pedidos = Pedido.query.filter_by(ID_Usuario=cliente_id).order_by(Pedido.FechaPedido.desc()).all()
+    
+  
+    for pedido in pedidos:
+        pedido.subtotal = sum(detalle.Cantidad * detalle.PrecioUnidad for detalle in pedido.detalles_pedido)
+    
+    return render_template('cliente/historial_transacciones.html', pedidos=pedidos)
+
+
+
+@cliente.route('/pedido/<int:pedido_id>')
+@login_required
+def ver_pedido(pedido_id):
+    pedido = Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Usuario=current_user.ID_Usuario).first_or_404()
+    return render_template('cliente/ver_pedido.html', pedido=pedido)
+
+
+@cliente.route('/pedido/<int:pedido_id>/eliminar', methods=['POST'])
+@login_required
+def eliminar_pedido(pedido_id):
+    pedido = Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Usuario=current_user.ID_Usuario).first_or_404()
+    
+    db.session.delete(pedido)
+    db.session.commit()
+    flash('Pedido eliminado correctamente.', 'success')
+    return redirect(url_for('cliente.historial'))
+
+# ---------- GARANTIAS ----------
+@cliente.route('/garantia/<int:pedido_id>', methods=['GET', 'POST'])
+@login_required
+def solicitar_garantia(pedido_id):
+    pedido = Pedido.query.get_or_404(pedido_id)
+
+    if request.method == 'POST':
+        motivo = request.form.get('motivo')
+        archivos = request.files.getlist('archivos')
+
+        nueva_garantia = Garantia(
+            ID_Pedido=pedido.ID_Pedido,
+            ID_Usuario=current_user.ID_Usuario,
+            Motivo=motivo
+        )
+        db.session.add(nueva_garantia)
+        db.session.commit()  
+
+        # Guardar archivos
+        for archivo in archivos:
+            if archivo.filename != '':
+                filename = secure_filename(archivo.filename)
+                ruta = os.path.join(UPLOAD_FOLDER, filename)
+                archivo.save(ruta)
+                archivo_garantia = GarantiaArchivo(
+                    ID_Garantia=nueva_garantia.ID_Garantia,
+                    NombreArchivo=filename,
+                    RutaArchivo=ruta
+                )
+                db.session.add(archivo_garantia)
+
+        db.session.commit()
+        flash('Solicitud de garantía enviada correctamente.', 'success')
+        return redirect(url_for('cliente.mis_pedidos'))
+
+    return render_template('cliente/solicitar_garantia.html', pedido=pedido)
+
+
+@cliente.route('/guardar_preferencias', methods=['POST'])
+@login_required
+def guardar_preferencias():
+    categorias = request.form.getlist('categoria')  # lista de IDs seleccionadas
+    materiales = request.form.getlist('material')
+    colores = request.form.getlist('color')
+
+    # Actualizar categorías favoritas
+    current_user.categorias_favoritas = Categorias.query.filter(Categorias.ID_Categoria.in_(categorias)).all()
+
+    # Guardar materiales y colores como JSON
+    import json
+    current_user.materiales_preferidos = json.dumps(materiales)
+    current_user.colores_preferidos = json.dumps(colores)
+
+    db.session.commit()
+    return redirect(url_for('cliente.catalogo'))
+
 def historial_actividades(usuario_id):
     usuario = Usuario.query.get(usuario_id)
     if not usuario:
@@ -682,60 +770,3 @@ def historial_actividades_web():
     historial = historial_actividades(current_user.ID_Usuario)
     return render_template("cliente/historial.html", historial=historial)
 
-
-
-# ---------- GARANTIAS ----------
-@cliente.route('/garantia/<int:pedido_id>', methods=['GET', 'POST'])
-@login_required
-def solicitar_garantia(pedido_id):
-    pedido = Pedido.query.get_or_404(pedido_id)
-
-    if request.method == 'POST':
-        motivo = request.form.get('motivo')
-        archivos = request.files.getlist('archivos')
-
-        nueva_garantia = Garantia(
-            ID_Pedido=pedido.ID_Pedido,
-            ID_Usuario=current_user.ID_Usuario,
-            Motivo=motivo
-        )
-        db.session.add(nueva_garantia)
-        db.session.commit()  
-
-        # Guardar archivos
-        for archivo in archivos:
-            if archivo.filename != '':
-                filename = secure_filename(archivo.filename)
-                ruta = os.path.join(UPLOAD_FOLDER, filename)
-                archivo.save(ruta)
-                archivo_garantia = GarantiaArchivo(
-                    ID_Garantia=nueva_garantia.ID_Garantia,
-                    NombreArchivo=filename,
-                    RutaArchivo=ruta
-                )
-                db.session.add(archivo_garantia)
-
-        db.session.commit()
-        flash('Solicitud de garantía enviada correctamente.', 'success')
-        return redirect(url_for('cliente.mis_pedidos'))
-
-    return render_template('cliente/solicitar_garantia.html', pedido=pedido)
-
-
-@cliente.route('/guardar_preferencias', methods=['POST'])
-@login_required
-def guardar_preferencias():
-    categorias = request.form.getlist('categoria')  # lista de IDs seleccionadas
-    materiales = request.form.getlist('material')
-    colores = request.form.getlist('color')
-
-    # Actualizar categorías favoritas
-    current_user.categorias_favoritas = Categorias.query.filter(Categorias.ID_Categoria.in_(categorias)).all()
-
-    # Guardar materiales y colores como JSON
-    import json
-    current_user.materiales_preferidos = json.dumps(materiales)
-    current_user.colores_preferidos = json.dumps(colores)
-
-    db.session.commit()
-    return redirect(url_for('cliente.catalogo'))
