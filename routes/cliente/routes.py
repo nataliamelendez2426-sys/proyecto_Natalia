@@ -835,3 +835,13 @@ def registrar_defectuoso(pedido_id, id_producto):
         return redirect(url_for('cliente.seleccionar_pedido_defectuoso'))
 
     return render_template('cliente/registrar_defectuoso.html', detalle=detalle)
+
+# ejemplo dentro de la función que resuelve el producto defectuoso
+def notificar_cliente(usuario_id, mensaje):
+    notificacion = Notificaciones(
+        Titulo="Producto defectuoso",
+        Mensaje=mensaje,
+        ID_Usuario=usuario_id
+    )
+    db.session.add(notificacion)
+    db.session.commit()
