@@ -9,17 +9,38 @@
 <form method="POST" action="{{ url_for('admin.actualizar_garantia', garantia_id=garantia.ID_Garantia) }}">
   <div class="mb-3">
     <label for="estado" class="form-label">Cambiar estado</label>
-    <select name="estado" id="estado" class="form-select">
+    <select name="estado" id="estado" class="form-select" onchange="toggleInstalador(this.value)">
       <option value="pendiente" {% if garantia.Estado=='pendiente' %}selected{% endif %}>Pendiente</option>
       <option value="aprobada" {% if garantia.Estado=='aprobada' %}selected{% endif %}>Aprobada</option>
       <option value="rechazada" {% if garantia.Estado=='rechazada' %}selected{% endif %}>Rechazada</option>
       <option value="completada" {% if garantia.Estado=='completada' %}selected{% endif %}>Completada</option>
     </select>
   </div>
+
   <div class="mb-3">
     <label for="comentario" class="form-label">Comentario del admin</label>
-    <textarea name="comentario" id="comentario" class="form-control">{{ garantia.ComentarioAdmin or '' }}</textarea>
+    <textarea name="comentario" id="comentario" class="form-control" rows="3">{{ garantia.ComentarioAdmin or '' }}</textarea>
   </div>
+
+  <div class="mb-3" id="div-instalador" style="{% if garantia.Estado != 'aprobada' %}display:none;{% endif %}">
+    <label for="instalador" class="form-label">Asignar instalador</label>
+    <select name="instalador_id" id="instalador" class="form-select">
+      <option value="">-- Selecciona un instalador --</option>
+      {% for inst in instaladores %}
+        <option value="{{ inst.ID_Usuario }}" {% if garantia.ID_Empleado == inst.ID_Usuario %}selected{% endif %}>
+          {{ inst.Nombre }} {{ inst.Apellido }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
   <button type="submit" class="btn btn-success">Actualizar</button>
 </form>
+
+<script>
+function toggleInstalador(estado) {
+    const div = document.getElementById('div-instalador');
+    div.style.display = (estado === 'aprobada') ? 'block' : 'none';
+}
+</script>
 {% endblock %}

@@ -820,10 +820,16 @@ def detalle_garantia(garantia_id):
         return redirect(url_for('cliente.index'))
 
     garantia = Garantia.query.get_or_404(garantia_id)
+
+    # Traer solo los usuarios con rol instalador
+    instaladores = Usuario.query.filter_by(Rol='instalador').all()
+
     return render_template(
-        'administrador/detalle_garantia.html', 
-        garantia=garantia
+        'administrador/detalle_garantia.html',
+        garantia=garantia,
+        instaladores=instaladores
     )
+
 
 @admin.route('/garantia/<int:garantia_id>/actualizar', methods=['POST'])
 @login_required
@@ -833,28 +839,32 @@ def actualizar_garantia(garantia_id):
         return redirect(url_for('cliente.index'))
 
     garantia = Garantia.query.get_or_404(garantia_id)
-    nuevo_estado = request.form.get('estado')  # 'aprobada', 'rechazada', 'completada'
+    nuevo_estado = request.form.get('estado')
     comentario = request.form.get('comentario')
+    instalador_id = request.form.get('instalador_id')
 
     garantia.Estado = nuevo_estado
     garantia.ComentarioAdmin = comentario
     garantia.FechaResolucion = datetime.utcnow()
 
-    # 🔹 Enviar notificación al cliente
-    mensaje = f"Tu garantía para el pedido #{garantia.ID_Pedido} ha sido <b>{nuevo_estado}</b>."
+    # Asignar instalador si hay uno seleccionado
+    if nuevo_estado == 'aprobada' and instalador_id:
+        garantia.ID_Empleado = int(instalador_id)
+
+    # Crear notificación al cliente si se aprueba
     if nuevo_estado == 'aprobada':
-        mensaje += " Se ha asignado un instalador. Puedes agendar tu cita."
-    notificacion = Notificaciones(
-        Titulo="Actualización de garantía",
-        Mensaje=mensaje,
-        ID_Usuario=garantia.ID_Usuario,
-        ID_Defecto=None  # Si fuera ProductoDefectuoso, asigna aquí
-    )
-    db.session.add(notificacion)
-    
+        mensaje = f"Tu garantía #{garantia.ID_Garantia} ha sido aprobada. <a href='{url_for('cliente.ver_notificaciones_cliente')}'>Agendar cita</a>"
+        notificacion = Notificaciones(
+            ID_Usuario=garantia.ID_Usuario,
+            Mensaje=mensaje
+        )
+        db.session.add(notificacion)
+
     db.session.commit()
-    flash("Garantía actualizada correctamente y notificación enviada.", "success")
+    flash("Garantía actualizada correctamente", "success")
     return redirect(url_for('admin.detalle_garantia', garantia_id=garantia.ID_Garantia))
+
+
 
 
 
