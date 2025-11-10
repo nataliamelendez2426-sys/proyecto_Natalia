@@ -1026,43 +1026,50 @@ def finanzas_ajax():
 @role_required('admin')
 def admin_productos_defectuosos():
     registros = ProductoDefectuoso.query.order_by(ProductoDefectuoso.FechaRegistro.desc()).all()
-    return render_template('administrador/productos_defectuosos.html', registros=registros)
+    empleados = Usuario.query.filter_by(Rol='tecnico').all()
+    return render_template(
+        'administrador/productos_defectuosos.html',
+        registros=registros,
+        empleados=empleados
+    )
+
+
 
 @admin.route('/admin/solucionar_defecto/<int:id_garantia>', methods=['POST'])
 @login_required
 def solucionar_defecto(id_garantia):
-    # Obtener la garantía
     garantia = ProductoDefectuoso.query.get_or_404(id_garantia)
-    
-    # Acción enviada desde el formulario
-    accion = request.form.get('accion')  # 'tecnico', 'devolucion', 'proceso'
-    
-    # Validar y actualizar estado según la acción
+    accion = request.form.get('accion')
+    empleado_id = request.form.get('empleado_id')
+
+    # Si se selecciona técnico, guardar
+    if empleado_id:
+        garantia.ID_Empleado = int(empleado_id)
+
     if accion == 'proceso':
         garantia.Estado = 'en_proceso'
         mensaje = f"Tu producto {garantia.producto.NombreProducto} está siendo revisado."
     elif accion == 'tecnico':
         garantia.Estado = 'resuelto_tecnico'
-        mensaje = f"Tu producto {garantia.producto.NombreProducto} ha sido reparado por un técnico."
+        mensaje = f"Tu producto {garantia.producto.NombreProducto} ha sido reparado por nuestro técnico asignado."
     elif accion == 'devolucion':
         garantia.Estado = 'resuelto_devolucion'
         mensaje = f"Tu producto {garantia.producto.NombreProducto} ha sido devuelto con el reembolso correspondiente."
     else:
         flash("Acción inválida.", "danger")
-        return redirect(url_for('admin.defectuosos'))
-    
-    # Crear notificación para el cliente
+        return redirect(url_for('admin.admin_productos_defectuosos'))
+
+    # Notificación al cliente
     notificacion = Notificaciones(
-        Titulo="Actualización de producto defectuoso",
+        Titulo="Actualización sobre tu producto defectuoso",
         Mensaje=mensaje,
         Fecha=datetime.now(),
         Leida=False,
         ID_Usuario=garantia.ID_Usuario
     )
-    
-    # Guardar cambios y notificación
+
     db.session.add(notificacion)
     db.session.commit()
-    
-    flash("Estado actualizado correctamente.", "success")
-    return redirect(url_for('admin.defectuosos'))
+
+    flash("Estado actualizado y notificación enviada al cliente.", "success")
+    return redirect(url_for('admin.admin_productos_defectuosos'))
