@@ -1,41 +1,70 @@
-{% for n in notificaciones %}
-<div class="card mb-3">
-  <div class="card-body">
-    <h5 class="card-title">{{ n.Titulo }}</h5>
-    <p class="card-text">{{ n.Mensaje | safe }}</p>
-    <small class="text-muted">Recibida: {{ n.Fecha.strftime('%d/%m/%Y %H:%M') }}</small>
+{% extends "common/base.html" %}
+{% block content %}
 
-    <!-- Botón para abrir el modal -->
-    <button class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#modalCita{{ n.ID_Notificacion }}">
-      Agendar cita
-    </button>
-  </div>
-</div>
+<div class="container mt-4">
+  <h2 class="text-center mb-4">📩 Mis Notificaciones</h2>
 
-<!-- Modal de agendamiento -->
-<div class="modal fade" id="modalCita{{ n.ID_Notificacion }}" tabindex="-1" aria-labelledby="modalLabel{{ n.ID_Notificacion }}" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form action="{{ url_for('cliente.agendar_cita_tecnico', notificacion_id=n.ID_Notificacion) }}" method="POST">
-        <div class="modal-header">
-          <h5 class="modal-title" id="modalLabel{{ n.ID_Notificacion }}">Agendar cita con el técnico</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label for="fecha" class="form-label">Fecha:</label>
-            <input type="date" name="fecha" class="form-control" required min="{{ date.today().isoformat() }}">
-          </div>
-          <div class="mb-3">
-            <label for="hora" class="form-label">Hora:</label>
-            <input type="time" name="hora" class="form-control" required>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-success">Agendar</button>
-        </div>
-      </form>
+  {% if notificaciones %}
+    {% set hoy = datetime.utcnow().strftime('%Y-%m-%d') %}
+    {% for n in notificaciones %}
+    <div class="card mb-3 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">{{ n.Titulo }}</h5>
+        <p class="card-text">{{ n.Mensaje | safe }}</p>
+        <small class="text-muted d-block mb-2">
+          Recibida: {{ n.Fecha.strftime('%d/%m/%Y %H:%M') }}
+        </small>
+
+        {% if n.defecto and not n.defecto.CitaProgramada %}
+          <!-- Botón para abrir el modal -->
+          <button class="btn btn-primary btn-sm" 
+                  data-bs-toggle="modal" 
+                  data-bs-target="#modalCita{{ n.ID_Notificacion }}">
+            📅 Agendar cita
+          </button>
+        {% elif n.defecto and n.defecto.CitaProgramada %}
+          <span class="badge bg-success">
+            Cita programada para {{ n.defecto.CitaProgramada.strftime('%d/%m/%Y %H:%M') }}
+          </span>
+        {% endif %}
+      </div>
     </div>
-  </div>
+
+    <!-- Modal de agendamiento -->
+    <div class="modal fade" id="modalCita{{ n.ID_Notificacion }}" tabindex="-1" aria-labelledby="modalLabel{{ n.ID_Notificacion }}" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form action="{{ url_for('cliente.agendar_cita_tecnico', notificacion_id=n.ID_Notificacion) }}" method="POST">
+            <div class="modal-header">
+              <h5 class="modal-title" id="modalLabel{{ n.ID_Notificacion }}">Agendar cita con el técnico</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="fecha{{ n.ID_Notificacion }}" class="form-label">Fecha:</label>
+                <input type="date" id="fecha{{ n.ID_Notificacion }}" name="fecha" class="form-control" required 
+                       min="{{ hoy }}">
+              </div>
+
+              <div class="mb-3">
+                <label for="hora{{ n.ID_Notificacion }}" class="form-label">Hora:</label>
+                <input type="time" id="hora{{ n.ID_Notificacion }}" name="hora" class="form-control" required>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-success">Confirmar cita</button>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="alert alert-info text-center">No tienes notificaciones disponibles.</div>
+  {% endif %}
 </div>
-{% endfor %}
+
+{% endblock %}

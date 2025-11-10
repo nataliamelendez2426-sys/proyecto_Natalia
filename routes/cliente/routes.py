@@ -60,10 +60,19 @@ def ver_notificaciones_cliente():
                 flash(f"❌ Error al eliminar: {str(e)}", "danger")
         return redirect(url_for("cliente.ver_notificaciones_cliente"))
 
-    notificaciones = Notificaciones.query.filter_by(ID_Usuario=current_user.ID_Usuario).order_by(Notificaciones.Fecha.desc()).all()
-    return render_template("cliente/notificaciones_cliente.html", notificaciones=notificaciones)
+    notificaciones = (
+        Notificaciones.query
+        .filter_by(ID_Usuario=current_user.ID_Usuario)
+        .order_by(Notificaciones.Fecha.desc())
+        .all()
+    )
 
-
+    # 🔹 Pasamos datetime al template
+    return render_template(
+        "cliente/notificaciones_cliente.html",
+        notificaciones=notificaciones,
+        datetime=datetime  # 👈 esto es lo que hace falta
+    )
 # ---------- PERFIL Y DIRECCIONES ----------
 @cliente.route("/actualizacion_datos", methods=["GET", "POST"])
 @login_required
@@ -841,30 +850,62 @@ def registrar_defectuoso(pedido_id, id_producto):
 @cliente.route('/cliente/agendar_cita/<int:notificacion_id>', methods=['POST'])
 @login_required
 def agendar_cita_tecnico(notificacion_id):
+    """Agendar cita del cliente con el técnico asociado a su producto defectuoso."""
+
+    # --- Buscar notificación ---
     notificacion = Notificaciones.query.get_or_404(notificacion_id)
 
+    # --- Obtener datos del formulario ---
     fecha_str = request.form.get('fecha')
     hora_str = request.form.get('hora')
 
     if not fecha_str or not hora_str:
-        flash("Debes seleccionar fecha y hora para la cita.", "danger")
+        flash("⚠️ Debes seleccionar una fecha y hora para la cita.", "warning")
         return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
     try:
-        fecha_cita = datetime.strptime(fecha_str, "%Y-%m-%d").date()
-        hora_cita = datetime.strptime(hora_str, "%H:%M").time()
+        cita_datetime = datetime.strptime(f"{fecha_str} {hora_str}", "%Y-%m-%d %H:%M")
     except ValueError:
-        flash("Formato de fecha u hora inválido.", "danger")
+        flash("❌ Formato de fecha u hora inválido.", "danger")
         return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
-    cita = CitaTecnico(
-        Fecha_Cita=fecha_cita,
-        Hora_Cita=hora_cita,
-        ID_Notificacion=notificacion_id
-    )
+    # --- Buscar último producto defectuoso del usuario ---
+    defecto = ProductoDefectuoso.query.filter_by(
+        ID_Usuario=current_user.ID_Usuario
+    ).order_by(ProductoDefectuoso.FechaRegistro.desc()).first()
 
-    db.session.add(cita)
-    db.session.commit()
+    if not defecto:
+        flash("❌ No se encontró un producto defectuoso relacionado para agendar la cita.", "danger")
+        return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
-    flash("Cita agendada correctamente con el técnico.", "success")
+    # --- Guardar la cita programada ---
+    defecto.CitaProgramada = cita_datetime
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f"❌ Error al guardar la cita: {str(e)}", "danger")
+        return redirect(url_for('cliente.ver_notificaciones_cliente'))
+
+    # --- Crear notificación para el técnico ---
+    try:
+        noti_tecnico = Notificaciones(
+            Titulo="📅 Nueva cita agendada",
+            Mensaje=(
+                f"El cliente <b>{current_user.Nombre}</b> ha agendado una cita "
+                f"para el <b>{cita_datetime.strftime('%d/%m/%Y a las %H:%M')}</b> "
+                f"relacionada con un producto defectuoso."
+            ),
+            Fecha=datetime.now(),
+            Leida=False,
+            ID_Usuario=defecto.ID_Empleado  # Técnico asignado
+        )
+        db.session.add(noti_tecnico)
+        db.session.commit()
+
+        flash("✅ Cita agendada correctamente con el técnico.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"⚠️ La cita se guardó, pero ocurrió un error al notificar al técnico: {str(e)}", "warning")
+
     return redirect(url_for('cliente.ver_notificaciones_cliente'))
