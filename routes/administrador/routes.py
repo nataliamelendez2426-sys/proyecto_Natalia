@@ -1028,26 +1028,36 @@ def admin_productos_defectuosos():
     registros = ProductoDefectuoso.query.order_by(ProductoDefectuoso.FechaRegistro.desc()).all()
     return render_template('administrador/productos_defectuosos.html', registros=registros)
 
-@admin.route("/admin/solucion_defecto/<int:id_garantia>", methods=["POST"])
-@login_required
-@role_required("admin")
+@admin.route('/admin/solucionar_defecto/<int:id_garantia>', methods=['POST'])
 def solucionar_defecto(id_garantia):
     garantia = ProductoDefectuoso.query.get_or_404(id_garantia)
-    accion = request.form.get("accion")  # 'tecnico' o 'devolucion'
 
-    if accion == "tecnico":
+    accion = request.form.get('accion')
+    if accion == 'tecnico':
+        garantia.Estado = 'en_reparacion'
+
+        # Crear notificación correcta
+        titulo = "Reparación de producto"  # No puede ser None
         mensaje = f"Tu producto {garantia.producto.NombreProducto} será reparado por un técnico."
-        garantia.Estado = "en_proceso_devolucion"  # usar un valor válido del ENUM
-    elif accion == "devolucion":
-        mensaje = f"Tu producto {garantia.producto.NombreProducto} será devuelto y recibirás tu dinero."
-        garantia.Estado = "procesado"  # usar un valor válido del ENUM
+        fecha = datetime.now()
+        leida = False
+        usuario_id = garantia.ID_Usuario
+
+        notificacion = Notificaciones(
+            Titulo=titulo,
+            Mensaje=mensaje,
+            Fecha=fecha,
+            Leida=leida,
+            ID_Usuario=usuario_id
+        )
+
+        db.session.add(notificacion)
+        db.session.commit()
+
+    elif accion == 'devolucion':
+        garantia.Estado = 'procesado'
+        # Aquí puedes crear otra notificación si quieres
 
     db.session.commit()
-
-    # Crear notificación
-    notificacion = Notificaciones(Mensaje=mensaje, ID_Usuario=garantia.usuario.ID_Usuario)
-    db.session.add(notificacion)
-    db.session.commit()
-
-    flash("✅ Acción registrada y cliente notificado", "success")
-    return redirect(url_for('admin.admin_productos_defectuosos'))
+    flash("Acción realizada correctamente.", "success")
+    return redirect(url_for('admin.defectuosos'))
