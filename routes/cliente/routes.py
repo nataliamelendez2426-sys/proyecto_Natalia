@@ -204,7 +204,7 @@ def perfil():
 # ---------- DETALLE_PEDIDO ----------
 
 
-@cliente.route('/cliente/detalle_pedido_ajax/<int:pedido_id>')
+@cliente.route('/detalle_pedido_ajax/<int:pedido_id>')
 @login_required
 def detalle_pedido_ajax(pedido_id):
     pedido = Pedido.query.get_or_404(pedido_id)
@@ -215,6 +215,7 @@ def detalle_pedido_ajax(pedido_id):
         "Total": float(det.PrecioUnidad * det.Cantidad)
     } for det in pedido.detalles_pedido]
     return jsonify(detalles)
+
 
 
 
