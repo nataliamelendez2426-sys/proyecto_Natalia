@@ -784,46 +784,54 @@ def seleccionar_pedido_defectuoso():
 # ------------------ Registrar producto defectuoso ------------------
 
 
-@cliente.route('/registrar_defectuoso/<int:pedido_id>/<int:producto_id>', methods=['GET', 'POST'])
+
+@cliente.route('/registrar_defectuoso/<int:pedido_id>/<int:id_producto>', methods=['GET', 'POST'])
 @login_required
-def registrar_defectuoso(pedido_id, producto_id):
+def registrar_defectuoso(pedido_id, id_producto):
+    # Obtener el detalle del pedido
+    detalle = Detalle_Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Producto=id_producto).first_or_404()
+
     if request.method == 'POST':
         motivo = request.form.get('motivo')
         archivos = request.files.getlist('archivos')
 
-        # Crear registro de garantía
-        garantia = Garantia(
+        if not motivo:
+            flash('Debes escribir un motivo', 'danger')
+            return redirect(request.url)
+        if not archivos or archivos[0].filename == '':
+            flash('Debes subir al menos una foto', 'danger')
+            return redirect(request.url)
+
+        # Crear registro del producto defectuoso
+        registro = ProductoDefectuoso(
             ID_Pedido=pedido_id,
             ID_Usuario=current_user.ID_Usuario,
+            ID_Producto=id_producto,
             Motivo=motivo,
             Estado='pendiente'
         )
-        db.session.add(garantia)
-        db.session.commit()
-
-        # Carpeta donde se guardarán los archivos
-        carpeta = 'static/uploads/garantias'
-        if not os.path.exists(carpeta):
-            os.makedirs(carpeta)  # Crear la carpeta si no existe
+        db.session.add(registro)
+        db.session.commit()  # Guardamos primero para obtener el ID del registro
 
         # Guardar archivos
         for archivo in archivos:
-            if archivo:
-                filename = archivo.filename
-                ruta = os.path.join(carpeta, filename)
-                archivo.save(ruta)
+            filename = secure_filename(archivo.filename)
+            # Crear carpeta si no existe
+            carpeta = os.path.join(UPLOAD_FOLDER)
+            os.makedirs(carpeta, exist_ok=True)
+            ruta = os.path.join(carpeta, filename)
+            archivo.save(ruta)
 
-                garantia_archivo = GarantiaArchivo(
-                    ID_Garantia=garantia.ID_Garantia,
-                    NombreArchivo=filename,
-                    RutaArchivo=ruta
-                )
-                db.session.add(garantia_archivo)
+            # Guardar en la tabla de archivos
+            garantia_archivo = GarantiaArchivo(
+                ID_Garantia=registro.ID,
+                NombreArchivo=filename,
+                RutaArchivo=ruta
+            )
+            db.session.add(garantia_archivo)
 
         db.session.commit()
-        flash('Producto registrado como defectuoso correctamente.', 'success')
+        flash('Producto registrado como defectuoso exitosamente', 'success')
         return redirect(url_for('cliente.seleccionar_pedido_defectuoso'))
 
-    # Obtener información del pedido y producto
-    detalle = Detalle_Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Producto=producto_id).first()
     return render_template('cliente/registrar_defectuoso.html', detalle=detalle)
