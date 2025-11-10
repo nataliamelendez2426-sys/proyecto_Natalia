@@ -57,6 +57,14 @@
   }
   button.btn-primary:hover { background-color: #157145; transform: scale(1.05); }
 
+  .tracking-product-img img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid #d1d5db;
+  }
+
   .foto-galeria {
     display: flex;
     flex-wrap: wrap;
@@ -79,6 +87,16 @@
     box-shadow: 0 5px 15px rgba(0,0,0,0.2);
   }
 
+  @media(max-width: 576px) {
+    .tracking-product-img img {
+      width: 60px;
+      height: 60px;
+    }
+    .foto-galeria img {
+      width: 70px;
+      height: 70px;
+    }
+  }
 </style>
 
 <div class="container mt-5">
@@ -88,7 +106,7 @@
         <div class="card-body d-flex align-items-center gap-3">
             <div class="tracking-product-img">
                 <img src="{{ url_for('static', filename=detalle.producto.ImagenPrincipal or 'img/catalogo.png') }}" 
-                     alt="{{ detalle.producto.NombreProducto }}" style="width:80px; height:80px; object-fit:cover; border-radius:12px; border:1px solid #d1d5db;">
+                     alt="{{ detalle.producto.NombreProducto }}">
             </div>
             <div>
                 <h5 class="card-title">{{ detalle.producto.NombreProducto }}</h5>

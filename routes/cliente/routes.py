@@ -18,7 +18,11 @@ from basedatos.decoradores import mail
 from functools import wraps
 from datetime import date
 
-UPLOAD_FOLDER_DEFECTUOSO = 'static/uploads/productos_defectuosos'
+
+
+UPLOAD_FOLDER = os.path.join('static', 'uploads', 'defectuosos')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 UPLOAD_FOLDER = 'static/uploads/garantias'
 
 favoritos_usuario = set() 
@@ -812,55 +816,53 @@ def seleccionar_pedido_defectuoso():
 
 # ------------------ Registrar producto defectuoso ------------------
 
-
-
 @cliente.route('/registrar_defectuoso/<int:pedido_id>/<int:id_producto>', methods=['GET', 'POST'])
 @login_required
 def registrar_defectuoso(pedido_id, id_producto):
-    # Obtener el detalle del pedido
+    # Obtenemos el detalle del pedido
     detalle = Detalle_Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Producto=id_producto).first_or_404()
 
-    if request.method == 'POST':
-        motivo = request.form.get('motivo')
-        archivos = request.files.getlist('archivos')
+    if request.method == "POST":
+        motivo = request.form.get("motivo")
+        archivos = request.files.getlist("archivos")
 
         if not motivo:
-            flash('Debes escribir un motivo', 'danger')
-            return redirect(request.url)
-        if not archivos or archivos[0].filename == '':
-            flash('Debes subir al menos una foto', 'danger')
+            flash("Debe ingresar un motivo", "danger")
             return redirect(request.url)
 
-        # Crear registro del producto defectuoso
-        registro = ProductoDefectuoso(
-            ID_Pedido=pedido_id,
+        if not archivos or all(f.filename == "" for f in archivos):
+            flash("Debe subir al menos una foto", "danger")
+            return redirect(request.url)
+
+        # Crear registro de ProductoDefectuoso
+        producto_def = ProductoDefectuoso(
             ID_Usuario=current_user.ID_Usuario,
-            ID_Producto=id_producto,
-            Motivo=motivo,
-            Estado='pendiente'
+            ID_Producto=detalle.ID_Producto,
+            ID_Pedido=pedido_id,
+            Motivo=motivo
         )
-        db.session.add(registro)
-        db.session.commit()  # Guardamos primero para obtener el ID del registro
+        db.session.add(producto_def)
+        db.session.commit()  # Necesario para obtener el ID del producto defectuoso
 
-        # Guardar archivos
+        # Carpeta donde se guardarán las fotos
+        upload_folder = os.path.join('static', 'uploads', 'defectuosos')
+        os.makedirs(upload_folder, exist_ok=True)
+
+        # Guardar fotos
         for archivo in archivos:
-            filename = secure_filename(archivo.filename)
-            # Crear carpeta si no existe
-            carpeta = os.path.join(UPLOAD_FOLDER)
-            os.makedirs(carpeta, exist_ok=True)
-            ruta = os.path.join(carpeta, filename)
-            archivo.save(ruta)
+            if archivo.filename != "":
+                nombre_seguro = secure_filename(archivo.filename)
+                ruta = os.path.join(upload_folder, nombre_seguro)
+                archivo.save(ruta)
 
-            # Guardar en la tabla de archivos
-            garantia_archivo = GarantiaArchivo(
-                ID_Garantia=registro.ID,
-                NombreArchivo=filename,
-                RutaArchivo=ruta
-            )
-            db.session.add(garantia_archivo)
+                foto = FotoProductoDefectuoso(
+                    ID_ProductoDefectuoso=producto_def.ID,
+                    RutaArchivo=ruta  # Ruta relativa para usar con url_for
+                )
+                db.session.add(foto)
 
         db.session.commit()
-        flash('Producto registrado como defectuoso exitosamente', 'success')
+        flash("Producto defectuoso registrado correctamente", "success")
         return redirect(url_for('cliente.seleccionar_pedido_defectuoso'))
 
     return render_template('cliente/registrar_defectuoso.html', detalle=detalle)
