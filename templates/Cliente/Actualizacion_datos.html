@@ -126,7 +126,12 @@
                     <small>Entrega estimada: {{ pedido.FechaEntrega.strftime('%d/%m/%Y') }}</small><br>
                   {% endif %}
                   <small>Destino: {{ pedido.Destino or 'No especificado' }}</small><br>
-                  <span class="badge bg-success mt-1">{{ pedido.Estado|capitalize }}</span>
+                  <span class="badge 
+                    {% if pedido.Estado == 'pendiente' %}bg-secondary
+                    {% elif pedido.Estado == 'en proceso' %}bg-warning text-dark
+                    {% elif pedido.Estado == 'en reparto' %}bg-info text-dark
+                    {% elif pedido.Estado == 'entregado' %}bg-success
+                    {% endif %} mt-1">{{ pedido.Estado|capitalize }}</span>
                 </div>
 
                 <div class="d-flex gap-2 mt-2 mt-md-0">
@@ -195,7 +200,6 @@
                     <option selected>Colombia</option>
                   </select>
                 </div>
-
                 <div class="row g-3 mb-3">
                   <div class="col-md-6">
                     <label for="modal_departamento" class="form-label">Departamento</label>
@@ -206,7 +210,6 @@
                     <input type="text" id="modal_municipio" name="municipio" class="form-control rounded-pill" value="Bogotá, D.C." readonly />
                   </div>
                 </div>
-
                 <div class="row g-3 mb-3">
                   <div class="col-md-6">
                     <label for="modal_direccion" class="form-label">Dirección</label>
@@ -217,7 +220,6 @@
                     <input type="text" id="modal_infoAdicional" name="infoAdicional" class="form-control rounded-pill" placeholder="Apto. 201, torre 5" />
                   </div>
                 </div>
-
                 <div class="row g-3 mb-3">
                   <div class="col-md-6">
                     <label for="modal_barrio" class="form-label">Barrio</label>
@@ -228,25 +230,10 @@
                     <input type="text" id="modal_destinatario" name="destinatario" class="form-control rounded-pill" placeholder="Quién recibe" />
                   </div>
                 </div>
-
                 <div class="text-end mt-4">
                   <button type="submit" class="btn btn-green px-4 py-2 rounded-pill">Guardar</button>
                 </div>
               </form>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Modal Confirmar Borrar -->
-      <div class="modal fade" id="modalConfirmarBorrar" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content p-4 rounded-4 text-center">
-            <h5 class="modal-title mb-3 text-danger fw-bold">¿Eliminar esta dirección?</h5>
-            <p>Esta acción no se puede deshacer. ¿Seguro que deseas continuar?</p>
-            <div class="d-flex justify-content-center gap-3 mt-3">
-              <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
-              <button type="button" id="btnConfirmarBorrar" class="btn btn-danger px-4 rounded-pill">Borrar</button>
             </div>
           </div>
         </div>
