@@ -99,6 +99,16 @@ class Categorias(db.Model):
 
     productos = db.relationship('Producto', back_populates='categoria', lazy=True)
 
+class GarantiaProducto(db.Model):
+    __tablename__ = 'GarantiaProducto'
+
+    ID_GarantiaProducto = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    ID_Garantia = db.Column(db.Integer, db.ForeignKey('Garantia.ID_Garantia'), nullable=False)
+    ID_Producto = db.Column(db.Integer, db.ForeignKey('Producto.ID_Producto'), nullable=False)
+
+    garantia = db.relationship('Garantia', backref='productos_garantia')
+    producto = db.relationship('Producto')
+
 # ------------------ Producto ------------------
 class Producto(db.Model):
     __tablename__ = 'Producto'
