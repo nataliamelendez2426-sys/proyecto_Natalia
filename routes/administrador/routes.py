@@ -847,22 +847,25 @@ def actualizar_garantia(garantia_id):
     garantia.ComentarioAdmin = comentario
     garantia.FechaResolucion = datetime.utcnow()
 
-    # Asignar instalador si hay uno seleccionado
+    # Asignar instalador si el estado es aprobada y hay uno seleccionado
     if nuevo_estado == 'aprobada' and instalador_id:
         garantia.ID_Empleado = int(instalador_id)
 
-    # Crear notificación al cliente si se aprueba
-    if nuevo_estado == 'aprobada':
-        mensaje = f"Tu garantía #{garantia.ID_Garantia} ha sido aprobada. <a href='{url_for('cliente.ver_notificaciones_cliente')}'>Agendar cita</a>"
+        # Crear notificación al cliente
         notificacion = Notificaciones(
-            ID_Usuario=garantia.ID_Usuario,
-            Mensaje=mensaje
+            Titulo=f"Estado de garantía #{garantia.ID_Garantia}",
+            Mensaje=f"Tu garantía #{garantia.ID_Garantia} ha sido aprobada. <a href='/cliente/notificaciones'>Agendar cita</a>",
+            Fecha=datetime.utcnow(),
+            Leida=False,
+            ID_Usuario=garantia.ID_Usuario
         )
         db.session.add(notificacion)
 
-    db.session.commit()
+    db.session.commit()  # Solo un commit al final
+
     flash("Garantía actualizada correctamente", "success")
     return redirect(url_for('admin.detalle_garantia', garantia_id=garantia.ID_Garantia))
+
 
 
 
