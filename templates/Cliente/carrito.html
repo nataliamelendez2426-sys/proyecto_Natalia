@@ -60,7 +60,7 @@
                   <select class="form-select" name="direccion" required>
                     {% if direcciones %}
                       {% for d in direcciones %}
-                        <option value="{{ d.Direccion }} ({{ d.Ciudad }}, {{ d.Departamento }})" 
+                        <option value="{{ d.Direccion }}" 
                                 data-id="{{ d.ID_Direccion }}" 
                                 data-ciudad="{{ d.Ciudad }}" 
                                 data-departamento="{{ d.Departamento }}" 
@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     carrito.forEach((item, index) => {
-      if (!item.id && !item.ID_Producto) console.error("Producto sin ID_Producto:", item);
+      if (!item.ID_Producto) console.error("Producto sin ID_Producto:", item);
       const precio = parseFloat(item.precio || 0);
       const cantidad = parseInt(item.cantidad || 1);
       const col = document.createElement('div');
@@ -230,15 +230,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  const generarPDF = (items, total, direccion) => {
+  const generarPDF = (items, total) => {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     doc.setFontSize(16);
     doc.text("Recibo de Compra", 105, 15, { align: "center" });
     doc.setFontSize(12);
     let y = 30;
-    doc.text(`Dirección de envío: ${direccion}`, 20, y);
-    y += 10;
     items.forEach(item => {
       doc.text(`${item.nombre} x ${item.cantidad} = $${(item.precio*item.cantidad).toFixed(2)}`, 20, y);
       y += 10;
@@ -285,16 +283,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const numeroCel = e.target.numero_celular?.value || null;
     const numeroTarjeta = e.target.numero_tarjeta?.value || null;
     const direccionSelect = e.target.direccion;
-    const direccion = direccionSelect.options[direccionSelect.selectedIndex]?.value;
     const direccion_id = direccionSelect.options[direccionSelect.selectedIndex]?.getAttribute('data-id');
     const totalCompra = actualizarTotal();
 
     const carritoParaBackend = carrito.map(item => ({
-      ID_Producto: item.id || item.ID_Producto,
-      cantidad: item.cantidad || 1,
-      precio: item.precio,
-      nombre: item.nombre
+    ID_Producto: item.id,  // <-- aquí usamos item.id
+    cantidad: item.cantidad || 1,
+    precio: item.precio
     }));
+
 
     try {
       const res = await fetch("{{ url_for('cliente.checkout') }}", {
@@ -309,10 +306,10 @@ document.addEventListener('DOMContentLoaded', () => {
         carrito = [];
         localStorage.setItem('carrito', '[]');
         renderizarCarrito();
-        document.getElementById('total-modal').textContent = `Total: $${totalCompra.toFixed(2)}\nDirección: ${direccion}`;
+        document.getElementById('total-modal').textContent = `Total: $${totalCompra.toFixed(2)}`;
         btnPDF.classList.remove('d-none');
 
-        btnPDF.onclick = () => generarPDF(carritoParaBackend, totalCompra, direccion);
+        btnPDF.onclick = () => generarPDF(carritoParaBackend, totalCompra);
 
         new bootstrap.Modal(document.getElementById('modalConfirmacion')).show();
       } else {
