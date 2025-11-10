@@ -1032,25 +1032,34 @@ def admin_productos_defectuosos():
 @login_required
 @role_required("admin")
 def solucionar_defecto(id_garantia):
+    # Buscar el registro
     garantia = ProductoDefectuoso.query.get_or_404(id_garantia)
-    accion = request.form.get("accion")  # 'tecnico', 'devolucion', etc.
+    
+    # Obtener la acción enviada por el formulario
+    accion = request.form.get("accion")  # 'tecnico' o 'devolucion'
 
+    # Actualizar estado según acción
     if accion == "tecnico":
+        garantia.Estado = "en_reparacion"
         mensaje = f"Tu producto {garantia.producto.NombreProducto} será reparado por un técnico."
-        garantia.Estado = "En reparación"
     elif accion == "devolucion":
+        garantia.Estado = "en_proceso_devolucion"
         mensaje = f"Tu producto {garantia.producto.NombreProducto} será devuelto y recibirás tu dinero."
-        garantia.Estado = "Devolución solicitada"
     else:
+        # Por seguridad, no dejar otro valor
+        garantia.Estado = "pendiente"
         mensaje = f"Se ha actualizado el estado de tu producto {garantia.producto.NombreProducto}."
 
+    # Guardar cambios en la base de datos
     db.session.commit()
 
-    # Crear notificación
-    notificacion = Notificaciones(Mensaje=mensaje, ID_Usuario=garantia.usuario.ID_Usuario)
+    # Crear notificación para el cliente
+    notificacion = Notificaciones(
+        Mensaje=mensaje,
+        ID_Usuario=garantia.usuario.ID_Usuario
+    )
     db.session.add(notificacion)
     db.session.commit()
 
     flash("✅ Acción registrada y cliente notificado", "success")
     return redirect(url_for("admin.admin_productos_defectuosos"))
-
