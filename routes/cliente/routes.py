@@ -836,3 +836,63 @@ def registrar_defectuoso(pedido_id, id_producto):
 
     return render_template('cliente/registrar_defectuoso.html', detalle=detalle)
 
+
+@cliente.route('/cliente/agendar_cita/<int:id_defecto>', methods=['POST'])
+@login_required
+def agendar_cita(id_defecto):
+    defecto = ProductoDefectuoso.query.get_or_404(id_defecto)
+
+    # Validar que el usuario actual sea el dueño del reporte
+    if defecto.ID_Usuario != current_user.ID_Usuario:
+        flash("No tienes permiso para modificar esta cita.", "danger")
+        return redirect(url_for('cliente.ver_notificaciones_cliente'))
+
+    # Obtener fecha y hora desde el formulario
+    fecha = request.form.get('fecha')
+    hora = request.form.get('hora')
+
+    if not fecha or not hora:
+        flash("Por favor selecciona una fecha y hora válidas.", "warning")
+        return redirect(url_for('cliente.ver_notificaciones_cliente'))
+
+    try:
+        cita_datetime = datetime.strptime(f"{fecha} {hora}", "%Y-%m-%d %H:%M")
+    except ValueError:
+        flash("Formato de fecha u hora inválido.", "danger")
+        return redirect(url_for('cliente.ver_notificaciones_cliente'))
+
+    # Guardar la cita
+    defecto.CitaProgramada = cita_datetime
+    db.session.commit()
+
+    if defecto.ID_Empleado:
+        noti_tecnico = Notificaciones(
+            Titulo="Nueva cita técnica programada",
+            Mensaje=(
+                f"El cliente {defecto.usuario.Nombre} ha programado una cita para revisar "
+                f"el producto '{defecto.producto.NombreProducto}' el "
+                f"{cita_datetime.strftime('%d/%m/%Y a las %H:%M')}."
+            ),
+            Fecha=datetime.now(),
+            Leida=False,
+            ID_Usuario=defecto.ID_Empleado
+        )
+        db.session.add(noti_tecnico)
+
+    # Crear notificación para el cliente
+    noti_cliente = Notificaciones(
+        Titulo="Cita programada con el técnico",
+        Mensaje=(
+            f"Tu cita para la revisión del producto '{defecto.producto.NombreProducto}' "
+            f"ha sido agendada para el {cita_datetime.strftime('%d/%m/%Y a las %H:%M')}."
+        ),
+        Fecha=datetime.now(),
+        Leida=False,
+        ID_Usuario=defecto.ID_Usuario
+    )
+    db.session.add(noti_cliente)
+
+    db.session.commit()
+
+    flash("✅ Cita agendada exitosamente. El técnico ha sido notificado.", "success")
+    return redirect(url_for('cliente.ver_notificaciones_cliente'))

@@ -350,17 +350,14 @@ class ProductoDefectuoso(db.Model):
     ID_Producto = db.Column(db.Integer, db.ForeignKey('Producto.ID_Producto'), nullable=False)
     ID_Pedido = db.Column(db.Integer, db.ForeignKey('Pedido.ID_Pedido'), nullable=False)
     Motivo = db.Column(db.String(255), nullable=False)
+    CitaProgramada = db.Column(db.DateTime, nullable=True)
     Estado = db.Column(
         db.Enum('pendiente', 'en_proceso', 'resuelto_tecnico', 'resuelto_devolucion', name='estado_defectuoso'),
         nullable=False,
         default='pendiente'
     )
     FechaRegistro = db.Column(db.DateTime, default=datetime.utcnow)
-
-    # Técnico asignado
     ID_Empleado = db.Column(db.Integer, db.ForeignKey('Usuario.ID_Usuario'), nullable=True)
-
-    # Relaciones
     usuario = db.relationship('Usuario', foreign_keys=[ID_Usuario], backref='productos_defectuosos_cliente')
     empleado = db.relationship('Usuario', foreign_keys=[ID_Empleado], backref='productos_defectuosos_tecnico')
     producto = db.relationship('Producto', backref='productos_defectuosos')
@@ -368,8 +365,7 @@ class ProductoDefectuoso(db.Model):
     fotos = db.relationship('FotoProductoDefectuoso', backref='producto_defectuoso', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
-        return f"<ProductoDefectuoso ID={self.ID} Estado={self.Estado}>"
-
+        return f"<ProductoDefectuoso ID={self.ID} Estado='{self.Estado}' CitaProgramada={self.CitaProgramada}>"
 class FotoProductoDefectuoso(db.Model):
     __tablename__ = 'FotoProductoDefectuoso'
 

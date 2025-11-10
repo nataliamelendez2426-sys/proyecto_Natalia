@@ -27,11 +27,10 @@
   {% endif %}
 {% endwith %}
 
-
-<div class="container">
+<div class="container mt-4">
   <div class="noti-card">
     <div class="noti-header">
-      <h5><i class="bi bi-bell-fill me-2"></i>NOTIFICACIONES</h5>
+      <h5><i class="bi bi-bell-fill me-2"></i> NOTIFICACIONES</h5>
       <button type="button" class="btn-select-all" onclick="seleccionarTodos()">
         <i class="bi bi-check2-square me-1"></i> Seleccionar todos
       </button>
@@ -43,14 +42,72 @@
           {% for noti in notificaciones %}
             <div class="noti-item">
               <input type="checkbox" name="ids" value="{{ noti.ID_Notificacion }}">
-              <p>{{ noti.Mensaje }}</p>
-              <span class="fecha">{{ noti.Fecha.strftime('%d/%m/%Y %H:%M') }}</span>
+              <div>
+                <p>{{ noti.Mensaje | safe }}</p>
+                <span class="fecha">{{ noti.Fecha.strftime('%d/%m/%Y %H:%M') }}</span>
+
+                {# Buscar el producto defectuoso asociado #}
+                {% set defecto = noti.usuario.productos_defectuosos|last %}
+                {% if defecto and defecto.ID_Empleado %}
+                  <button type="button" class="btn btn-primary btn-sm mt-2"
+                          data-bs-toggle="modal"
+                          data-bs-target="#detalleModal{{ defecto.ID }}">
+                    <i class="bi bi-info-circle me-1"></i> Ver detalles
+                  </button>
+                {% endif %}
+              </div>
             </div>
+
+            {# Modal con detalles y cita #}
+            {% if defecto and defecto.ID_Empleado %}
+            <div class="modal fade" id="detalleModal{{ defecto.ID }}" tabindex="-1"
+                 aria-labelledby="detalleModalLabel{{ defecto.ID }}" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                  <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="detalleModalLabel{{ defecto.ID }}">
+                      Detalles del producto defectuoso
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                  </div>
+
+                  <div class="modal-body">
+                    <p><strong>Técnico asignado:</strong> {{ defecto.empleado.Nombre }} {{ defecto.empleado.Apellido }}</p>
+                    <p><strong>Teléfono:</strong> {{ defecto.empleado.Telefono }}</p>
+                    <hr>
+                    <p><strong>Dirección del pedido:</strong></p>
+                    {% if defecto.pedido and defecto.pedido.direccion %}
+                      <p>{{ defecto.pedido.direccion.Calle }} {{ defecto.pedido.direccion.Numero }}, {{ defecto.pedido.direccion.Ciudad }}</p>
+                    {% else %}
+                      <p><em>No se encontró dirección del pedido.</em></p>
+                    {% endif %}
+                    <hr>
+
+                    <form method="POST" action="{{ url_for('cliente.agendar_cita', id_defecto=defecto.ID) }}">
+                      <div class="mb-3">
+                        <label for="fecha{{ defecto.ID }}" class="form-label">Fecha preferida:</label>
+                        <input type="date" name="fecha" id="fecha{{ defecto.ID }}" class="form-control" required min="{{ date.today().isoformat() }}">
+                      </div>
+                      <div class="mb-3">
+                        <label for="hora{{ defecto.ID }}" class="form-label">Hora preferida:</label>
+                        <input type="time" name="hora" id="hora{{ defecto.ID }}" class="form-control" required>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Confirmar cita</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
           {% endfor %}
         </div>
+
         <div class="text-end mt-3">
           <button type="submit" class="btn-delete">
-            <i class="bi bi-trash-fill me-1"></i>Eliminar seleccionadas
+            <i class="bi bi-trash-fill me-1"></i> Eliminar seleccionadas
           </button>
         </div>
       {% else %}

@@ -2,14 +2,15 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2 class="mb-4">Gestión de Productos Defectuosos</h2>
+    <h2 class="mb-4 text-center"><i class="bi bi-tools me-2"></i>Gestión de Productos Defectuosos</h2>
 
+    {# --- Mensajes flash --- #}
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert">
                     {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                 </div>
             {% endfor %}
         {% endif %}
@@ -25,7 +26,7 @@
                     <th>Motivo</th>
                     <th>Estado</th>
                     <th>Fecha Registro</th>
-                    <th>Instalador Asignado</th>
+                    <th>Técnico Asignado</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -56,13 +57,15 @@
                         {% endif %}
                     </td>
                     <td>
-                        <form action="{{ url_for('admin.solucionar_defecto', id_garantia=registro.ID) }}" method="POST" class="d-flex flex-column gap-2">
+                        <form action="{{ url_for('admin.solucionar_defecto', id_garantia=registro.ID) }}"
+                              method="POST" class="d-flex flex-column gap-2">
 
-                            <!-- Selección de instalador -->
+                            <!-- Selección de técnico -->
                             <select name="empleado" class="form-select form-select-sm" required>
-                                <option value="">Seleccionar instalador</option>
+                                <option value="">Seleccionar técnico</option>
                                 {% for emp in instaladores %}
-                                    <option value="{{ emp.ID_Usuario }}" {% if registro.ID_Empleado == emp.ID_Usuario %}selected{% endif %}>
+                                    <option value="{{ emp.ID_Usuario }}"
+                                            {% if registro.ID_Empleado == emp.ID_Usuario %}selected{% endif %}>
                                         {{ emp.Nombre }} {{ emp.Apellido }}
                                     </option>
                                 {% endfor %}
@@ -70,29 +73,43 @@
 
                             <!-- Botones de acción -->
                             <div class="btn-group" role="group">
-                                <button name="accion" value="proceso" class="btn btn-warning btn-sm">En Proceso</button>
-                                <button name="accion" value="tecnico" class="btn btn-success btn-sm">Resuelto Técnico</button>
-                                <button name="accion" value="devolucion" class="btn btn-info btn-sm">Resuelto Devolución</button>
+                                <button name="accion" value="proceso" class="btn btn-warning btn-sm">
+                                    <i class="bi bi-hourglass-split"></i> En Proceso
+                                </button>
+                                <button name="accion" value="tecnico" class="btn btn-success btn-sm">
+                                    <i class="bi bi-check-circle"></i> Resuelto Técnico
+                                </button>
+                                <button name="accion" value="devolucion" class="btn btn-info btn-sm">
+                                    <i class="bi bi-arrow-repeat"></i> Devolución
+                                </button>
                             </div>
                         </form>
                     </td>
                 </tr>
 
-                <!-- Fotos asociadas -->
+                {# --- Fotos asociadas --- #}
                 {% if registro.fotos %}
                 <tr>
-                    <td colspan="8">
-                        <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <td colspan="8" class="bg-light">
+                        <div class="d-flex flex-wrap justify-content-center gap-2 py-2">
                             {% for foto in registro.fotos %}
-                                <img src="{{ url_for('static', filename=foto.RutaArchivo) }}"
-                                     alt="Foto defecto"
-                                     class="img-thumbnail"
-                                     style="width: 100px; height: 100px; object-fit: cover;">
+                                <a href="{{ url_for('static', filename=foto.RutaArchivo) }}" target="_blank">
+                                    <img src="{{ url_for('static', filename=foto.RutaArchivo) }}"
+                                         alt="Foto defecto"
+                                         class="img-thumbnail border"
+                                         style="width: 110px; height: 110px; object-fit: cover;">
+                                </a>
                             {% endfor %}
                         </div>
                     </td>
                 </tr>
                 {% endif %}
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center py-4 text-muted">
+                        <i class="bi bi-emoji-smile"></i> No hay reportes de productos defectuosos.
+                    </td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>

@@ -1027,6 +1027,7 @@ def finanzas_ajax():
 def admin_productos_defectuosos():
     registros = ProductoDefectuoso.query.order_by(ProductoDefectuoso.FechaRegistro.desc()).all()
     instaladores = Usuario.query.filter_by(Rol='instalador', Activo=True).all()
+
     return render_template(
         'administrador/productos_defectuosos.html',
         registros=registros,
@@ -1034,34 +1035,59 @@ def admin_productos_defectuosos():
     )
 
 
-
 @admin.route('/admin/solucionar_defecto/<int:id_garantia>', methods=['POST'])
 @login_required
+@role_required('admin')
 def solucionar_defecto(id_garantia):
     garantia = ProductoDefectuoso.query.get_or_404(id_garantia)
+
     accion = request.form.get('accion')
     empleado_id = request.form.get('empleado')
 
+    tecnico = None
     if empleado_id:
-        garantia.ID_Empleado = empleado_id  # asigna el instalador
+        tecnico = Usuario.query.get(empleado_id)
+        if not tecnico or tecnico.Rol != 'instalador':
+            flash("El empleado seleccionado no es válido.", "danger")
+            return redirect(url_for('admin.admin_productos_defectuosos'))
+        garantia.ID_Empleado = tecnico.ID_Usuario
 
-    if accion == 'proceso':
-        garantia.Estado = 'en_proceso'
-        mensaje = f"Tu producto {garantia.producto.NombreProducto} está siendo revisado por un instalador."
-    elif accion == 'tecnico':
-        garantia.Estado = 'resuelto_tecnico'
-        mensaje = f"Tu producto {garantia.producto.NombreProducto} ha sido reparado por un técnico."
-    elif accion == 'devolucion':
-        garantia.Estado = 'resuelto_devolucion'
-        mensaje = f"Tu producto {garantia.producto.NombreProducto} ha sido devuelto con reembolso."
-    else:
+    # Estados válidos del producto defectuoso
+    estados = {
+        "proceso": "en_proceso",
+        "tecnico": "resuelto_tecnico",
+        "devolucion": "resuelto_devolucion"
+    }
+
+    if accion not in estados:
         flash("Acción inválida.", "danger")
         return redirect(url_for('admin.admin_productos_defectuosos'))
+
+    garantia.Estado = estados[accion]
+    db.session.commit()
+
+    # --- Crear mensaje y notificación personalizada ---
+    if accion == "proceso":
+        mensaje = (
+            f"Tu producto registrado como defectuoso será revisado por el técnico "
+            f"{tecnico.Nombre if tecnico else 'asignado próximamente'}."
+        )
+    elif accion == "tecnico":
+        mensaje = f"El técnico {tecnico.Nombre if tecnico else 'asignado'} ha reparado tu producto defectuoso."
+    elif accion == "devolucion":
+        mensaje = "Tu producto defectuoso ha sido devuelto y se procesará el reembolso correspondiente."
+
+    # Botón "Ver detalles" + modal para agendar cita
+    mensaje += (
+        f" <br><button class='btn btn-sm btn-primary mt-2' "
+        f"data-bs-toggle='modal' data-bs-target='#detalleDireccionModal{garantia.ID}'>"
+        f"Ver detalles</button>"
+    )
 
     notificacion = Notificaciones(
         Titulo="Actualización de producto defectuoso",
         Mensaje=mensaje,
-        Fecha=datetime.now(),
+        Fecha=datetime.utcnow(),
         Leida=False,
         ID_Usuario=garantia.ID_Usuario
     )
@@ -1069,5 +1095,5 @@ def solucionar_defecto(id_garantia):
     db.session.add(notificacion)
     db.session.commit()
 
-    flash("Estado actualizado y empleado asignado correctamente.", "success")
+    flash("Estado actualizado y notificación enviada correctamente.", "success")
     return redirect(url_for('admin.admin_productos_defectuosos'))
