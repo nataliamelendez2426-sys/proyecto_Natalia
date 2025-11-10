@@ -119,6 +119,7 @@ def ver_notificaciones():
 
     return render_template("administrador/notificaciones_admin.html", notificaciones=notificaciones)
 
+
 # ---------- ACTUALIZACION_DATOS ----------
 @admin.route("/actualizacion_datos", methods=["GET", "POST"])
 @login_required

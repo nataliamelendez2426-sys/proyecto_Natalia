@@ -67,12 +67,27 @@ def ver_notificaciones_cliente():
         .all()
     )
 
-    # 🔹 Pasamos datetime al template
+
     return render_template(
         "cliente/notificaciones_cliente.html",
         notificaciones=notificaciones,
-        datetime=datetime  # 👈 esto es lo que hace falta
+        datetime=datetime  
     )
+
+@cliente.route('/cliente/eliminar_notificacion/<int:notificacion_id>', methods=['POST'])
+@login_required
+def eliminar_notificacion(notificacion_id):
+    notificacion = Notificaciones.query.get_or_404(notificacion_id)
+
+    try:
+        db.session.delete(notificacion)
+        db.session.commit()
+        flash("Notificación eliminada correctamente.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error al eliminar la notificación: {str(e)}", "danger")
+
+    return redirect(url_for('cliente.ver_notificaciones_cliente'))
 # ---------- PERFIL Y DIRECCIONES ----------
 @cliente.route("/actualizacion_datos", methods=["GET", "POST"])
 @login_required
