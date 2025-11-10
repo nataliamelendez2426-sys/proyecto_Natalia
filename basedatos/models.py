@@ -228,6 +228,11 @@ class Notificaciones(db.Model):
     Leida = db.Column(db.Boolean, default=False)
     ID_Usuario = db.Column(db.Integer, db.ForeignKey('Usuario.ID_Usuario'), nullable=False)
 
+    # 🔹 Nuevo campo y relación con ProductoDefectuoso
+    ID_Defecto = db.Column(db.Integer, db.ForeignKey('ProductoDefectuoso.ID'), nullable=True)
+    defecto = db.relationship('ProductoDefectuoso', backref='notificaciones', lazy=True)
+
+
 # ------------------ Novedades ------------------
 class Novedades(db.Model):
     __tablename__ = 'Novedades'
