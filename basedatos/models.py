@@ -341,3 +341,29 @@ Producto.etiquetas = db.relationship(
     backref=db.backref('productos', lazy='dynamic'),
     lazy='dynamic'
 )
+
+class ProductoDefectuoso(db.Model):
+    __tablename__ = 'ProductoDefectuoso'
+
+    ID = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    ID_Pedido = db.Column(db.Integer, db.ForeignKey('Pedido.ID_Pedido'), nullable=False)
+    ID_Producto = db.Column(db.Integer, db.ForeignKey('Producto.ID_Producto'), nullable=False)
+    ID_Usuario = db.Column(db.Integer, db.ForeignKey('Usuario.ID_Usuario'), nullable=False)
+    Motivo = db.Column(db.Text, nullable=False)
+    Estado = db.Column(db.Enum('pendiente','en_proceso_devolucion','procesado','rechazado', name='estado_defectuoso'), default='pendiente', nullable=False)
+    FechaRegistro = db.Column(db.DateTime, default=datetime.utcnow)
+
+    fotos = db.relationship('FotoProductoDefectuoso', backref='producto_defectuoso', lazy=True, cascade="all, delete-orphan")
+    
+    pedido = db.relationship('Pedido', backref='productos_defectuosos')
+    producto = db.relationship('Producto', backref='productos_defectuosos')
+    usuario = db.relationship('Usuario', backref='productos_defectuosos')
+
+
+class FotoProductoDefectuoso(db.Model):
+    __tablename__ = 'FotoProductoDefectuoso'
+
+    ID = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    ID_ProductoDefectuoso = db.Column(db.Integer, db.ForeignKey('ProductoDefectuoso.ID'), nullable=False)
+    RutaArchivo = db.Column(db.String(500), nullable=False)
+    FechaSubida = db.Column(db.DateTime, default=datetime.utcnow)
