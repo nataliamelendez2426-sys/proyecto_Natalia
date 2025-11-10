@@ -802,52 +802,48 @@ def mensajes_cliente(cliente_id):
 
 # ---------- GARANTIA ----------
 
-@admin.route('/lista', methods=['GET'])
+@admin.route('/garantias')
 @login_required
-def lista_garantias():
+def ver_garantias():
     if current_user.Rol != 'admin':
-        flash("No tienes permisos para acceder a esta sección.", "danger")
-        return redirect(url_for('main.index'))
-    
+        flash("No tienes permisos para acceder a esta sección", "danger")
+        return redirect(url_for('cliente.index'))
+
     garantias = Garantia.query.order_by(Garantia.FechaSolicitud.desc()).all()
     return render_template('administrador/garantia_lista.html', garantias=garantias)
 
-
-# -------- Ver Detalles de una Garantía --------
-@admin.route('/detalle/<int:garantia_id>', methods=['GET'])
+@admin.route('/garantia/<int:garantia_id>')
 @login_required
 def detalle_garantia(garantia_id):
     if current_user.Rol != 'admin':
-        flash("No tienes permisos para acceder a esta sección.", "danger")
-        return redirect(url_for('main.index'))
+        flash("No tienes permisos", "danger")
+        return redirect(url_for('cliente.index'))
 
     garantia = Garantia.query.get_or_404(garantia_id)
-    return render_template('administrador/garantia_detalle.html', garantia=garantia)
+    return render_template('administrador/detalle_garantia.html', garantia=garantia)
 
-
-# -------- Resolver Garantía (Aprobar/Rechazar) --------
-@admin.route('/resolver/<int:garantia_id>', methods=['POST'])
+@admin.route('/garantia/<int:garantia_id>/actualizar', methods=['POST'])
 @login_required
-def resolver_garantia(garantia_id):
+def actualizar_garantia(garantia_id):
     if current_user.Rol != 'admin':
-        flash("No tienes permisos para realizar esta acción.", "danger")
-        return redirect(url_for('main.index'))
+        flash("No tienes permisos", "danger")
+        return redirect(url_for('cliente.index'))
 
     garantia = Garantia.query.get_or_404(garantia_id)
-    accion = request.form.get('accion')  
+    nuevo_estado = request.form.get('estado')  # 'aprobada', 'rechazada', 'completada'
     comentario = request.form.get('comentario')
 
-    if accion not in ['aprobada', 'rechazada']:
-        flash("Acción inválida.", "warning")
-        return redirect(url_for('admin_garantia.lista_garantias'))
-
-    garantia.Estado = accion
+    garantia.Estado = nuevo_estado
     garantia.ComentarioAdmin = comentario
     garantia.FechaResolucion = datetime.utcnow()
-    db.session.commit()
 
-    flash("Garantía actualizada correctamente.", "success")
-    return redirect(url_for('admin.lista_garantias'))
+    db.session.commit()
+    flash("Garantía actualizada correctamente", "success")
+    return redirect(url_for('admin.detalle_garantia', garantia_id=garantia.ID_Garantia))
+
+
+
+
 # ---------- RECURSOS HUMANOS ----------
 
 @admin.route('/recursos-humanos')

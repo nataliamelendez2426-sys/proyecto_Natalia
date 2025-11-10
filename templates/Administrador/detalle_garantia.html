@@ -1,0 +1,25 @@
+{% extends "common/base.html" %}
+{% block content %}
+<h3>Garantía #{{ garantia.ID_Garantia }}</h3>
+<p><strong>Usuario:</strong> {{ garantia.usuario.Nombre }} {{ garantia.usuario.Apellido }}</p>
+<p><strong>Pedido:</strong> {{ garantia.pedido.ID_Pedido }}</p>
+<p><strong>Motivo:</strong> {{ garantia.Motivo }}</p>
+<p><strong>Estado actual:</strong> {{ garantia.Estado }}</p>
+
+<form method="POST" action="{{ url_for('admin.actualizar_garantia', garantia_id=garantia.ID_Garantia) }}">
+  <div class="mb-3">
+    <label for="estado" class="form-label">Cambiar estado</label>
+    <select name="estado" id="estado" class="form-select">
+      <option value="pendiente" {% if garantia.Estado=='pendiente' %}selected{% endif %}>Pendiente</option>
+      <option value="aprobada" {% if garantia.Estado=='aprobada' %}selected{% endif %}>Aprobada</option>
+      <option value="rechazada" {% if garantia.Estado=='rechazada' %}selected{% endif %}>Rechazada</option>
+      <option value="completada" {% if garantia.Estado=='completada' %}selected{% endif %}>Completada</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label for="comentario" class="form-label">Comentario del admin</label>
+    <textarea name="comentario" id="comentario" class="form-control">{{ garantia.ComentarioAdmin or '' }}</textarea>
+  </div>
+  <button type="submit" class="btn btn-success">Actualizar</button>
+</form>
+{% endblock %}
