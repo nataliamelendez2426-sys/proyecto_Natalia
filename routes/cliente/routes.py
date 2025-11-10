@@ -473,21 +473,26 @@ def checkout():
         return jsonify({"success": False, "mensaje": "Carrito vacío"})
 
     try:
-        # 1️⃣ Crear pedido
+        # 1️⃣ Traer la dirección
+        direccion = Direccion.query.get(direccion_id)
+        if not direccion:
+            return jsonify({"success": False, "mensaje": "Dirección no válida"})
+
+        # 2️⃣ Crear pedido
         pedido = Pedido(
             NombreComprador=f"{current_user.Nombre} {current_user.Apellido or ''}",
             Estado='pendiente',
             FechaPedido=date.today(),
-            Destino=direccion_id,  # Guardamos el ID
+            Destino=f"{direccion.Direccion} ({direccion.Ciudad}, {direccion.Departamento})",
             ID_Usuario=current_user.ID_Usuario
         )
         db.session.add(pedido)
         db.session.flush()  # Para obtener ID_Pedido
 
         total_compra = 0
-        detalles = []
+        detalles_resumen = []
 
-        # 2️⃣ Crear detalles del pedido
+        # 3️⃣ Crear detalles del pedido y actualizar stock
         for item in carrito:
             producto = Producto.query.get(item['ID_Producto'])
             if not producto:
@@ -505,20 +510,16 @@ def checkout():
             )
             db.session.add(detalle)
 
-            detalles.append({
-            "nombre": producto.NombreProducto,  # <-- usar NombreProducto
-            "cantidad": cantidad,
-            "precio": precio
-        })
-
-        # 4️⃣ Crear pago  
-
             # Actualizar stock
-            producto.Stock -= cantidad
-            if producto.Stock < 0:
-                producto.Stock = 0
+            producto.Stock = max(producto.Stock - cantidad, 0)
 
-        # 3️⃣ Guardar método de pago
+            detalles_resumen.append({
+                "NombreProducto": producto.NombreProducto,
+                "cantidad": cantidad,
+                "precio": precio
+            })
+
+        # 4️⃣ Guardar método de pago
         pago = Pagos(
             MetodoPago=metodo,
             Monto=total_compra,
@@ -528,16 +529,13 @@ def checkout():
 
         db.session.commit()
 
-        # 4️⃣ Traer la dirección completa
-        direccion = Direccion.query.get(direccion_id)
-        pedido = Pedido(
-            NombreComprador=f"{current_user.Nombre} {current_user.Apellido or ''}",
-            Estado='pendiente',
-            FechaPedido=date.today(),
-            Destino=f"{direccion.Direccion} ({direccion.Ciudad}, {direccion.Departamento})",
-            ID_Usuario=current_user.ID_Usuario
-        )
-        db.session.add(pedido)
+        # ✅ Devolver JSON con resumen
+        return jsonify({
+            "success": True,
+            "mensaje": "Pago procesado correctamente",
+            "total": total_compra,
+            "detalles": detalles_resumen
+        })
 
     except Exception as e:
         db.session.rollback()
