@@ -1025,5 +1025,6 @@ def finanzas_ajax():
 @login_required
 @role_required('admin')
 def admin_productos_defectuosos():
-    registros = ProductoDefectuoso.query.order_by(ProductoDefectuoso.FechaRegistro.desc()).all()
+    # Traer todas las garantías registradas como defectuoso, las más recientes primero
+    registros = Garantia.query.order_by(Garantia.FechaSolicitud.desc()).all()
     return render_template('administrador/productos_defectuosos.html', registros=registros)

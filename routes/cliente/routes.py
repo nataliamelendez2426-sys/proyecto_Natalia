@@ -782,6 +782,8 @@ def seleccionar_pedido_defectuoso():
     return render_template('cliente/seleccionar_pedido_defectuoso.html', pedidos=pedidos)
 
 # ------------------ Registrar producto defectuoso ------------------
+
+
 @cliente.route('/registrar_defectuoso/<int:pedido_id>/<int:producto_id>', methods=['GET', 'POST'])
 @login_required
 def registrar_defectuoso(pedido_id, producto_id):
@@ -799,12 +801,18 @@ def registrar_defectuoso(pedido_id, producto_id):
         db.session.add(garantia)
         db.session.commit()
 
+        # Carpeta donde se guardarán los archivos
+        carpeta = 'static/uploads/garantias'
+        if not os.path.exists(carpeta):
+            os.makedirs(carpeta)  # Crear la carpeta si no existe
+
         # Guardar archivos
         for archivo in archivos:
             if archivo:
                 filename = archivo.filename
-                ruta = f'static/uploads/garantias/{filename}'
+                ruta = os.path.join(carpeta, filename)
                 archivo.save(ruta)
+
                 garantia_archivo = GarantiaArchivo(
                     ID_Garantia=garantia.ID_Garantia,
                     NombreArchivo=filename,

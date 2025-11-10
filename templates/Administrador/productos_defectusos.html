@@ -8,19 +8,19 @@
     <div class="accordion" id="accordionDefectuosos">
         {% for reg in registros %}
         <div class="accordion-item mb-2">
-            <h2 class="accordion-header" id="heading{{ reg.ID }}">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ reg.ID }}" aria-expanded="false">
-                    {{ reg.producto.NombreProducto }} - Pedido #{{ reg.ID_Pedido }} - Usuario: {{ reg.usuario.Nombre }}
+            <h2 class="accordion-header" id="heading{{ reg.ID_Garantia }}">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ reg.ID_Garantia }}" aria-expanded="false">
+                    Pedido #{{ reg.ID_Pedido }} - Usuario: {{ reg.usuario.Nombre }}
                 </button>
             </h2>
-            <div id="collapse{{ reg.ID }}" class="accordion-collapse collapse" aria-labelledby="heading{{ reg.ID }}" data-bs-parent="#accordionDefectuosos">
+            <div id="collapse{{ reg.ID_Garantia }}" class="accordion-collapse collapse" aria-labelledby="heading{{ reg.ID_Garantia }}" data-bs-parent="#accordionDefectuosos">
                 <div class="accordion-body">
                     <p><strong>Motivo:</strong> {{ reg.Motivo }}</p>
                     <p><strong>Estado:</strong> {{ reg.Estado }}</p>
                     <div class="row">
-                        {% for foto in reg.fotos %}
+                        {% for archivo in reg.archivos %}
                         <div class="col-md-3 mb-2">
-                            <img src="{{ url_for('static', filename=foto.RutaArchivo.split('static/')[1]) }}" class="img-fluid rounded shadow-sm">
+                            <img src="{{ url_for('static', filename=archivo.RutaArchivo) }}" class="img-fluid rounded shadow-sm" alt="{{ archivo.NombreArchivo }}">
                         </div>
                         {% endfor %}
                     </div>
