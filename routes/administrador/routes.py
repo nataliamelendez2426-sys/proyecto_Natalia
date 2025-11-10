@@ -800,8 +800,6 @@ def mensajes_cliente(cliente_id):
     ]
     return jsonify(mensajes_list)
 
-# ---------- GARANTIA ----------
-
 @admin.route('/garantias')
 @login_required
 def ver_garantias():
@@ -809,8 +807,10 @@ def ver_garantias():
         flash("No tienes permisos para acceder a esta sección", "danger")
         return redirect(url_for('cliente.index'))
 
+    # Traer garantías con usuario y productos relacionados
     garantias = Garantia.query.order_by(Garantia.FechaSolicitud.desc()).all()
     return render_template('administrador/garantia_lista.html', garantias=garantias)
+
 
 @admin.route('/garantia/<int:garantia_id>')
 @login_required
@@ -820,26 +820,10 @@ def detalle_garantia(garantia_id):
         return redirect(url_for('cliente.index'))
 
     garantia = Garantia.query.get_or_404(garantia_id)
-    return render_template('administrador/detalle_garantia.html', garantia=garantia)
-
-@admin.route('/garantia/<int:garantia_id>/actualizar', methods=['POST'])
-@login_required
-def actualizar_garantia(garantia_id):
-    if current_user.Rol != 'admin':
-        flash("No tienes permisos", "danger")
-        return redirect(url_for('cliente.index'))
-
-    garantia = Garantia.query.get_or_404(garantia_id)
-    nuevo_estado = request.form.get('estado')  # 'aprobada', 'rechazada', 'completada'
-    comentario = request.form.get('comentario')
-
-    garantia.Estado = nuevo_estado
-    garantia.ComentarioAdmin = comentario
-    garantia.FechaResolucion = datetime.utcnow()
-
-    db.session.commit()
-    flash("Garantía actualizada correctamente", "success")
-    return redirect(url_for('admin.detalle_garantia', garantia_id=garantia.ID_Garantia))
+    return render_template(
+        'administrador/detalle_garantia.html', 
+        garantia=garantia
+    )
 
 
 

@@ -8,14 +8,31 @@
 <div class="container my-5">
   <h2 class="mb-4">Solicitar Garantía</h2>
 
-  <form action="{{ url_for('cliente.solicitar_garantia', pedido_id=pedido.ID_Pedido) }}" method="POST" enctype="multipart/form-data">
+  {# Mensajes flash #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} mb-3">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form action="{{ url_for('cliente.solicitar_garantia', pedido_id=pedido.ID_Pedido) }}" 
+        method="POST" enctype="multipart/form-data">
+
     <div class="mb-3">
-      <label for="productos" class="form-label">Selecciona los productos</label>
+      <label class="form-label">Selecciona los productos</label>
       {% for detalle in productos %}
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" 
-                 name="productos" value="{{ detalle.ID_Producto }}" id="prod{{ detalle.ID_Producto }}">
-          <label class="form-check-label" for="prod{{ detalle.ID_Producto }}">
+        <div class="form-check d-flex align-items-center mb-2">
+          <input class="form-check-input me-2" type="checkbox" 
+                 name="productos" value="{{ detalle.ID_Producto }}" 
+                 id="prod{{ detalle.ID_Producto }}">
+          
+          <label class="form-check-label d-flex align-items-center" for="prod{{ detalle.ID_Producto }}">
+            {% if detalle.producto.ImagenPrincipal %}
+              <img src="{{ url_for('static', filename='uploads/' ~ detalle.producto.ImagenPrincipal) }}" 
+                   alt="{{ detalle.producto.NombreProducto }}" width="50" class="me-2 rounded">
+            {% endif %}
             {{ detalle.producto.NombreProducto }} (Cantidad: {{ detalle.Cantidad }})
           </label>
         </div>

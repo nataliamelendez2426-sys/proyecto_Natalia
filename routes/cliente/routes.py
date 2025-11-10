@@ -638,29 +638,36 @@ def eliminar_pedido(pedido_id):
     return redirect(url_for('cliente.historial'))
 
 # ---------- GARANTIAS ----------
-@cliente.route('/garantia/<int:pedido_id>', methods=['GET', 'POST'])
+cliente.route('/garantia/<int:pedido_id>', methods=['GET', 'POST'])
 @login_required
 def solicitar_garantia(pedido_id):
     pedido = Pedido.query.get_or_404(pedido_id)
+
+    # Solo el usuario que hizo el pedido puede solicitar garantía
+    if pedido.ID_Usuario != current_user.ID_Usuario:
+        flash('No tienes permisos para solicitar garantía en este pedido.', 'danger')
+        return redirect(url_for('cliente.index'))
+
     # Traer los productos del pedido
     productos = Detalle_Pedido.query.filter_by(ID_Pedido=pedido_id).all()
 
     if request.method == 'POST':
         motivo = request.form.get('motivo')
-        productos_seleccionados = request.form.getlist('productos')
+        productos_seleccionados = request.form.getlist('productos')  # IDs de productos
         archivos = request.files.getlist('archivos')
 
         if not productos_seleccionados:
             flash('Debes seleccionar al menos un producto para la garantía.', 'danger')
             return redirect(request.url)
 
+        # Crear la garantía
         nueva_garantia = Garantia(
             ID_Pedido=pedido.ID_Pedido,
             ID_Usuario=current_user.ID_Usuario,
             Motivo=motivo
         )
         db.session.add(nueva_garantia)
-        db.session.flush()  # Para obtener ID_Garantia
+        db.session.flush()  # Para obtener ID_Garantia antes de commit
 
         # Guardar archivos
         for archivo in archivos:
@@ -675,12 +682,15 @@ def solicitar_garantia(pedido_id):
                 )
                 db.session.add(archivo_garantia)
 
-        # Guardar los productos seleccionados
+        # Guardar los productos seleccionados en la tabla intermedia
         for id_producto in productos_seleccionados:
-            db.session.add(GarantiaProducto(
-                ID_Garantia=nueva_garantia.ID_Garantia,
-                ID_Producto=int(id_producto)
-            ))
+            # Validar que el producto pertenece al pedido
+            detalle = Detalle_Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Producto=int(id_producto)).first()
+            if detalle:
+                db.session.add(GarantiaProducto(
+                    ID_Garantia=nueva_garantia.ID_Garantia,
+                    ID_Producto=int(id_producto)
+                ))
 
         db.session.commit()
         flash('Solicitud de garantía enviada correctamente.', 'success')
@@ -691,7 +701,6 @@ def solicitar_garantia(pedido_id):
         pedido=pedido,
         productos=productos
     )
-
 
 @cliente.route('/guardar_preferencias', methods=['POST'])
 @login_required
