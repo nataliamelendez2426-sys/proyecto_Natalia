@@ -684,7 +684,7 @@ def solicitar_garantia(pedido_id):
 
         db.session.commit()
         flash('Solicitud de garantía enviada correctamente.', 'success')
-        return redirect(url_for('cliente.ver_pedido'))
+        return redirect(url_for('cliente.ver_pedido', pedido_id=pedido.ID_Pedido))
 
     return render_template(
         'cliente/solicitar_garantia.html',
