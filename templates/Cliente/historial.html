@@ -5,7 +5,7 @@
 
 <!-- Filtros -->
 <div class="filtro-container">
-    <div>
+    <div class="filtro-item">
         <label for="filtroTipo">Filtrar por tipo:</label>
         <select id="filtroTipo">
             <option value="todos">Todos</option>
@@ -19,16 +19,24 @@
             <option value="comentario">Comentarios</option>
         </select>
     </div>
-    <div>
-        <label for="filtroFecha">Filtrar por fecha:</label>
-        <input type="date" id="filtroFecha">
+
+    <div class="filtro-item">
+        <label for="fechaInicio">Desde:</label>
+        <input type="date" id="fechaInicio">
+    </div>
+
+    <div class="filtro-item">
+        <label for="fechaFin">Hasta:</label>
+        <input type="date" id="fechaFin">
     </div>
 </div>
 
 <!-- Contenedor de actividades -->
-<div class="historial-container">
+<div class="historial-container" id="historialContainer">
     {% for act in historial.actividades %}
-        <div class="actividad-card {{ act.tipo }}" data-fecha="{{ act.fecha }}">
+        <div class="actividad-card {{ act.tipo }}" 
+             data-tipo="{{ act.tipo }}" 
+             data-fecha="{{ act.fecha }}">
             <div class="actividad-header">
                 <strong>[{{ act.tipo|capitalize }}]</strong> - {{ act.fecha }}
             </div>
@@ -60,12 +68,13 @@
     {% endfor %}
 </div>
 
-<!-- Mensaje si no hay actividades -->
-<div id="mensajeNoActividades">No hay actividades con estos filtros.</div>
+<!-- Mensaje cuando no hay resultados -->
+<div id="noResults" class="no-results" style="display:none;">
+    <p>No hay notificaciones con estos filtros.</p>
+</div>
 
-<!-- Estilos CSS incluidos -->
+<!-- Estilos CSS -->
 <style>
-/* Contenedor principal */
 .historial-container {
     display: flex;
     flex-direction: column;
@@ -75,7 +84,6 @@
     padding-bottom: 30px;
 }
 
-/* Tarjeta de actividad */
 .actividad-card {
     border-radius: 8px;
     padding: 15px 20px;
@@ -99,7 +107,6 @@
     margin-left: 20px;
 }
 
-/* Colores por tipo de actividad */
 .actividad-card.pedido { border-left: 5px solid #3498db; }
 .actividad-card.pago { border-left: 5px solid #2ecc71; }
 .actividad-card.resena { border-left: 5px solid #f39c12; }
@@ -109,47 +116,38 @@
 .actividad-card.novedad { border-left: 5px solid #34495e; }
 .actividad-card.comentario { border-left: 5px solid #e67e22; }
 
-/* Título */
 .historial-title {
     text-align: center;
     margin-bottom: 20px;
 }
 
-/* Filtro */
 .filtro-container {
     max-width: 900px;
     margin: 0 auto 20px auto;
     display: flex;
-    align-items: center;
-    gap: 15px;
     flex-wrap: wrap;
+    gap: 15px;
+    align-items: center;
 }
 
-.filtro-container select,
-.filtro-container input[type="date"] {
+.filtro-item label {
+    margin-right: 5px;
+    font-weight: bold;
+}
+
+.filtro-item select,
+.filtro-item input[type="date"] {
     padding: 5px 10px;
     border-radius: 5px;
     border: 1px solid #ccc;
 }
 
-/* Mensaje de no actividades */
-#mensajeNoActividades {
+.no-results {
     text-align: center;
+    font-size: 1.2em;
     color: #555;
-    font-size: 1.2rem;
-    margin-top: 30px;
-    display: none;
-}
-
-/* Footer siempre abajo */
-body {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-}
-
-main {
-    flex: 1;
+    margin-top: 40px;
+    font-weight: bold;
 }
 </style>
 
@@ -157,30 +155,39 @@ main {
 <script>
 function filtrarActividades() {
     const tipoSeleccionado = document.getElementById('filtroTipo').value;
-    const fechaSeleccionada = document.getElementById('filtroFecha').value;
+    const fechaInicio = document.getElementById('fechaInicio').value;
+    const fechaFin = document.getElementById('fechaFin').value;
     const cards = document.querySelectorAll('.actividad-card');
     let anyVisible = false;
 
     cards.forEach(card => {
-        const matchTipo = (tipoSeleccionado === 'todos' || card.classList.contains(tipoSeleccionado));
-        const fechaAct = card.dataset.fecha.split(' ')[0]; // Solo YYYY-MM-DD
-        const matchFecha = (!fechaSeleccionada || fechaAct === fechaSeleccionada);
+        const cardTipo = card.dataset.tipo;
+        const cardFecha = card.dataset.fecha.split('T')[0]; // Extraer YYYY-MM-DD
+        let mostrar = true;
 
-        if (matchTipo && matchFecha) {
-            card.style.display = 'block';
-            anyVisible = true;
-        } else {
-            card.style.display = 'none';
+        // Filtrar por tipo
+        if (tipoSeleccionado !== 'todos' && cardTipo !== tipoSeleccionado) {
+            mostrar = false;
         }
+
+        // Filtrar por fechas
+        if (fechaInicio && cardFecha < fechaInicio) {
+            mostrar = false;
+        }
+        if (fechaFin && cardFecha > fechaFin) {
+            mostrar = false;
+        }
+
+        card.style.display = mostrar ? 'block' : 'none';
+        if (mostrar) anyVisible = true;
     });
 
-    document.getElementById('mensajeNoActividades').style.display = anyVisible ? 'none' : 'block';
+    document.getElementById('noResults').style.display = anyVisible ? 'none' : 'block';
 }
 
 document.getElementById('filtroTipo').addEventListener('change', filtrarActividades);
-document.getElementById('filtroFecha').addEventListener('change', filtrarActividades);
-
-// Ejecutar al cargar
-filtrarActividades();
+document.getElementById('fechaInicio').addEventListener('change', filtrarActividades);
+document.getElementById('fechaFin').addEventListener('change', filtrarActividades);
 </script>
+
 {% endblock %}
