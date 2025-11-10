@@ -553,37 +553,137 @@ def confirmar_entrega(pedido_id):
 
 # ---------- HISTORIAL_TRANSACCIONES ----------
 
-@cliente.route('/historial')
+def obtener_historial_cliente(usuario_id):
+    usuario = Usuario.query.get(usuario_id)
+    if not usuario:
+        return None  # O lanzar excepción
+
+    historial = {
+        "datos_usuario": {
+            "nombre": usuario.Nombre,
+            "apellido": usuario.Apellido,
+            "correo": usuario.Correo,
+            "telefono": usuario.Telefono
+        },
+        "pedidos": [],
+        "resenas": [],
+        "mensajes": [],
+        "garantias": []
+    }
+
+    # Pedidos y detalles
+    for pedido in usuario.pedidos:
+        historial["pedidos"].append({
+            "ID_Pedido": pedido.ID_Pedido,
+            "Estado": pedido.Estado,
+            "FechaPedido": pedido.FechaPedido.isoformat(),
+            "FechaEntrega": pedido.FechaEntrega.isoformat() if pedido.FechaEntrega else None,
+            "Destino": pedido.Destino,
+            "Descuento": pedido.Descuento,
+            "detalles": [
+                {
+                    "Producto": detalle.producto.NombreProducto,
+                    "Cantidad": detalle.Cantidad,
+                    "PrecioUnidad": detalle.PrecioUnidad,
+                    "Subtotal": detalle.subtotal
+                } for detalle in pedido.detalles_pedido
+            ],
+            "pagos": [
+                {
+                    "MetodoPago": pago.MetodoPago,
+                    "Monto": pago.Monto,
+                    "FechaPago": pago.FechaPago.isoformat()
+                } for pago in pedido.pagos
+            ],
+            "comentarios": [
+                {
+                    "texto": comentario.texto,
+                    "fecha": comentario.fecha.isoformat()
+                } for comentario in pedido.comentarios
+            ]
+        })
+
+    # Reseñas
+    for resena in usuario.resenas:
+        historial["resenas"].append({
+            "Producto": resena.producto.NombreProducto,
+            "Calificacion": resena.Calificacion,
+            "Comentario": resena.Comentario,
+            "Fecha": resena.Fecha.isoformat()
+        })
+
+    # Mensajes
+    for mensaje in usuario.mensajes:
+        historial["mensajes"].append({
+            "contenido": mensaje.contenido,
+            "enviado_admin": mensaje.enviado_admin,
+            "fecha": mensaje.fecha.isoformat()
+        })
+
+    # Garantías
+    for garantia in Garantia.query.filter_by(ID_Usuario=usuario_id).all():
+        historial["garantias"].append({
+            "ID_Garantia": garantia.ID_Garantia,
+            "Estado": garantia.Estado,
+            "Motivo": garantia.Motivo,
+            "ComentarioAdmin": garantia.ComentarioAdmin,
+            "FechaSolicitud": garantia.FechaSolicitud.isoformat(),
+            "FechaResolucion": garantia.FechaResolucion.isoformat() if garantia.FechaResolucion else None,
+            "archivos": [
+                {
+                    "NombreArchivo": archivo.NombreArchivo,
+                    "RutaArchivo": archivo.RutaArchivo,
+                    "FechaSubida": archivo.FechaSubida.isoformat()
+                } for archivo in garantia.archivos
+            ]
+        })
+
+    return historial
+
+@cliente.route('/historial', methods=['GET'])
 @login_required
-def historial():
-    cliente_id = current_user.ID_Usuario
-    
-    pedidos = Pedido.query.filter_by(ID_Usuario=cliente_id).order_by(Pedido.FechaPedido.desc()).all()
-    
-  
-    for pedido in pedidos:
-        pedido.subtotal = sum(detalle.Cantidad * detalle.PrecioUnidad for detalle in pedido.detalles_pedido)
-    
-    return render_template('cliente/historial_transacciones.html', pedidos=pedidos)
+def historial_cliente():
+    historial = obtener_historial_cliente(current_user.ID_Usuario)
+    if not historial:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+    return jsonify(historial)
 
 
-
-@cliente.route('/pedido/<int:pedido_id>')
+@cliente.route('/historial_web')
 @login_required
-def ver_pedido(pedido_id):
-    pedido = Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Usuario=current_user.ID_Usuario).first_or_404()
-    return render_template('cliente/ver_pedido.html', pedido=pedido)
-
-
-@cliente.route('/pedido/<int:pedido_id>/eliminar', methods=['POST'])
-@login_required
-def eliminar_pedido(pedido_id):
-    pedido = Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Usuario=current_user.ID_Usuario).first_or_404()
+def historial_cliente_web():
+    usuario_id = current_user.ID_Usuario
     
-    db.session.delete(pedido)
-    db.session.commit()
-    flash('Pedido eliminado correctamente.', 'success')
-    return redirect(url_for('cliente.historial'))
+    # Filtros desde query params
+    estado = request.args.get('estado')  # pendiente, entregado, etc.
+    fecha_inicio = request.args.get('fecha_inicio')
+    fecha_fin = request.args.get('fecha_fin')
+
+    historial = obtener_historial_cliente(usuario_id)
+
+    # Filtrar pedidos por estado
+    if estado:
+        historial["pedidos"] = [p for p in historial["pedidos"] if p["Estado"] == estado]
+
+    # Filtrar por fechas
+    if fecha_inicio:
+        fecha_inicio_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+        historial["pedidos"] = [p for p in historial["pedidos"] if datetime.strptime(p["FechaPedido"], "%Y-%m-%d").date() >= fecha_inicio_dt]
+    if fecha_fin:
+        fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+        historial["pedidos"] = [p for p in historial["pedidos"] if datetime.strptime(p["FechaPedido"], "%Y-%m-%d").date() <= fecha_fin_dt]
+
+    # Calcular totales
+    total_pedidos = sum(sum(d['Subtotal'] for d in p['detalles']) for p in historial["pedidos"])
+    total_pagado = sum(sum(p['Monto'] for p in p['pagos']) for p in historial["pedidos"])
+    
+    return render_template(
+        'cliente/historial.html', 
+        historial=historial,
+        total_pedidos=total_pedidos,
+        total_pagado=total_pagado,
+        filtros={"estado": estado, "fecha_inicio": fecha_inicio, "fecha_fin": fecha_fin}
+    )
 
 # ---------- GARANTIAS ----------
 @cliente.route('/garantia/<int:pedido_id>', methods=['GET', 'POST'])

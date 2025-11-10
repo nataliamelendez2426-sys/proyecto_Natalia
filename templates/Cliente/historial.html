@@ -1,0 +1,83 @@
+{% extends "common/base.html" %}
+
+{% block content %}
+<h2>Historial de {{ historial.datos_usuario.nombre }} {{ historial.datos_usuario.apellido }}</h2>
+
+<!-- Filtros -->
+<form method="get" class="mb-3">
+    <label>Estado:</label>
+    <select name="estado">
+        <option value="">Todos</option>
+        <option value="pendiente" {% if filtros.estado == "pendiente" %}selected{% endif %}>Pendiente</option>
+        <option value="en proceso" {% if filtros.estado == "en proceso" %}selected{% endif %}>En proceso</option>
+        <option value="en reparto" {% if filtros.estado == "en reparto" %}selected{% endif %}>En reparto</option>
+        <option value="entregado" {% if filtros.estado == "entregado" %}selected{% endif %}>Entregado</option>
+    </select>
+    
+    <label>Desde:</label>
+    <input type="date" name="fecha_inicio" value="{{ filtros.fecha_inicio }}">
+    <label>Hasta:</label>
+    <input type="date" name="fecha_fin" value="{{ filtros.fecha_fin }}">
+    
+    <button type="submit">Filtrar</button>
+</form>
+
+<!-- Totales -->
+<p><strong>Total Pedidos:</strong> ${{ total_pedidos }}</p>
+<p><strong>Total Pagado:</strong> ${{ total_pagado }}</p>
+
+<!-- Pedidos -->
+<h3>Pedidos</h3>
+{% for pedido in historial.pedidos %}
+<div style="border:1px solid #ccc; margin-bottom:10px; padding:10px;">
+    <p><strong>ID Pedido:</strong> {{ pedido.ID_Pedido }}</p>
+    <p><strong>Estado:</strong> {{ pedido.Estado }}</p>
+    <p><strong>Fecha Pedido:</strong> {{ pedido.FechaPedido }}</p>
+    <p><strong>Destino:</strong> {{ pedido.Destino }}</p>
+    
+    <p><strong>Detalles:</strong></p>
+    <ul>
+    {% for detalle in pedido.detalles %}
+        <li>{{ detalle.Cantidad }} x {{ detalle.Producto }} - ${{ detalle.PrecioUnidad }} (Subtotal: ${{ detalle.Subtotal }})</li>
+    {% endfor %}
+    </ul>
+
+    <p><strong>Pagos:</strong></p>
+    <ul>
+    {% for pago in pedido.pagos %}
+        <li>{{ pago.FechaPago }} - ${{ pago.Monto }} ({{ pago.MetodoPago }})</li>
+    {% endfor %}
+    </ul>
+
+    <p><strong>Comentarios:</strong></p>
+    <ul>
+    {% for comentario in pedido.comentarios %}
+        <li>{{ comentario.fecha }} - {{ comentario.texto }}</li>
+    {% endfor %}
+    </ul>
+</div>
+{% endfor %}
+
+<!-- Reseñas -->
+<h3>Reseñas</h3>
+{% for resena in historial.resenas %}
+<p>{{ resena.Fecha }} - {{ resena.Producto }}: {{ resena.Calificacion }}⭐ - {{ resena.Comentario }}</p>
+{% endfor %}
+
+<!-- Garantías -->
+<h3>Garantías</h3>
+{% for garantia in historial.garantias %}
+<div style="border:1px solid #ccc; margin-bottom:10px; padding:10px;">
+    <p>ID Garantía: {{ garantia.ID_Garantia }} - Estado: {{ garantia.Estado }}</p>
+    <p>Motivo: {{ garantia.Motivo }}</p>
+    <p>Comentario Admin: {{ garantia.ComentarioAdmin or "N/A" }}</p>
+    <p>Archivos:</p>
+    <ul>
+    {% for archivo in garantia.archivos %}
+        <li>{{ archivo.NombreArchivo }} - <a href="{{ archivo.RutaArchivo }}" target="_blank">Ver archivo</a></li>
+    {% endfor %}
+    </ul>
+</div>
+{% endfor %}
+
+{% endblock %}
