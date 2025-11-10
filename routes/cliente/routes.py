@@ -642,17 +642,10 @@ def eliminar_pedido(pedido_id):
 @login_required
 def solicitar_garantia(pedido_id):
     pedido = Pedido.query.get_or_404(pedido_id)
-    # Traer los productos del pedido
-    productos = Detalle_Pedido.query.filter_by(ID_Pedido=pedido_id).all()
 
     if request.method == 'POST':
         motivo = request.form.get('motivo')
-        productos_seleccionados = request.form.getlist('productos')
         archivos = request.files.getlist('archivos')
-
-        if not productos_seleccionados:
-            flash('Debes seleccionar al menos un producto para la garantía.', 'danger')
-            return redirect(request.url)
 
         nueva_garantia = Garantia(
             ID_Pedido=pedido.ID_Pedido,
@@ -660,7 +653,7 @@ def solicitar_garantia(pedido_id):
             Motivo=motivo
         )
         db.session.add(nueva_garantia)
-        db.session.flush()  # Para obtener ID_Garantia
+        db.session.commit()  
 
         # Guardar archivos
         for archivo in archivos:
@@ -675,23 +668,11 @@ def solicitar_garantia(pedido_id):
                 )
                 db.session.add(archivo_garantia)
 
-        # Guardar los productos seleccionados
-        for id_producto in productos_seleccionados:
-            db.session.add(GarantiaProducto(
-                ID_Garantia=nueva_garantia.ID_Garantia,
-                ID_Producto=int(id_producto)
-            ))
-
         db.session.commit()
         flash('Solicitud de garantía enviada correctamente.', 'success')
         return redirect(url_for('cliente.mis_pedidos'))
 
-    return render_template(
-        'cliente/solicitar_garantia.html',
-        pedido=pedido,
-        productos=productos
-    )
-
+    return render_template('cliente/solicitar_garantia.html', pedido=pedido)
 
 
 @cliente.route('/guardar_preferencias', methods=['POST'])

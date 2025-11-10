@@ -321,15 +321,6 @@ class GarantiaArchivo(db.Model):
     RutaArchivo = db.Column(db.String(500), nullable=False)
     FechaSubida = db.Column(db.DateTime, default=datetime.utcnow)
 
-class GarantiaProducto(db.Model):
-    __tablename__ = 'GarantiaProducto'
-
-    ID_GarantiaProducto = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    ID_Garantia = db.Column(db.Integer, db.ForeignKey('Garantia.ID_Garantia', ondelete='CASCADE'), nullable=False)
-    ID_Producto = db.Column(db.Integer, db.ForeignKey('Producto.ID_Producto'), nullable=False)
-
-    garantia = db.relationship('Garantia', backref='productos_garantia')
-    producto = db.relationship('Producto')
 
 
 # ------------------ Etiqueta ------------------
@@ -397,3 +388,13 @@ class FotoProductoDefectuoso(db.Model):
 
     def __repr__(self):
         return f"<FotoProductoDefectuoso ID={self.ID} Ruta='{self.RutaArchivo}'>"
+
+class GarantiaProducto(db.Model):
+    __tablename__ = 'GarantiaProducto'
+
+    ID_GarantiaProducto = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    ID_Garantia = db.Column(db.Integer, db.ForeignKey('Garantia.ID_Garantia', ondelete='CASCADE'), nullable=False)
+    ID_Producto = db.Column(db.Integer, db.ForeignKey('Producto.ID_Producto'), nullable=False)
+
+    garantia = db.relationship('Garantia', backref='productos_garantia')
+    producto = db.relationship('Producto')
