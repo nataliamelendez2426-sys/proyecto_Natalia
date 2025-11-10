@@ -553,137 +553,136 @@ def confirmar_entrega(pedido_id):
 
 # ---------- HISTORIAL_TRANSACCIONES ----------
 
-def obtener_historial_cliente(usuario_id):
+def historial_actividades(usuario_id):
     usuario = Usuario.query.get(usuario_id)
     if not usuario:
-        return None  # O lanzar excepción
+        return None
 
-    historial = {
-        "datos_usuario": {
-            "nombre": usuario.Nombre,
-            "apellido": usuario.Apellido,
-            "correo": usuario.Correo,
-            "telefono": usuario.Telefono
+    actividades = []
+
+    # ------------------ Pedidos ------------------
+    for pedido in usuario.pedidos:
+        actividades.append({
+            "tipo": "pedido",
+            "fecha": pedido.FechaPedido.isoformat(),
+            "detalle": {
+                "ID_Pedido": pedido.ID_Pedido,
+                "Estado": pedido.Estado,
+                "Destino": pedido.Destino or "Sin dirección",
+                "detalles": [
+                    {
+                        "Producto": d.producto.NombreProducto,
+                        "Cantidad": d.Cantidad or 0,
+                        "PrecioUnidad": d.PrecioUnidad or 0,
+                        "Subtotal": (d.Cantidad or 0) * (d.PrecioUnidad or 0)
+                    } for d in pedido.detalles_pedido
+                ]
+            }
+        })
+
+        # Pagos de cada pedido
+        for pago in pedido.pagos:
+            actividades.append({
+                "tipo": "pago",
+                "fecha": pago.FechaPago.isoformat(),
+                "detalle": {
+                    "ID_Pago": pago.ID_Pagos,
+                    "Monto": pago.Monto,
+                    "MetodoPago": pago.MetodoPago,
+                    "ID_Pedido": pedido.ID_Pedido
+                }
+            })
+
+        # Comentarios del pedido
+        for c in pedido.comentarios:
+            actividades.append({
+                "tipo": "comentario",
+                "fecha": c.fecha.isoformat(),
+                "detalle": {
+                    "ID_Pedido": pedido.ID_Pedido,
+                    "Texto": c.texto
+                }
+            })
+
+    # ------------------ Reseñas ------------------
+    for r in usuario.resenas:
+        actividades.append({
+            "tipo": "resena",
+            "fecha": r.Fecha.isoformat(),
+            "detalle": {
+                "Producto": r.producto.NombreProducto,
+                "Calificacion": r.Calificacion,
+                "Comentario": r.Comentario
+            }
+        })
+
+    # ------------------ Mensajes ------------------
+    for m in usuario.mensajes:
+        actividades.append({
+            "tipo": "mensaje",
+            "fecha": m.fecha.isoformat(),
+            "detalle": {
+                "Contenido": m.contenido,
+                "EnviadoAdmin": m.enviado_admin
+            }
+        })
+
+    # ------------------ Garantías ------------------
+    for g in Garantia.query.filter_by(ID_Usuario=usuario_id).all():
+        actividades.append({
+            "tipo": "garantia",
+            "fecha": g.FechaSolicitud.isoformat(),
+            "detalle": {
+                "ID_Garantia": g.ID_Garantia,
+                "Estado": g.Estado,
+                "Motivo": g.Motivo
+            }
+        })
+
+    # ------------------ Notificaciones ------------------
+    for n in usuario.notificaciones:
+        actividades.append({
+            "tipo": "notificacion",
+            "fecha": n.Fecha.isoformat(),
+            "detalle": {
+                "Titulo": n.Titulo,
+                "Mensaje": n.Mensaje,
+                "Leida": n.Leida
+            }
+        })
+
+    # ------------------ Novedades ------------------
+    for nov in usuario.novedades:
+        actividades.append({
+            "tipo": "novedad",
+            "fecha": nov.FechaReporte.isoformat(),
+            "detalle": {
+                "ID_Producto": nov.ID_Producto,
+                "Tipo": nov.Tipo,
+                "EstadoNovedad": nov.EstadoNovedad
+            }
+        })
+
+    # Ordenar todas las actividades por fecha descendente
+    actividades.sort(key=lambda x: x["fecha"], reverse=True)
+
+    return {
+        "usuario": {
+            "Nombre": usuario.Nombre,
+            "Apellido": usuario.Apellido,
+            "Correo": usuario.Correo
         },
-        "pedidos": [],
-        "resenas": [],
-        "mensajes": [],
-        "garantias": []
+        "actividades": actividades
     }
 
-    # Pedidos y detalles
-    for pedido in usuario.pedidos:
-        historial["pedidos"].append({
-            "ID_Pedido": pedido.ID_Pedido,
-            "Estado": pedido.Estado,
-            "FechaPedido": pedido.FechaPedido.isoformat(),
-            "FechaEntrega": pedido.FechaEntrega.isoformat() if pedido.FechaEntrega else None,
-            "Destino": pedido.Destino,
-            "Descuento": pedido.Descuento,
-            "detalles": [
-                {
-                    "Producto": detalle.producto.NombreProducto,
-                    "Cantidad": detalle.Cantidad,
-                    "PrecioUnidad": detalle.PrecioUnidad,
-                    "Subtotal": detalle.subtotal
-                } for detalle in pedido.detalles_pedido
-            ],
-            "pagos": [
-                {
-                    "MetodoPago": pago.MetodoPago,
-                    "Monto": pago.Monto,
-                    "FechaPago": pago.FechaPago.isoformat()
-                } for pago in pedido.pagos
-            ],
-            "comentarios": [
-                {
-                    "texto": comentario.texto,
-                    "fecha": comentario.fecha.isoformat()
-                } for comentario in pedido.comentarios
-            ]
-        })
 
-    # Reseñas
-    for resena in usuario.resenas:
-        historial["resenas"].append({
-            "Producto": resena.producto.NombreProducto,
-            "Calificacion": resena.Calificacion,
-            "Comentario": resena.Comentario,
-            "Fecha": resena.Fecha.isoformat()
-        })
-
-    # Mensajes
-    for mensaje in usuario.mensajes:
-        historial["mensajes"].append({
-            "contenido": mensaje.contenido,
-            "enviado_admin": mensaje.enviado_admin,
-            "fecha": mensaje.fecha.isoformat()
-        })
-
-    # Garantías
-    for garantia in Garantia.query.filter_by(ID_Usuario=usuario_id).all():
-        historial["garantias"].append({
-            "ID_Garantia": garantia.ID_Garantia,
-            "Estado": garantia.Estado,
-            "Motivo": garantia.Motivo,
-            "ComentarioAdmin": garantia.ComentarioAdmin,
-            "FechaSolicitud": garantia.FechaSolicitud.isoformat(),
-            "FechaResolucion": garantia.FechaResolucion.isoformat() if garantia.FechaResolucion else None,
-            "archivos": [
-                {
-                    "NombreArchivo": archivo.NombreArchivo,
-                    "RutaArchivo": archivo.RutaArchivo,
-                    "FechaSubida": archivo.FechaSubida.isoformat()
-                } for archivo in garantia.archivos
-            ]
-        })
-
-    return historial
-
-@cliente.route('/historial', methods=['GET'])
+@cliente.route('/historial_actividades')
 @login_required
-def historial_cliente():
-    historial = obtener_historial_cliente(current_user.ID_Usuario)
-    if not historial:
-        return jsonify({"error": "Usuario no encontrado"}), 404
-    return jsonify(historial)
+def historial_actividades_web():
+    historial = historial_actividades(current_user.ID_Usuario)
+    return render_template("cliente/historial.html", historial=historial)
 
 
-@cliente.route('/historial_web')
-@login_required
-def historial_cliente_web():
-    usuario_id = current_user.ID_Usuario
-    
-    # Filtros desde query params
-    estado = request.args.get('estado')  # pendiente, entregado, etc.
-    fecha_inicio = request.args.get('fecha_inicio')
-    fecha_fin = request.args.get('fecha_fin')
-
-    historial = obtener_historial_cliente(usuario_id)
-
-    # Filtrar pedidos por estado
-    if estado:
-        historial["pedidos"] = [p for p in historial["pedidos"] if p["Estado"] == estado]
-
-    # Filtrar por fechas
-    if fecha_inicio:
-        fecha_inicio_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
-        historial["pedidos"] = [p for p in historial["pedidos"] if datetime.strptime(p["FechaPedido"], "%Y-%m-%d").date() >= fecha_inicio_dt]
-    if fecha_fin:
-        fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
-        historial["pedidos"] = [p for p in historial["pedidos"] if datetime.strptime(p["FechaPedido"], "%Y-%m-%d").date() <= fecha_fin_dt]
-
-    # Calcular totales
-    total_pedidos = sum(sum(d['Subtotal'] for d in p['detalles']) for p in historial["pedidos"])
-    total_pagado = sum(sum(p['Monto'] for p in p['pagos']) for p in historial["pedidos"])
-    
-    return render_template(
-        'cliente/historial.html', 
-        historial=historial,
-        total_pedidos=total_pedidos,
-        total_pagado=total_pagado,
-        filtros={"estado": estado, "fecha_inicio": fecha_inicio, "fecha_fin": fecha_fin}
-    )
 
 # ---------- GARANTIAS ----------
 @cliente.route('/garantia/<int:pedido_id>', methods=['GET', 'POST'])
