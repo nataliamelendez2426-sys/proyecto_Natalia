@@ -5,21 +5,24 @@
 
 <!-- Filtros -->
 <div class="filtro-container">
-    <label for="filtroTipo">Filtrar por tipo:</label>
-    <select id="filtroTipo">
-        <option value="todos">Todos</option>
-        <option value="pedido">Pedidos</option>
-        <option value="pago">Pagos</option>
-        <option value="resena">Reseñas</option>
-        <option value="mensaje">Mensajes</option>
-        <option value="garantia">Garantías</option>
-        <option value="notificacion">Notificaciones</option>
-        <option value="novedad">Novedades</option>
-        <option value="comentario">Comentarios</option>
-    </select>
-
-    <label for="filtroFecha">Filtrar por fecha:</label>
-    <input type="date" id="filtroFecha">
+    <div>
+        <label for="filtroTipo">Filtrar por tipo:</label>
+        <select id="filtroTipo">
+            <option value="todos">Todos</option>
+            <option value="pedido">Pedidos</option>
+            <option value="pago">Pagos</option>
+            <option value="resena">Reseñas</option>
+            <option value="mensaje">Mensajes</option>
+            <option value="garantia">Garantías</option>
+            <option value="notificacion">Notificaciones</option>
+            <option value="novedad">Novedades</option>
+            <option value="comentario">Comentarios</option>
+        </select>
+    </div>
+    <div>
+        <label for="filtroFecha">Filtrar por fecha:</label>
+        <input type="date" id="filtroFecha">
+    </div>
 </div>
 
 <!-- Contenedor de actividades -->
@@ -57,12 +60,8 @@
     {% endfor %}
 </div>
 
-<!-- Mensaje cuando no hay actividades -->
-<div id="mensajeNoActividades">
-    <div class="mensaje-card">
-        <p>No hay notificaciones con estos filtros.</p>
-    </div>
-</div>
+<!-- Mensaje si no hay actividades -->
+<div id="mensajeNoActividades">No hay actividades con estos filtros.</div>
 
 <!-- Estilos CSS incluidos -->
 <style>
@@ -116,13 +115,14 @@
     margin-bottom: 20px;
 }
 
-/* Filtros */
+/* Filtro */
 .filtro-container {
     max-width: 900px;
     margin: 0 auto 20px auto;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 15px;
+    flex-wrap: wrap;
 }
 
 .filtro-container select,
@@ -132,32 +132,28 @@
     border: 1px solid #ccc;
 }
 
-/* Mensaje "No hay notificaciones" */
+/* Mensaje de no actividades */
 #mensajeNoActividades {
-    display: none;
-    max-width: 600px;
-    margin: 40px auto;
     text-align: center;
-}
-
-.mensaje-card {
-    background: linear-gradient(135deg, #f6d365, #fda085);
-    color: #fff;
-    padding: 25px 20px;
-    border-radius: 12px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    color: #555;
     font-size: 1.2rem;
-    font-weight: 600;
-    transition: transform 0.2s, box-shadow 0.2s;
+    margin-top: 30px;
+    display: none;
 }
 
-.mensaje-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+/* Footer siempre abajo */
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main {
+    flex: 1;
 }
 </style>
 
-<!-- Script para filtro por tipo y fecha -->
+<!-- Script para filtro -->
 <script>
 function filtrarActividades() {
     const tipoSeleccionado = document.getElementById('filtroTipo').value;
@@ -167,7 +163,9 @@ function filtrarActividades() {
 
     cards.forEach(card => {
         const matchTipo = (tipoSeleccionado === 'todos' || card.classList.contains(tipoSeleccionado));
-        const matchFecha = (!fechaSeleccionada || card.dataset.fecha === fechaSeleccionada);
+        const fechaAct = card.dataset.fecha.split(' ')[0]; // Solo YYYY-MM-DD
+        const matchFecha = (!fechaSeleccionada || fechaAct === fechaSeleccionada);
+
         if (matchTipo && matchFecha) {
             card.style.display = 'block';
             anyVisible = true;
@@ -185,5 +183,4 @@ document.getElementById('filtroFecha').addEventListener('change', filtrarActivid
 // Ejecutar al cargar
 filtrarActividades();
 </script>
-
 {% endblock %}
