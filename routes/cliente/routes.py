@@ -473,32 +473,30 @@ def checkout():
         return jsonify({"success": False, "mensaje": "Carrito vacío"})
 
     try:
-        # 1️⃣ Crear el pedido
+        # 1️⃣ Crear pedido
         pedido = Pedido(
             NombreComprador=f"{current_user.Nombre} {current_user.Apellido or ''}",
             Estado='pendiente',
             FechaPedido=date.today(),
-            Destino=str(direccion_id),
+            Destino=direccion_id,  # Guardamos el ID
             ID_Usuario=current_user.ID_Usuario
         )
         db.session.add(pedido)
-        db.session.flush()  # 🔹 Necesario para obtener pedido.ID_Pedido
+        db.session.flush()  # Para obtener ID_Pedido
 
         total_compra = 0
         detalles = []
 
-        # 2️⃣ Crear los detalles del pedido y actualizar stock
+        # 2️⃣ Crear detalles del pedido
         for item in carrito:
             producto = Producto.query.get(item['ID_Producto'])
             if not producto:
                 continue
-
-            cantidad = int(item['cantidad'] or 1)
-            precio = float(item['precio'] or 0)
+            cantidad = int(item.get('cantidad', 1))
+            precio = float(item.get('precio', 0))
             subtotal = cantidad * precio
             total_compra += subtotal
 
-            # Guardar detalle
             detalle = Detalle_Pedido(
                 ID_Pedido=pedido.ID_Pedido,
                 ID_Producto=producto.ID_Producto,
@@ -507,10 +505,11 @@ def checkout():
             )
             db.session.add(detalle)
 
+            # Para enviar a PDF/confirmación
             detalles.append({
-                "nombre": producto.NombreProducto,
+                "nombre": producto.Nombre,
                 "cantidad": cantidad,
-                "subtotal": subtotal
+                "precio": precio
             })
 
             # Actualizar stock
@@ -526,25 +525,18 @@ def checkout():
         )
         db.session.add(pago)
 
-        # 4️⃣ Confirmar la transacción
         db.session.commit()
 
-        # 5️⃣ Enviar correo de confirmación
-        from app import mail  # Asegúrate de importar mail si no está global
-        enviar_correo_confirmacion(
-            usuario=current_user,
-            pedido=pedido,
-            total_pago=total_compra,
-            metodo=metodo,
-            direccion_envio=direccion_id
+        # 4️⃣ Traer la dirección completa
+        direccion = Direccion.query.get(direccion_id)
+        pedido = Pedido(
+            NombreComprador=f"{current_user.Nombre} {current_user.Apellido or ''}",
+            Estado='pendiente',
+            FechaPedido=date.today(),
+            Destino=f"{direccion.Direccion} ({direccion.Ciudad}, {direccion.Departamento})",
+            ID_Usuario=current_user.ID_Usuario
         )
-
-        return jsonify({
-            "success": True,
-            "total": total_compra,
-            "pedido_id": pedido.ID_Pedido,
-            "detalles": detalles
-        })
+        db.session.add(pedido)
 
     except Exception as e:
         db.session.rollback()
