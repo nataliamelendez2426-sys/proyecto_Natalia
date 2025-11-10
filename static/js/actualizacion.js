@@ -1,39 +1,28 @@
 document.addEventListener('DOMContentLoaded', () => {
 
   // --- Menú lateral y secciones ---
-  const menuPerfil = document.getElementById('menu-perfil');
-  const menuDirecciones = document.getElementById('menu-direcciones');
-  const menuPedidos = document.getElementById('menu-pedidos');
-
-  const seccionPerfil = document.getElementById('seccion-perfil');
-  const seccionDirecciones = document.getElementById('seccion-direcciones');
-  const seccionPedidos = document.getElementById('seccion-pedidos');
+  const menuItems = {
+    'menu-perfil': document.getElementById('seccion-perfil'),
+    'menu-direcciones': document.getElementById('seccion-direcciones'),
+    'menu-pedidos': document.getElementById('seccion-pedidos')
+  };
 
   function ocultarSecciones() {
-    [seccionPerfil, seccionDirecciones, seccionPedidos].forEach(sec => {
-      if (sec) sec.style.display = 'none';
-    });
-    [menuPerfil, menuDirecciones, menuPedidos].forEach(menu => {
-      if (menu) menu.classList.remove('active');
+    Object.values(menuItems).forEach(sec => sec && (sec.style.display = 'none'));
+    Object.keys(menuItems).forEach(id => {
+      const menu = document.getElementById(id);
+      menu && menu.classList.remove('active');
     });
   }
 
-  if (menuPerfil) menuPerfil.addEventListener('click', () => {
-    ocultarSecciones();
-    if (seccionPerfil) seccionPerfil.style.display = 'block';
-    menuPerfil.classList.add('active');
-  });
-
-  if (menuDirecciones) menuDirecciones.addEventListener('click', () => {
-    ocultarSecciones();
-    if (seccionDirecciones) seccionDirecciones.style.display = 'block';
-    menuDirecciones.classList.add('active');
-  });
-
-  if (menuPedidos) menuPedidos.addEventListener('click', () => {
-    ocultarSecciones();
-    if (seccionPedidos) seccionPedidos.style.display = 'block';
-    menuPedidos.classList.add('active');
+  Object.keys(menuItems).forEach(id => {
+    const menu = document.getElementById(id);
+    if (!menu) return;
+    menu.addEventListener('click', () => {
+      ocultarSecciones();
+      menuItems[id].style.display = 'block';
+      menu.classList.add('active');
+    });
   });
 
   // --- Confirmación de borrado de dirección ---
@@ -55,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const btnConfirmarBorrar = document.getElementById('btnConfirmarBorrar');
   if (btnConfirmarBorrar) {
-    btnConfirmarBorrar.addEventListener('click', function () {
+    btnConfirmarBorrar.addEventListener('click', () => {
       if (urlBorrar) {
         formBorrar.action = urlBorrar;
         formBorrar.submit();
@@ -70,18 +59,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const button = event.relatedTarget;
       if (!button) return;
 
-      const pedidoId = button.getAttribute('data-id');
+      const urlDetalle = button.getAttribute('data-url');
       const contenido = document.getElementById('detalle-pedido-contenido');
       if (!contenido) return;
 
-      contenido.innerHTML = `<p class="text-muted">Cargando detalles del pedido #${pedidoId}...</p>`;
-
-      const urlDetalle = `{{ url_for('cliente.detalle_pedido_ajax', pedido_id=0) }}`.replace('/0', `/${pedidoId}`);
+      contenido.innerHTML = `<p class="text-muted">Cargando detalles del pedido...</p>`;
 
       fetch(urlDetalle)
         .then(response => {
           if (!response.ok) throw new Error('Error al obtener los detalles del pedido.');
-          return response.json(); // JSON de tu ruta Flask
+          return response.json();
         })
         .then(detalles => {
           if (!detalles || detalles.length === 0) {

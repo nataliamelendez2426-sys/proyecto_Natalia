@@ -14,14 +14,10 @@
   {% if messages %}
     {% for category, message in messages %}
       <div class="alert alert-{{ category }} flash-small d-flex align-items-center mt-3" role="alert">
-        {% if category == 'success' %}
-          <i class="bi bi-check-circle-fill me-2"></i>
-        {% elif category == 'danger' %}
-          <i class="bi bi-x-circle-fill me-2"></i>
-        {% elif category == 'warning' %}
-          <i class="bi bi-exclamation-triangle-fill me-2"></i>
-        {% elif category == 'info' %}
-          <i class="bi bi-info-circle-fill me-2"></i>
+        {% if category == 'success' %}<i class="bi bi-check-circle-fill me-2"></i>
+        {% elif category == 'danger' %}<i class="bi bi-x-circle-fill me-2"></i>
+        {% elif category == 'warning' %}<i class="bi bi-exclamation-triangle-fill me-2"></i>
+        {% elif category == 'info' %}<i class="bi bi-info-circle-fill me-2"></i>
         {% endif %}
         {{ message }}
       </div>
@@ -35,7 +31,7 @@
     <!-- Sidebar -->
     <div class="col-md-3 col-lg-2 mb-4">
       <div class="sidebar shadow-sm">
-        <h4> HOLA!</h4>
+        <h4>HOLA!</h4>
         <a id="menu-perfil" class="active"><i class="bi bi-person-circle me-2"></i>Perfil</a>
         <a id="menu-direcciones"><i class="bi bi-geo-alt me-2"></i>Direcciones</a>
         <a id="menu-pedidos"><i class="bi bi-box-seam me-2"></i>Pedidos</a>
@@ -119,12 +115,8 @@
               <div class="list-group-item d-flex justify-content-between align-items-center flex-wrap">
                 <div>
                   <strong>Pedido #{{ pedido.ID_Pedido }}</strong><br>
-                  {% if pedido.FechaPedido %}
-                    <small>Fecha del pedido: {{ pedido.FechaPedido.strftime('%d/%m/%Y') }}</small><br>
-                  {% endif %}
-                  {% if pedido.FechaEntrega %}
-                    <small>Entrega estimada: {{ pedido.FechaEntrega.strftime('%d/%m/%Y') }}</small><br>
-                  {% endif %}
+                  {% if pedido.FechaPedido %}<small>Fecha del pedido: {{ pedido.FechaPedido.strftime('%d/%m/%Y') }}</small><br>{% endif %}
+                  {% if pedido.FechaEntrega %}<small>Entrega estimada: {{ pedido.FechaEntrega.strftime('%d/%m/%Y') }}</small><br>{% endif %}
                   <small>Destino: {{ pedido.Destino or 'No especificado' }}</small><br>
                   <span class="badge 
                     {% if pedido.Estado == 'pendiente' %}bg-secondary
@@ -138,7 +130,7 @@
                   <button class="btn btn-outline-success btn-sm"
                           data-bs-toggle="modal"
                           data-bs-target="#modalPedido"
-                          data-id="{{ pedido.ID_Pedido }}">
+                          data-url="{{ url_for('cliente.detalle_pedido_ajax', pedido_id=pedido.ID_Pedido) }}">
                     Ver detalles
                   </button>
 
@@ -164,6 +156,23 @@
           {% else %}
             <p class="text-muted">No tienes pedidos registrados.</p>
           {% endif %}
+        </div>
+      </div>
+
+      <!-- Modal Detalle Pedido -->
+      <div class="modal fade" id="modalPedido" tabindex="-1" aria-labelledby="modalPedidoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content p-4 rounded-4">
+            <div class="modal-header border-0">
+              <h5 class="modal-title fw-bold" id="modalPedidoLabel">DETALLE DEL PEDIDO</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+              <div id="detalle-pedido-contenido">
+                <p class="text-muted">Selecciona un pedido para ver los detalles.</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -194,7 +203,6 @@
             </div>
             <div class="modal-body">
               <form method="POST" action="{{ url_for('cliente.agregar_direccion') }}">
-                <!-- Campos de dirección -->
                 <div class="mb-3">
                   <label for="modal_pais" class="form-label">País</label>
                   <select name="pais" id="modal_pais" class="form-select rounded-pill" disabled>
@@ -240,23 +248,6 @@
         </div>
       </div>
 
-      <!-- Modal Detalle Pedido -->
-      <div class="modal fade" id="modalPedido" tabindex="-1" aria-labelledby="modalPedidoLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-          <div class="modal-content p-4 rounded-4">
-            <div class="modal-header border-0">
-              <h5 class="modal-title fw-bold" id="modalPedidoLabel">DETALLE DEL PEDIDO</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
-            <div class="modal-body">
-              <div id="detalle-pedido-contenido">
-                <p class="text-muted">Selecciona un pedido para ver los detalles.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
     </div>
   </div>
 </div>
@@ -265,58 +256,5 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{{ url_for('static', filename='js/actualizacion.js') }}"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const modalPedido = document.getElementById('modalPedido');
-  if (modalPedido) {
-    modalPedido.addEventListener('show.bs.modal', event => {
-      const button = event.relatedTarget;
-      if (!button) return;
-
-      const pedidoId = button.getAttribute('data-id');
-      const contenido = document.getElementById('detalle-pedido-contenido');
-      if (!contenido) return;
-
-      contenido.innerHTML = `<p class="text-muted">Cargando detalles del pedido #${pedidoId}...</p>`;
-
-      // URL correcta usando url_for y reemplazando el ID dinámicamente
-      const urlDetalle = `{{ url_for('cliente.detalle_pedido_ajax', pedido_id=0) }}`.replace('/0', `/${pedidoId}`);
-
-      fetch(urlDetalle)
-        .then(response => {
-          if (!response.ok) throw new Error('Error al obtener los detalles del pedido.');
-          return response.json(); // <-- IMPORTANTE: tu ruta retorna JSON
-        })
-        .then(detalles => {
-          if (!detalles || detalles.length === 0) {
-            contenido.innerHTML = `<p class="text-danger">❌ No se encontraron detalles para este pedido.</p>`;
-            return;
-          }
-
-          // Generar HTML a partir de los detalles
-          let html = '<ul class="list-group">';
-          detalles.forEach(detalle => {
-            html += `
-              <li class="list-group-item">
-                <p class="mb-1"><strong>Producto:</strong> ${detalle.Producto}</p>
-                <p class="mb-1 text-success"><strong>Precio unidad:</strong> $${detalle.PrecioUnidad.toFixed(2)}</p>
-                <p class="mb-1"><strong>Cantidad:</strong> ${detalle.Cantidad}</p>
-                <p class="mb-1"><strong>Total:</strong> $${detalle.Total.toFixed(2)}</p>
-              </li>`;
-          });
-          html += '</ul>';
-          contenido.innerHTML = html;
-        })
-        .catch(error => {
-          contenido.innerHTML = `<p class="text-danger">❌ No se pudieron cargar los detalles: ${error.message}</p>`;
-          console.error(error);
-        });
-    });
-  }
-});
-</script>
-
-
 
 {% endblock %}
