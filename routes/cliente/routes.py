@@ -505,12 +505,13 @@ def checkout():
             )
             db.session.add(detalle)
 
-            # Para enviar a PDF/confirmación
             detalles.append({
-                "nombre": producto.Nombre,
-                "cantidad": cantidad,
-                "precio": precio
-            })
+            "nombre": producto.NombreProducto,  # <-- usar NombreProducto
+            "cantidad": cantidad,
+            "precio": precio
+        })
+
+        # 4️⃣ Crear pago  
 
             # Actualizar stock
             producto.Stock -= cantidad
