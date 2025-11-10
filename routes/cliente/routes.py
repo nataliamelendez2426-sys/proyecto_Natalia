@@ -529,6 +529,19 @@ def checkout():
 
         db.session.commit()
 
+        # 5️⃣ Enviar correo de confirmación (intenta pero no bloquea la respuesta)
+        try:
+            enviar_correo_confirmacion(
+                usuario=current_user,
+                pedido=pedido,
+                total_pago=total_compra,
+                metodo=metodo,
+                direccion_envio=f"{direccion.Direccion} ({direccion.Ciudad}, {direccion.Departamento})"
+            )
+        except Exception as mail_err:
+            # Solo loguea el error, no bloquea la respuesta
+            print("Error al enviar correo:", mail_err)
+
         # ✅ Devolver JSON con resumen
         return jsonify({
             "success": True,
@@ -540,7 +553,6 @@ def checkout():
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "mensaje": str(e)})
-
 
 # ---------- SEGUIMIENTO ----------
 
