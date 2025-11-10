@@ -812,6 +812,48 @@ def lista_garantias():
     garantias = Garantia.query.order_by(Garantia.FechaSolicitud.desc()).all()
     return render_template('administrador/garantia_lista.html', garantias=garantias)
 
+@admin.route('/resolver/<int:garantia_id>', methods=['POST'])
+@login_required
+def resolver_garantia(garantia_id):
+    if current_user.Rol != 'admin':
+        flash("No tienes permisos para realizar esta acción.", "danger")
+        return redirect(url_for('main.index'))
+
+    garantia = Garantia.query.get_or_404(garantia_id)
+    accion = request.form.get('accion')  # 'aprobada', 'rechazada', 'completada'
+    comentario = request.form.get('comentario', '')
+
+    if accion not in ['pendiente','aprobada','rechazada','completada']:
+        flash("Acción inválida.", "warning")
+        return redirect(url_for('admin.lista_garantias'))
+
+    garantia.Estado = accion
+    garantia.ComentarioAdmin = comentario
+    garantia.FechaResolucion = datetime.utcnow()
+    db.session.commit()
+
+    # Crear notificación para el cliente
+    try:
+        mensaje = f"Tu garantía #{garantia.ID_Garantia} ha sido {accion}."
+        if comentario:
+            mensaje += f" Comentario del admin: {comentario}"
+        
+        notificacion = Notificaciones(
+            ID_Usuario=garantia.ID_Usuario,
+            Mensaje=mensaje,
+            Leida=False,
+            Fecha=datetime.utcnow()
+        )
+        db.session.add(notificacion)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error al crear notificación: {str(e)}", "warning")
+
+    flash("Garantía actualizada correctamente y notificación enviada al cliente.", "success")
+    return redirect(url_for('admin.lista_garantias'))
+
+
 
 # -------- Ver Detalles de una Garantía --------
 @admin.route('/detalle/<int:garantia_id>', methods=['GET'])
