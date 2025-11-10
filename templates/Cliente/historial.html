@@ -3,7 +3,7 @@
 {% block content %}
 <h2 class="historial-title">Historial de actividades de {{ historial.usuario.Nombre }} {{ historial.usuario.Apellido }}</h2>
 
-<!-- Filtro por tipo -->
+<!-- Filtros -->
 <div class="filtro-container">
     <label for="filtroTipo">Filtrar por tipo:</label>
     <select id="filtroTipo">
@@ -17,12 +17,15 @@
         <option value="novedad">Novedades</option>
         <option value="comentario">Comentarios</option>
     </select>
+
+    <label for="filtroFecha">Filtrar por fecha:</label>
+    <input type="date" id="filtroFecha">
 </div>
 
 <!-- Contenedor de actividades -->
 <div class="historial-container">
     {% for act in historial.actividades %}
-        <div class="actividad-card {{ act.tipo }}">
+        <div class="actividad-card {{ act.tipo }}" data-fecha="{{ act.fecha }}">
             <div class="actividad-header">
                 <strong>[{{ act.tipo|capitalize }}]</strong> - {{ act.fecha }}
             </div>
@@ -52,6 +55,13 @@
             </div>
         </div>
     {% endfor %}
+</div>
+
+<!-- Mensaje cuando no hay actividades -->
+<div id="mensajeNoActividades">
+    <div class="mensaje-card">
+        <p>No hay notificaciones con estos filtros.</p>
+    </div>
 </div>
 
 <!-- Estilos CSS incluidos -->
@@ -91,37 +101,14 @@
 }
 
 /* Colores por tipo de actividad */
-.actividad-card.pedido {
-    border-left: 5px solid #3498db;
-}
-
-.actividad-card.pago {
-    border-left: 5px solid #2ecc71;
-}
-
-.actividad-card.resena {
-    border-left: 5px solid #f39c12;
-}
-
-.actividad-card.mensaje {
-    border-left: 5px solid #9b59b6;
-}
-
-.actividad-card.garantia {
-    border-left: 5px solid #e74c3c;
-}
-
-.actividad-card.notificacion {
-    border-left: 5px solid #1abc9c;
-}
-
-.actividad-card.novedad {
-    border-left: 5px solid #34495e;
-}
-
-.actividad-card.comentario {
-    border-left: 5px solid #e67e22;
-}
+.actividad-card.pedido { border-left: 5px solid #3498db; }
+.actividad-card.pago { border-left: 5px solid #2ecc71; }
+.actividad-card.resena { border-left: 5px solid #f39c12; }
+.actividad-card.mensaje { border-left: 5px solid #9b59b6; }
+.actividad-card.garantia { border-left: 5px solid #e74c3c; }
+.actividad-card.notificacion { border-left: 5px solid #1abc9c; }
+.actividad-card.novedad { border-left: 5px solid #34495e; }
+.actividad-card.comentario { border-left: 5px solid #e67e22; }
 
 /* Título */
 .historial-title {
@@ -129,7 +116,7 @@
     margin-bottom: 20px;
 }
 
-/* Filtro */
+/* Filtros */
 .filtro-container {
     max-width: 900px;
     margin: 0 auto 20px auto;
@@ -138,28 +125,65 @@
     gap: 10px;
 }
 
-.filtro-container select {
+.filtro-container select,
+.filtro-container input[type="date"] {
     padding: 5px 10px;
     border-radius: 5px;
     border: 1px solid #ccc;
 }
+
+/* Mensaje "No hay notificaciones" */
+#mensajeNoActividades {
+    display: none;
+    max-width: 600px;
+    margin: 40px auto;
+    text-align: center;
+}
+
+.mensaje-card {
+    background: linear-gradient(135deg, #f6d365, #fda085);
+    color: #fff;
+    padding: 25px 20px;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    font-size: 1.2rem;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.mensaje-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+}
 </style>
 
-<!-- Script para filtro -->
+<!-- Script para filtro por tipo y fecha -->
 <script>
-const filtro = document.getElementById('filtroTipo');
-filtro.addEventListener('change', function() {
-    const tipoSeleccionado = this.value;
+function filtrarActividades() {
+    const tipoSeleccionado = document.getElementById('filtroTipo').value;
+    const fechaSeleccionada = document.getElementById('filtroFecha').value;
     const cards = document.querySelectorAll('.actividad-card');
+    let anyVisible = false;
 
     cards.forEach(card => {
-        if (tipoSeleccionado === 'todos' || card.classList.contains(tipoSeleccionado)) {
+        const matchTipo = (tipoSeleccionado === 'todos' || card.classList.contains(tipoSeleccionado));
+        const matchFecha = (!fechaSeleccionada || card.dataset.fecha === fechaSeleccionada);
+        if (matchTipo && matchFecha) {
             card.style.display = 'block';
+            anyVisible = true;
         } else {
             card.style.display = 'none';
         }
     });
-});
+
+    document.getElementById('mensajeNoActividades').style.display = anyVisible ? 'none' : 'block';
+}
+
+document.getElementById('filtroTipo').addEventListener('change', filtrarActividades);
+document.getElementById('filtroFecha').addEventListener('change', filtrarActividades);
+
+// Ejecutar al cargar
+filtrarActividades();
 </script>
 
 {% endblock %}
