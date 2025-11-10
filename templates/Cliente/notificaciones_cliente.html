@@ -19,7 +19,7 @@
 .noti-card:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(0,0,0,0.2); }
 .noti-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
 .noti-header h5 { font-weight: 700; color: #157145; font-size: 1.5rem; }
-.btn-select-all { background-color: #57a773; color: white; border: none; border-radius: 50px; padding: 6px 15px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+.btn-select-all { background-color: #57a773; color: white; border: none; border-radius: 50px; padding: 6px 15px; font-weight: 600; cursor: pointer; }
 .btn-select-all:hover { background-color: #157145; transform: scale(1.05); }
 .noti-list { display: flex; flex-direction: column; gap: 15px; max-height: 400px; overflow-y: auto; padding-right: 5px; }
 .noti-item { display: flex; align-items: center; justify-content: space-between; background: white; border-radius: 15px; padding: 12px 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); transition: all 0.3s; }
@@ -27,7 +27,7 @@
 .noti-item input[type="checkbox"] { margin-right: 15px; width: 18px; height: 18px; accent-color: #57a773; }
 .noti-item p { flex: 1; margin: 0; font-size: 0.95rem; color: #333; }
 .noti-item .fecha { font-size: 0.8rem; color: #6c757d; margin-left: 15px; white-space: nowrap; }
-.btn-delete { background-color: #dc3545; color: white; border: none; border-radius: 50px; padding: 8px 20px; font-weight: 600; transition: all 0.3s; }
+.btn-delete { background-color: #dc3545; color: white; border: none; border-radius: 50px; padding: 8px 20px; font-weight: 600; }
 .btn-delete:hover { background-color: #a71d2a; transform: scale(1.05); }
 .empty-msg { text-align: center; color: #6c757d; font-style: italic; font-size: 1rem; margin-top: 30px; }
 .noti-list::-webkit-scrollbar { width: 8px; }
@@ -47,9 +47,7 @@
   <div class="noti-card">
     <div class="noti-header">
       <h5><i class="bi bi-bell-fill me-2"></i>NOTIFICACIONES</h5>
-      <button type="button" class="btn-select-all" onclick="seleccionarTodos()">
-        <i class="bi bi-check2-square me-1"></i> Seleccionar todos
-      </button>
+      <button type="button" class="btn-select-all" onclick="seleccionarTodos()">Seleccionar todos</button>
     </div>
 
     <!-- FILTROS -->
@@ -59,45 +57,46 @@
       <input type="date" id="filtro-fecha-fin" class="form-control">
     </div>
 
-    <!-- Form para eliminar seleccionadas -->
+    <!-- FORM PRINCIPAL PARA ELIMINAR NOTIFICACIONES -->
     <form method="POST" action="{{ url_for('cliente.ver_notificaciones_cliente') }}">
       {% if notificaciones %}
-        <div class="noti-list" id="noti-list">
-          {% for n in notificaciones %}
-          <div class="noti-item" data-fecha="{{ n.Fecha.strftime('%Y-%m-%d') }}">
-            <input type="checkbox" name="ids" value="{{ n.ID_Notificacion }}">
-            <div style="flex:1;">
-              <p>{{ n.Mensaje | safe }}</p>
-              <span class="fecha">{{ n.Fecha.strftime('%d/%m/%Y %H:%M') }}</span>
+      <div class="noti-list" id="noti-list">
+        {% set hoy = datetime.utcnow().strftime('%Y-%m-%d') %}
+        {% for n in notificaciones %}
+        <div class="noti-item" data-fecha="{{ n.Fecha.strftime('%Y-%m-%d') }}">
+          <input type="checkbox" name="ids" value="{{ n.ID_Notificacion }}">
+          <div style="flex:1;">
+            <p>{{ n.Mensaje | safe }}</p>
+            <span class="fecha">{{ n.Fecha.strftime('%d/%m/%Y %H:%M') }}</span>
 
-              {% if n.defecto %}
-                {% if not n.defecto.CitaProgramada %}
-                  <button type="button" class="btn btn-primary btn-sm mt-2" 
-                          data-bs-toggle="modal" 
-                          data-bs-target="#modalCita{{ n.ID_Notificacion }}">
-                    📅 Agendar cita
-                  </button>
-                {% else %}
-                  <span class="badge bg-success mt-2 d-block">
-                    ✅ Cita programada para {{ n.defecto.CitaProgramada.strftime('%d/%m/%Y %H:%M') }}
-                  </span>
-                {% endif %}
+            {% if n.defecto %}
+              {% if not n.defecto.CitaProgramada %}
+                <button type="button" class="btn btn-primary btn-sm mt-2"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalCita{{ n.ID_Notificacion }}">
+                  📅 Agendar cita
+                </button>
+              {% else %}
+                <span class="badge bg-success mt-2 d-block">
+                  ✅ Cita programada para {{ n.defecto.CitaProgramada.strftime('%d/%m/%Y %H:%M') }}
+                </span>
               {% endif %}
-            </div>
-
-            <!-- Eliminar individual -->
-            <form action="{{ url_for('cliente.eliminar_notificacion', notificacion_id=n.ID_Notificacion) }}" method="POST" onsubmit="return confirmarEliminacion(event)">
-              <button type="submit" class="btn btn-danger btn-sm ms-2">🗑️</button>
-            </form>
+            {% endif %}
           </div>
-          {% endfor %}
-        </div>
 
-        <div class="text-end mt-3">
-          <button type="submit" class="btn-delete">Eliminar seleccionadas</button>
+          <!-- Eliminar individual -->
+          <form action="{{ url_for('cliente.eliminar_notificacion', notificacion_id=n.ID_Notificacion) }}" method="POST" onsubmit="return confirmarEliminacion(event)">
+            <button type="submit" class="btn btn-danger btn-sm ms-2">🗑️</button>
+          </form>
         </div>
+        {% endfor %}
+      </div>
+
+      <div class="text-end mt-3">
+        <button type="submit" class="btn-delete">Eliminar seleccionadas</button>
+      </div>
       {% else %}
-        <p class="empty-msg">¡No tienes notificaciones por ahora!</p>
+      <p class="empty-msg">¡No tienes notificaciones por ahora!</p>
       {% endif %}
     </form>
   </div>
@@ -106,32 +105,32 @@
 <!-- MODALES FUERA DEL FORM -->
 {% for n in notificaciones %}
   {% if n.defecto and not n.defecto.CitaProgramada %}
-  <div class="modal fade" id="modalCita{{ n.ID_Notificacion }}" tabindex="-1" aria-labelledby="modalLabel{{ n.ID_Notificacion }}" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <form action="{{ url_for('cliente.agendar_cita_garantia', notificacion_id=n.ID_Notificacion) }}" method="POST">
-          <div class="modal-header">
-            <h5 class="modal-title" id="modalLabel{{ n.ID_Notificacion }}">Agendar cita con el técnico</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label for="fecha{{ n.ID_Notificacion }}" class="form-label">📅 Fecha:</label>
-              <input type="date" id="fecha{{ n.ID_Notificacion }}" name="fecha" class="form-control" required min="{{ datetime.utcnow().strftime('%Y-%m-%d') }}">
+    <div class="modal fade" id="modalCita{{ n.ID_Notificacion }}" tabindex="-1" aria-labelledby="modalLabel{{ n.ID_Notificacion }}" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form action="{{ url_for('cliente.agendar_cita_garantia', notificacion_id=n.ID_Notificacion) }}" method="POST">
+            <div class="modal-header">
+              <h5 class="modal-title" id="modalLabel{{ n.ID_Notificacion }}">Agendar cita con el técnico</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
-            <div class="mb-3">
-              <label for="hora{{ n.ID_Notificacion }}" class="form-label">⏰ Hora:</label>
-              <input type="time" id="hora{{ n.ID_Notificacion }}" name="hora" class="form-control" required>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="fecha{{ n.ID_Notificacion }}" class="form-label">📅 Fecha:</label>
+                <input type="date" id="fecha{{ n.ID_Notificacion }}" name="fecha" class="form-control" required min="{{ hoy }}">
+              </div>
+              <div class="mb-3">
+                <label for="hora{{ n.ID_Notificacion }}" class="form-label">⏰ Hora:</label>
+                <input type="time" id="hora{{ n.ID_Notificacion }}" name="hora" class="form-control" required>
+              </div>
             </div>
-          </div>
-          <div class="modal-footer">
-            <button type="submit" class="btn btn-success">Confirmar cita</button>
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          </div>
-        </form>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-success">Confirmar cita</button>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
-  </div>
   {% endif %}
 {% endfor %}
 
@@ -150,7 +149,7 @@ function seleccionarTodos() {
   checkboxes.forEach(c => c.checked = !allSelected);
 }
 
-// Filtrado en tiempo real por texto y fecha
+// Filtrado de notificaciones
 const filtroTexto = document.getElementById('filtro-texto');
 const filtroFechaInicio = document.getElementById('filtro-fecha-inicio');
 const filtroFechaFin = document.getElementById('filtro-fecha-fin');
@@ -177,4 +176,5 @@ filtroTexto.addEventListener('input', filtrarNotificaciones);
 filtroFechaInicio.addEventListener('change', filtrarNotificaciones);
 filtroFechaFin.addEventListener('change', filtrarNotificaciones);
 </script>
+
 {% endblock %}
