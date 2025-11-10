@@ -483,7 +483,7 @@ def checkout():
                 ID_Usuario=current_user.ID_Usuario
             ).first()
             if direccion:
-                direccion_envio = f"{direccion.Direccion}, {direccion.Barrio or ''}, {direccion.Ciudad or ''}"
+                direccion_envio = f"{direccion.Direccion}, {direccion.Barrio or ''}, {direccion.Ciudad or ''}, {direccion.Departamento or ''}, {direccion.Pais or ''}"
             else:
                 direccion_envio = "Dirección no encontrada"
 
@@ -496,19 +496,37 @@ def checkout():
             ID_Usuario=current_user.ID_Usuario
         )
         db.session.add(pedido)
-        db.session.commit()
+        db.session.commit()  # Necesario para obtener pedido.ID_Pedido
 
-        # Calcular total y registrar pago
-        total_pago = sum(i.get('precio', 0) * i.get('cantidad', 1) for i in carrito)
+        # Guardar detalles del carrito
+        total_pago = 0
+        for item in carrito:
+            producto_id = item.get('ID_Producto')
+            cantidad = item.get('cantidad', 1)
+            precio = item.get('precio', 0)
+
+            detalle = Detalle_Pedido(
+                ID_Pedido=pedido.ID_Pedido,
+                ID_Producto=producto_id,
+                Cantidad=cantidad,
+                PrecioUnidad=precio
+            )
+            db.session.add(detalle)
+            total_pago += precio * cantidad
+
+        db.session.commit()  # Guardar todos los detalles
+
+        # Registrar pago
         pago = Pagos(
             MetodoPago=metodo,
             Monto=total_pago,
-            ID_Pedido=pedido.ID_Pedido
+            ID_Pedido=pedido.ID_Pedido,
+            FechaPago=date.today()
         )
         db.session.add(pago)
         db.session.commit()
 
-        # ✅ Enviar correo de confirmación (usando la función externa)
+        # Enviar correo de confirmación
         enviar_correo_confirmacion(
             usuario=current_user,
             pedido=pedido,
@@ -528,7 +546,6 @@ def checkout():
         traceback.print_exc()
         db.session.rollback()
         return jsonify({"success": False, "mensaje": str(e)}), 500
-
 
 # ---------- SEGUIMIENTO ----------
 
