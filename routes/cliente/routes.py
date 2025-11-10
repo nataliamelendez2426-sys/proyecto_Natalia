@@ -20,7 +20,7 @@ from datetime import date
 
 
 
-UPLOAD_FOLDER = os.path.join('static', 'img', 'defectuosos')
+UPLOAD_FOLDER = os.path.join('static', 'uploads', 'defectuosos')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 UPLOAD_FOLDER = 'static/uploads/garantias'

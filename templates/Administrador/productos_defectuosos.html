@@ -85,13 +85,14 @@
                 </tr>
 
                 {# --- Fotos asociadas --- #}
-            {% if registro.fotos %}
+           {% if registro.fotos %}
             <tr>
                 <td colspan="8" class="bg-light">
                     <div class="d-flex flex-wrap justify-content-center gap-2 py-2">
                         {% for foto in registro.fotos %}
-                            <a href="{{ url_for('static', filename='img/' ~ foto.RutaArchivo) }}" target="_blank">
-                                <img src="{{ url_for('static', filename='img/' ~ foto.RutaArchivo) }}"
+                            {% set ruta = foto.RutaArchivo.replace('static\\', '').replace('\\', '/') %}
+                            <a href="{{ url_for('static', filename=ruta) }}" target="_blank">
+                                <img src="{{ url_for('static', filename=ruta) }}"
                                     alt="Foto defecto"
                                     class="img-thumbnail border"
                                     style="width: 110px; height: 110px; object-fit: cover;">
@@ -101,6 +102,7 @@
                 </td>
             </tr>
             {% endif %}
+
 
 
                 {% else %}
