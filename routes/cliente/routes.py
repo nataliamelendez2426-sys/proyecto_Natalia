@@ -475,7 +475,7 @@ def checkout():
         if not carrito:
             return jsonify({"success": False, "mensaje": "El carrito está vacío."}), 400
 
-        # Buscar dirección seleccionada
+        # 1️⃣ Buscar dirección seleccionada
         direccion_envio = "Dirección no especificada"
         if direccion_id:
             direccion = Direccion.query.filter_by(
@@ -483,11 +483,11 @@ def checkout():
                 ID_Usuario=current_user.ID_Usuario
             ).first()
             if direccion:
-                direccion_envio = f"{direccion.Direccion}, {direccion.Barrio or ''}, {direccion.Ciudad or ''}, {direccion.Departamento or ''}, {direccion.Pais or ''}"
+                direccion_envio = f"{direccion.Direccion}, {direccion.Barrio or ''}, {direccion.Ciudad or ''}"
             else:
                 direccion_envio = "Dirección no encontrada"
 
-        # Crear pedido
+        # 2️⃣ Crear pedido
         pedido = Pedido(
             NombreComprador=f"{current_user.Nombre} {current_user.Apellido or ''}".strip(),
             Destino=direccion_envio,
@@ -496,37 +496,39 @@ def checkout():
             ID_Usuario=current_user.ID_Usuario
         )
         db.session.add(pedido)
-        db.session.commit()  # Necesario para obtener pedido.ID_Pedido
+        db.session.flush()  # 🔹 Necesario para que pedido.ID_Pedido exista antes de insertar detalles
 
-        # Guardar detalles del carrito
+        # 3️⃣ Registrar detalles del pedido
         total_pago = 0
         for item in carrito:
-            producto_id = item.get('ID_Producto')
+            id_producto = item.get('ID_Producto')
             cantidad = item.get('cantidad', 1)
             precio = item.get('precio', 0)
 
+            if not id_producto:
+                continue  # evita errores si falta ID_Producto
+
             detalle = Detalle_Pedido(
                 ID_Pedido=pedido.ID_Pedido,
-                ID_Producto=producto_id,
+                ID_Producto=id_producto,
                 Cantidad=cantidad,
                 PrecioUnidad=precio
             )
             db.session.add(detalle)
-            total_pago += precio * cantidad
+            total_pago += cantidad * precio
 
-        db.session.commit()  # Guardar todos los detalles
-
-        # Registrar pago
+        # 4️⃣ Registrar pago
         pago = Pagos(
             MetodoPago=metodo,
             Monto=total_pago,
-            ID_Pedido=pedido.ID_Pedido,
-            FechaPago=date.today()
+            ID_Pedido=pedido.ID_Pedido
         )
         db.session.add(pago)
+
+        # 5️⃣ Confirmar todos los cambios
         db.session.commit()
 
-        # Enviar correo de confirmación
+        # 6️⃣ Enviar correo de confirmación (función externa)
         enviar_correo_confirmacion(
             usuario=current_user,
             pedido=pedido,
@@ -535,7 +537,7 @@ def checkout():
             direccion_envio=direccion_envio
         )
 
-        # Notificación opcional para Nequi/Daviplata
+        # 7️⃣ Notificación opcional para Nequi/Daviplata
         if metodo in ['nequi', 'daviplata'] and numero_celular:
             print(f"📱 Notificación enviada al número: {numero_celular}")
 
@@ -546,6 +548,7 @@ def checkout():
         traceback.print_exc()
         db.session.rollback()
         return jsonify({"success": False, "mensaje": str(e)}), 500
+
 
 # ---------- SEGUIMIENTO ----------
 
