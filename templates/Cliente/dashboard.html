@@ -327,11 +327,16 @@
     <i class="fas fa-headset"></i>
     Soporte Técnico
 </a>
+<!-- Nuevo botón flotante Registrar Producto Defectuoso -->
+<a href="{{ url_for('cliente.seleccionar_pedido_defectuoso') }}" id="botonDefectuoso">
+    <i class="fas fa-tools"></i>
+    Registrar producto defectuoso
+</a>
+
 
 <style>
-#botonSoporte {
+#botonSoporte, #botonDefectuoso {
     position: fixed;
-    bottom: 25px;
     right: 25px;
     background: #007bff;
     color: white;
@@ -348,18 +353,33 @@
     z-index: 9999;
 }
 
-#botonSoporte i {
-    font-size: 1.2rem;
+/* Botón de soporte técnico abajo */
+#botonSoporte {
+    bottom: 25px;
 }
 
-/* Hover y click */
+/* Botón de registrar producto defectuoso encima del soporte técnico */
+#botonDefectuoso {
+    bottom: 95px;
+    background: #28a745;
+}
+
+#botonDefectuoso:hover {
+    background: #1e7e34;
+    transform: scale(1.05);
+}
+
 #botonSoporte:hover {
     background: #0056b3;
     transform: scale(1.05);
 }
 
-#botonSoporte:active {
+#botonSoporte:active, #botonDefectuoso:active {
     transform: scale(0.95);
+}
+
+#botonSoporte i, #botonDefectuoso i {
+    font-size: 1.2rem;
 }
 </style>
 
