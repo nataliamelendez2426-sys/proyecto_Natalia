@@ -1026,31 +1026,34 @@ def finanzas_ajax():
 @role_required('admin')
 def admin_productos_defectuosos():
     registros = ProductoDefectuoso.query.order_by(ProductoDefectuoso.FechaRegistro.desc()).all()
-    empleados = Usuario.query.filter_by(Rol='empleado').all()
-    return render_template('administrador/productos_defectuosos.html', registros=registros, empleados=empleados)
+    instaladores = Usuario.query.filter_by(Rol='instalador', Activo=True).all()
+    return render_template(
+        'administrador/productos_defectuosos.html',
+        registros=registros,
+        instaladores=instaladores
+    )
+
 
 
 @admin.route('/admin/solucionar_defecto/<int:id_garantia>', methods=['POST'])
 @login_required
-@role_required('admin')
 def solucionar_defecto(id_garantia):
     garantia = ProductoDefectuoso.query.get_or_404(id_garantia)
-
     accion = request.form.get('accion')
-    empleado_id = request.form.get('empleado_id')
+    empleado_id = request.form.get('empleado')
 
     if empleado_id:
-        garantia.ID_Empleado = int(empleado_id)
+        garantia.ID_Empleado = empleado_id  # asigna el instalador
 
     if accion == 'proceso':
         garantia.Estado = 'en_proceso'
-        mensaje = f"Tu producto {garantia.producto.NombreProducto} está siendo revisado por un técnico."
+        mensaje = f"Tu producto {garantia.producto.NombreProducto} está siendo revisado por un instalador."
     elif accion == 'tecnico':
         garantia.Estado = 'resuelto_tecnico'
         mensaje = f"Tu producto {garantia.producto.NombreProducto} ha sido reparado por un técnico."
     elif accion == 'devolucion':
         garantia.Estado = 'resuelto_devolucion'
-        mensaje = f"Tu producto {garantia.producto.NombreProducto} ha sido devuelto con el reembolso correspondiente."
+        mensaje = f"Tu producto {garantia.producto.NombreProducto} ha sido devuelto con reembolso."
     else:
         flash("Acción inválida.", "danger")
         return redirect(url_for('admin.admin_productos_defectuosos'))
@@ -1066,5 +1069,5 @@ def solucionar_defecto(id_garantia):
     db.session.add(notificacion)
     db.session.commit()
 
-    flash("Estado y técnico asignado correctamente.", "success")
+    flash("Estado actualizado y empleado asignado correctamente.", "success")
     return redirect(url_for('admin.admin_productos_defectuosos'))
