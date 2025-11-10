@@ -41,11 +41,11 @@ def dashboard():
     )
 
 
-# ---------- NOTIFICACIONES ----------
 @cliente.route("/notificaciones", methods=["GET", "POST"])
 @login_required
 def ver_notificaciones_cliente():
     if request.method == "POST":
+        # --- Eliminación múltiple ---
         ids = request.form.getlist("ids")
         if ids:
             try:
@@ -67,17 +67,20 @@ def ver_notificaciones_cliente():
         .all()
     )
 
-
     return render_template(
         "cliente/notificaciones_cliente.html",
         notificaciones=notificaciones,
-        datetime=datetime  
+        datetime=datetime  # para usar datetime en el template
     )
 
 @cliente.route('/cliente/eliminar_notificacion/<int:notificacion_id>', methods=['POST'])
 @login_required
 def eliminar_notificacion(notificacion_id):
     notificacion = Notificaciones.query.get_or_404(notificacion_id)
+
+    if notificacion.ID_Usuario != current_user.ID_Usuario:
+        flash("No puedes eliminar esta notificación.", "danger")
+        return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
     try:
         db.session.delete(notificacion)
@@ -88,6 +91,7 @@ def eliminar_notificacion(notificacion_id):
         flash(f"Error al eliminar la notificación: {str(e)}", "danger")
 
     return redirect(url_for('cliente.ver_notificaciones_cliente'))
+
 # ---------- PERFIL Y DIRECCIONES ----------
 @cliente.route("/actualizacion_datos", methods=["GET", "POST"])
 @login_required
