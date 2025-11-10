@@ -313,8 +313,12 @@ class Garantia(db.Model):
 
     archivos = db.relationship('GarantiaArchivo', backref='garantia', lazy=True, cascade="all, delete-orphan")
 
-    # 🔹 RELACIÓN CON USUARIO
-    usuario = db.relationship('Usuario', backref='garantias', lazy=True)
+    # Relación con el cliente que solicitó la garantía
+    usuario = db.relationship('Usuario', foreign_keys=[ID_Usuario], backref='garantias', lazy=True)
+
+    # Relación con el empleado (instalador) asignado a la garantía
+    ID_Empleado = db.Column(db.Integer, db.ForeignKey('Usuario.ID_Usuario'), nullable=True)
+    empleado = db.relationship('Usuario', foreign_keys=[ID_Empleado], backref='garantias_asignadas')
 
 
 # ------------------ GarantiaArchivo ------------------

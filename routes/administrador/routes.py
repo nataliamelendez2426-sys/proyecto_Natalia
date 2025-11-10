@@ -825,6 +825,37 @@ def detalle_garantia(garantia_id):
         garantia=garantia
     )
 
+@admin.route('/garantia/<int:garantia_id>/actualizar', methods=['POST'])
+@login_required
+def actualizar_garantia(garantia_id):
+    if current_user.Rol != 'admin':
+        flash("No tienes permisos", "danger")
+        return redirect(url_for('cliente.index'))
+
+    garantia = Garantia.query.get_or_404(garantia_id)
+    nuevo_estado = request.form.get('estado')  # 'aprobada', 'rechazada', 'completada'
+    comentario = request.form.get('comentario')
+
+    garantia.Estado = nuevo_estado
+    garantia.ComentarioAdmin = comentario
+    garantia.FechaResolucion = datetime.utcnow()
+
+    # 🔹 Enviar notificación al cliente
+    mensaje = f"Tu garantía para el pedido #{garantia.ID_Pedido} ha sido <b>{nuevo_estado}</b>."
+    if nuevo_estado == 'aprobada':
+        mensaje += " Se ha asignado un instalador. Puedes agendar tu cita."
+    notificacion = Notificaciones(
+        Titulo="Actualización de garantía",
+        Mensaje=mensaje,
+        ID_Usuario=garantia.ID_Usuario,
+        ID_Defecto=None  # Si fuera ProductoDefectuoso, asigna aquí
+    )
+    db.session.add(notificacion)
+    
+    db.session.commit()
+    flash("Garantía actualizada correctamente y notificación enviada.", "success")
+    return redirect(url_for('admin.detalle_garantia', garantia_id=garantia.ID_Garantia))
+
 
 
 

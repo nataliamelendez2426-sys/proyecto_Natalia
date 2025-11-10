@@ -702,6 +702,57 @@ def solicitar_garantia(pedido_id):
         productos=productos
     )
 
+@cliente.route('/agendar_cita/<int:notificacion_id>', methods=['POST'])
+@login_required
+def agendar_cita_garantia(notificacion_id):
+    # Obtener la notificación
+    notificacion = Notificaciones.query.get_or_404(notificacion_id)
+    
+    # Validar que la notificación tenga un defecto asociado
+    if not notificacion.defecto:
+        flash("Esta notificación no tiene un producto para agendar cita.", "danger")
+        return redirect(url_for('cliente.ver_notificaciones_cliente'))
+    
+    garantia = notificacion.defecto  # ProductoDefectuoso
+
+    # Solo permitir si el estado es resuelto_tecnico y no hay cita previa
+    if garantia.Estado != 'resuelto_tecnico' or garantia.CitaProgramada:
+        flash("No se puede agendar cita para este estado.", "warning")
+        return redirect(url_for('cliente.ver_notificaciones_cliente'))
+
+    # Obtener fecha y hora del formulario
+    fecha = request.form.get('fecha')
+    hora = request.form.get('hora')
+
+    if not fecha or not hora:
+        flash("Debes ingresar fecha y hora válidas.", "danger")
+        return redirect(url_for('cliente.ver_notificaciones_cliente'))
+
+    # Combinar fecha y hora en datetime
+    cita_datetime = datetime.strptime(f"{fecha} {hora}", "%Y-%m-%d %H:%M")
+    garantia.CitaProgramada = cita_datetime
+
+    # Obtener dirección del pedido
+    pedido = garantia.pedido
+    direccion = pedido.Destino if pedido.Destino else "Dirección no definida"
+
+    # Registrar en calendario usando la dirección del pedido
+    nuevo_evento = Calendario(
+        Fecha=cita_datetime.date(),
+        Hora=cita_datetime.time(),
+        Ubicacion=direccion,
+        Tipo="Garantía",
+        ID_Usuario=current_user.ID_Usuario,
+        ID_Pedido=garantia.ID_Pedido
+    )
+    db.session.add(nuevo_evento)
+    db.session.commit()
+
+    flash(f"Cita agendada correctamente para {cita_datetime.strftime('%d/%m/%Y %H:%M')} en {direccion}", "success")
+    return redirect(url_for('cliente.ver_notificaciones_cliente'))
+
+
+
 @cliente.route('/guardar_preferencias', methods=['POST'])
 @login_required
 def guardar_preferencias():
