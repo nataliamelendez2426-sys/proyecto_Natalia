@@ -30,7 +30,7 @@
         <div class="accordion-item mb-2">
             <h2 class="accordion-header" id="heading{{ reg.ID }}">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ reg.ID }}" aria-expanded="false">
-                    Pedido #{{ reg.ID_Pedido }} - Usuario: {{ reg.usuario.Nombre }} - Estado: {{ reg.Estado }}
+                    Pedido #{{ reg.ID_Pedido }} - Usuario: {{ reg.usuario.Nombre }} - Estado: {{ reg.Estado|capitalize }}
                 </button>
             </h2>
             <div id="collapse{{ reg.ID }}" class="accordion-collapse collapse" aria-labelledby="heading{{ reg.ID }}" data-bs-parent="#accordionDefectuosos">
@@ -46,14 +46,22 @@
                         {% endfor %}
                     </div>
 
+                    <!-- Formulario para cambiar el estado -->
                     <form method="POST" action="{{ url_for('admin.solucionar_defecto', id_garantia=reg.ID) }}">
                         <div class="d-flex gap-2">
-                            <button type="submit" name="accion" value="tecnico" class="btn btn-success">
-                                <i class="bi bi-tools me-1"></i> Enviar técnico
-                            </button>
-                            <button type="submit" name="accion" value="devolucion" class="btn btn-danger">
-                                <i class="bi bi-currency-dollar me-1"></i> Devolución
-                            </button>
+                            {% if reg.Estado == 'pendiente' %}
+                                <button type="submit" name="accion" value="proceso" class="btn btn-warning">
+                                    <i class="bi bi-hourglass-split me-1"></i> En proceso
+                                </button>
+                            {% endif %}
+                            {% if reg.Estado != 'procesado' %}
+                                <button type="submit" name="accion" value="tecnico" class="btn btn-success">
+                                    <i class="bi bi-tools me-1"></i> Solución Técnico
+                                </button>
+                                <button type="submit" name="accion" value="devolucion" class="btn btn-danger">
+                                    <i class="bi bi-currency-dollar me-1"></i> Devolución
+                                </button>
+                            {% endif %}
                         </div>
                     </form>
                 </div>
