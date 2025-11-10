@@ -1,81 +1,133 @@
 import os
-from openai import OpenAI  
-from dotenv import load_dotenv
+import json
 from flask_login import current_user
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session , current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify,session
 from flask_login import login_required, current_user
+from datetime import date,datetime, timedelta
+from flask import current_app
+from basedatos.models import db, Usuario, Notificaciones, Direccion, Producto, Proveedor,Categorias,Resena,Compra,Pedido, Mensaje, Garantia ,Pagos, Categorias ,ProductoDefectuoso 
 from werkzeug.security import generate_password_hash
-from basedatos.models import db, Usuario, Notificaciones, Direccion, Calendario,Pedido, Producto, Resena, Detalle_Pedido, Pagos,Mensaje,Garantia ,GarantiaArchivo ,Categorias ,FotoProductoDefectuoso ,ProductoDefectuoso
 from basedatos.decoradores import role_required
 from basedatos.notificaciones import crear_notificacion
-from datetime import date,datetime
-from flask import render_template
-from sqlalchemy import text
-from flask_mail import Message
-from flask import url_for
 from werkzeug.utils import secure_filename
-from basedatos.decoradores import mail
-from functools import wraps
+from sqlalchemy import func
 
-UPLOAD_FOLDER_DEFECTUOSO = 'static/uploads/productos_defectuosos'
-UPLOAD_FOLDER = 'static/uploads/garantias'
+UPLOAD_FOLDER = 'static/uploads/productos'
 
-favoritos_usuario = set() 
-
-from . import cliente
 reviews = []
 
+admin = Blueprint("admin", __name__, url_prefix="/admin")
+
 # ---------- DASHBOARD ----------
-@cliente.route("/dashboard")
+@admin.route("/")
 @login_required
-@role_required("cliente")
+@role_required("admin")
 def dashboard():
-    mostrar_bienvenida = session.pop('mostrar_bienvenida', False)
-    nombre_completo = session.get('username', '')  
-    
+    return render_template("administrador/admin_dashboard.html")
+
+# ---------- GESTION_ROLES ----------
+@admin.route("/gestion_roles", methods=["GET", "POST"])
+@login_required
+@role_required("admin")
+def gestion_roles():
+    roles_disponibles = ["admin", "cliente", "instalador", "transportista"]
+
+    if request.method == "POST":
+        user_id = request.form.get("user_id")
+        nuevo_rol = request.form.get("rol")
+
+        usuario = Usuario.query.get(user_id)
+        if not usuario:
+            flash("❌ Usuario no encontrado", "danger")
+            return redirect(url_for("admin.gestion_roles"))
+
+        usuario.Rol = nuevo_rol
+        db.session.commit()
+
+        flash(f"✅ Rol de {usuario.Nombre} actualizado a {nuevo_rol}", "success")
+        return redirect(url_for("admin.gestion_roles"))
+
+    # --- FILTRO ---
+    q = request.args.get("q", "").strip()
+    rol_filter = request.args.get("rol_filter", "").strip()
+
+    usuarios_query = Usuario.query
+    if q:
+        usuarios_query = usuarios_query.filter(
+            (Usuario.Nombre.ilike(f"%{q}%")) |
+            (Usuario.Correo.ilike(f"%{q}%"))
+        )
+    if rol_filter:
+        usuarios_query = usuarios_query.filter_by(Rol=rol_filter)
+
+    usuarios = usuarios_query.all()
+    # -----------------
+
     return render_template(
-        "cliente/dashboard.html",
-        mostrar_bienvenida=mostrar_bienvenida,
-        nombre_completo=nombre_completo
+        "administrador/gestion_roles.html",
+        usuarios=usuarios,
+        roles=roles_disponibles,
+        rol_filter=rol_filter,
+        q=q
     )
 
+# ---------- CAMBIAR_ROL ----------
+@admin.route("/cambiar_rol/<int:user_id>", methods=["POST"])
+@login_required
+@role_required("admin")
+def cambiar_rol(user_id):
+    nuevo_rol = request.form["rol"]
+    usuario = Usuario.query.get(user_id)
+
+    if usuario:
+        usuario.Rol = nuevo_rol
+        db.session.commit()
+        flash(f"✅ Rol de {usuario.Nombre} cambiado a {nuevo_rol}", "success")
+    else:
+        flash("❌ Usuario no encontrado", "danger")
+
+    return redirect(url_for("admin.gestion_roles"))
 
 # ---------- NOTIFICACIONES ----------
-@cliente.route("/notificaciones", methods=["GET", "POST"])
+@admin.route("/notificaciones", methods=["GET", "POST"])
 @login_required
-def ver_notificaciones_cliente():
+@role_required("admin")
+def ver_notificaciones():
     if request.method == "POST":
         ids = request.form.getlist("ids")
-        if ids:
-            try:
-                Notificaciones.query.filter(
-                    Notificaciones.ID_Usuario == current_user.ID_Usuario,
-                    Notificaciones.ID_Notificacion.in_(ids)
-                ).delete(synchronize_session=False)
-                db.session.commit()
-                flash("✅ Notificaciones eliminadas", "success")
-            except Exception as e:
-                db.session.rollback()
-                flash(f"❌ Error al eliminar: {str(e)}", "danger")
-        return redirect(url_for("cliente.ver_notificaciones_cliente"))
+        if not ids:
+            flash("❌ No seleccionaste ninguna notificación", "warning")
+            return redirect(url_for("cliente.ver_notificaciones"))
 
-    notificaciones = Notificaciones.query.filter_by(ID_Usuario=current_user.ID_Usuario).order_by(Notificaciones.Fecha.desc()).all()
-    return render_template("cliente/notificaciones_cliente.html", notificaciones=notificaciones)
+        try:
+            ids_int = [int(i) for i in ids if str(i).isdigit()]
+            Notificaciones.query.filter(
+                Notificaciones.ID_Usuario == current_user.ID_Usuario,
+                Notificaciones.ID_Notificacion.in_(ids_int),
+            ).delete(synchronize_session=False)
+            db.session.commit()
+            flash("✅ Notificaciones eliminadas", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"❌ Error al eliminar: {e}", "danger")
+
+        return redirect(url_for("admin.ver_notificaciones"))
+
+    notificaciones = Notificaciones.query.filter_by(
+        ID_Usuario=current_user.ID_Usuario
+    ).order_by(Notificaciones.Fecha.desc()).all()
+
+    return render_template("administrador/notificaciones_admin.html", notificaciones=notificaciones)
 
 
-# ---------- PERFIL Y DIRECCIONES ----------
-@cliente.route("/actualizacion_datos", methods=["GET", "POST"])
+# ---------- ACTUALIZACION_DATOS ----------
+@admin.route("/actualizacion_datos", methods=["GET", "POST"])
 @login_required
-@role_required("cliente", "admin")
+@role_required("admin")
 def actualizacion_datos():
     usuario = current_user
     direcciones = Direccion.query.filter_by(ID_Usuario=usuario.ID_Usuario).all()
-    notificaciones = Notificaciones.query.filter_by(
-        ID_Usuario=usuario.ID_Usuario
-    ).order_by(Notificaciones.Fecha.desc()).all()
-
-    
-    pedidos = Pedido.query.filter_by(ID_Usuario=usuario.ID_Usuario).order_by(Pedido.FechaPedido.desc()).all()
+    notificaciones = Notificaciones.query.filter_by(ID_Usuario=usuario.ID_Usuario).order_by(Notificaciones.Fecha.desc()).all()
 
     if request.method == "POST":
         nombre = request.form.get("nombre", "").strip()
@@ -86,47 +138,61 @@ def actualizacion_datos():
         if not nombre or not apellido or not correo:
             flash("⚠️ Los campos Nombre, Apellido y Correo son obligatorios.", "warning")
         else:
+          
             usuario_existente = Usuario.query.filter(
                 Usuario.Correo == correo,
                 Usuario.ID_Usuario != usuario.ID_Usuario
             ).first()
+
             if usuario_existente:
                 flash("El correo ya está registrado por otro usuario.", "danger")
             else:
                 usuario.Nombre = nombre
                 usuario.Apellido = apellido
                 usuario.Correo = correo
+
                 if password:
                     usuario.Contraseña = generate_password_hash(password)
-                db.session.commit()
-                crear_notificacion(
-                    user_id=usuario.ID_Usuario,
-                    titulo="Perfil actualizado ✏️",
-                    mensaje="Tus datos personales se han actualizado correctamente."
-                )
-                flash("✅ Perfil actualizado correctamente", "success")
+
+                try:
+                    db.session.commit()
+                    crear_notificacion(
+                        user_id=usuario.ID_Usuario,
+                        titulo="Perfil actualizado ✏️",
+                        mensaje="Tus datos personales se han actualizado correctamente."
+                    )
+                    flash("✅ Perfil actualizado correctamente", "success")
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f"❌ Error al actualizar perfil: {str(e)}", "danger")
 
     return render_template(
-        "cliente/actualizacion_datos.html",
+        "administrador/admin_actualizacion_datos.html",
         usuario=usuario,
         direcciones=direcciones,
-        pedidos=pedidos,  
         notificaciones=notificaciones
     )
 
-@cliente.route("/direccion/agregar", methods=["POST"])
+
+# ---------- AGREGAR DIRECCION ----------
+@admin.route("/direccion/agregar", methods=["POST"])
 @login_required
 def agregar_direccion():
     try:
+        direccion_valor = request.form.get("direccion", "").strip()
+        if not direccion_valor:
+            flash("⚠️ La dirección es obligatoria.", "warning")
+            return redirect(url_for("admin.actualizacion_datos"))
+
         nueva_direccion = Direccion(
             ID_Usuario=current_user.ID_Usuario,
             Pais="Colombia",
             Departamento="Bogotá, D.C.",
             Ciudad="Bogotá",
-            Direccion=request.form.get("direccion"),
-            InfoAdicional=request.form.get("infoAdicional"),
-            Barrio=request.form.get("barrio"),
-            Destinatario=request.form.get("destinatario")
+            Direccion=direccion_valor,
+            InfoAdicional=request.form.get("infoAdicional", "").strip(),
+            Barrio=request.form.get("barrio", "").strip(),
+            Destinatario=request.form.get("destinatario", "").strip()
         )
         db.session.add(nueva_direccion)
         db.session.commit()
@@ -141,9 +207,11 @@ def agregar_direccion():
         db.session.rollback()
         flash(f"❌ Error al agregar dirección: {str(e)}", "danger")
 
-    return redirect(url_for("cliente.actualizacion_datos"))
+    return redirect(url_for("admin.actualizacion_datos"))
 
-@cliente.route("/direccion/borrar/<int:id_direccion>", methods=["POST"])
+
+# ---------- BORRAR DIRECCION ----------
+@admin.route("/direccion/borrar/<int:id_direccion>", methods=["POST"])
 @login_required
 def borrar_direccion(id_direccion):
     try:
@@ -161,677 +229,890 @@ def borrar_direccion(id_direccion):
         db.session.rollback()
         flash(f"❌ Error al eliminar dirección: {str(e)}", "danger")
 
-    return redirect(url_for("cliente.actualizacion_datos"))
+    return redirect(url_for("admin.actualizacion_datos"))
 
-@cliente.route('/perfil')
-@login_required
-def perfil():
-    return redirect(url_for('cliente.actualizacion_datos'))
-
-# ---------- DETALLE_PEDIDO ----------
+# ---------- VER_PEDIDOS ----------
 
 
-@cliente.route("/pedido/<int:id_pedido>/detalle")
-@login_required
-def ver_detalle_pedido(id_pedido):
-    pedido = Pedido.query.get_or_404(id_pedido)
+def get_pedidos_pendientes_usuario(usuario_id):
+    pedidos = Pedido.query.filter_by(Estado='pendiente', ID_Usuario=usuario_id).all()
+    pedidos_en_proceso = Pedido.query.filter_by(Estado='en proceso').all()
+    
+    pedidos_enriquecidos = []
+    for pedido in pedidos:
+        productos_info = []
+        for detalle in pedido.detalles_pedido:
+            producto = detalle.producto
+            productos_info.append({
+                'Nombre': producto.NombreProducto if producto else 'Producto no disponible',
+                'Cantidad': detalle.Cantidad,
+                'Imagen': producto.ImagenPrincipal if producto and producto.ImagenPrincipal else None
+            })
 
-    try:
-        detalles = pedido.detalles_pedido  
-    except Exception as e:
-        print("Error detalles pedido:", e)
-        detalles = []
+        pedidos_enriquecidos.append({
+            'ID': pedido.ID_Pedido,
+            'Estado': pedido.Estado,
+            'Productos': productos_info,
+            'Nombre': pedido.NombreComprador,
+            'Celular': pedido.usuario.Telefono if pedido.usuario else '',
+            'Direccion': pedido.Destino
+        })
+
+    return pedidos_enriquecidos
+
+
+def get_todos_los_pedidos():
+    pedidos = Pedido.query.all()
+    
+    pedidos_enriquecidos = []
+    for pedido in pedidos:
+        productos_info = []
+        for detalle in pedido.detalles_pedido:
+            producto = detalle.producto
+            productos_info.append({
+                'Nombre': producto.NombreProducto if producto else 'Producto no disponible',
+                'Cantidad': detalle.Cantidad,
+                'Imagen': producto.ImagenPrincipal if producto and producto.ImagenPrincipal else None
+            })
+
+        pedidos_enriquecidos.append({
+            'ID': pedido.ID_Pedido,
+            'Estado': pedido.Estado or 'sin estado',
+            'Productos': productos_info,
+            'NombreComprador': pedido.NombreComprador,
+            'TelefonoUsuario': pedido.usuario.Telefono if pedido.usuario else 'No disponible',
+            'Direccion': pedido.Destino
+        })
+
+    return pedidos_enriquecidos
+
+
+
+def get_usuario_actual():
+    user_id = session.get('user_id')
+    if user_id:
+        return Usuario.query.get(user_id)
+    return None
+
+
+@admin.route('/ver_pedidos')
+def ver_pedidos():
+    now = datetime.now()
+
+ 
+    pedidos_pendientes = Pedido.query.filter_by(Estado='pendiente').all()
+    pedidos_en_proceso = Pedido.query.filter_by(Estado='en proceso').all()
+    pedidos_entregados = Pedido.query.filter_by(Estado='entregado').all()
+
+   
+    for pedido in pedidos_en_proceso:
+        if pedido.HoraLlegada and pedido.HoraLlegada <= now:
+            pedido.Estado = 'entregado'
+            db.session.add(pedido)
+    db.session.commit()
+
+  
+    pedidos_en_proceso = Pedido.query.filter_by(Estado='en proceso').all()
+    pedidos_entregados = Pedido.query.filter_by(Estado='entregado').all()
+
+
+    usuarios_transportistas = Usuario.query.filter_by(Rol='transportista').all()
 
     return render_template(
-        "Common/partials/detalle_pedido.html",
-        pedido=pedido,
-        detalles=detalles
+        'administrador/ver_pedidos.html',
+        pedidos_pendientes=pedidos_pendientes,
+        pedidos_en_proceso=pedidos_en_proceso,
+        pedidos_entregados=pedidos_entregados,
+        usuarios_transportistas=usuarios_transportistas
     )
 
 
+# ---------- AGREGAR PRODUCTO ----------
+@admin.route('/productos', methods=['GET', 'POST'])
+def lista_productos():
+    productos = Producto.query.all()  
+    proveedores = Proveedor.query.all() 
+    categorias = Categorias.query.all()
 
-
-
-# ---------- AGENDAR_INSTALACION ----------
-
-@cliente.route('/cliente/instalacion', methods=['GET', 'POST'])
-@login_required
-def agendar_instalacion():
     if request.method == 'POST':
-        pedido_id = request.form.get('pedido_id')
-        fecha = request.form.get('fecha')
-        hora = request.form.get('hora')
-        ubicacion = request.form.get('ubicacion')
+      
+        pass
 
-        if not (pedido_id and fecha and hora and ubicacion):
-            return jsonify({'success': False, 'message': 'Por favor completa todos los campos'}), 400
+    return render_template(
+        'Administrador/productos.html', 
+        productos=productos, 
+        proveedores=proveedores, 
+        categorias=categorias
+    )
 
-        nueva_cita = Calendario(
-            Fecha=fecha,
-            Hora=hora,
-            Ubicacion=ubicacion,
-            Tipo='Instalación',
-            ID_Usuario=current_user.ID_Usuario,
-            ID_Pedido=pedido_id
+@admin.route('/admin/agregar-producto', methods=['GET', 'POST'])
+def agregar_producto():
+    proveedores = Proveedor.query.all()
+    categorias = Categorias.query.all()
+
+    if request.method == 'POST':
+        nombre = request.form['nombre']
+        stock = int(request.form['stock'])
+        material = request.form.get('material', '')  # Previene error si no se envía
+        precio = float(request.form['precio'])
+        color = request.form.get('color', '')
+        id_proveedor = int(request.form['proveedor'])
+        id_categoria = int(request.form['categoria'])
+
+        # Manejo de imagen
+        imagen = request.files.get('imagen_principal')
+        imagen_ruta = 'img/default.png'
+
+        if imagen and imagen.filename != '':
+            filename = secure_filename(imagen.filename)
+            ruta_img = os.path.join(current_app.static_folder, 'img', filename)
+            imagen.save(ruta_img)
+            imagen_ruta = f'img/{filename}'
+
+        # Crear producto
+        nuevo = Producto(
+            NombreProducto=nombre,
+            Stock=stock,
+            Material=material,
+            PrecioUnidad=precio,
+            Color=color,
+            ID_Proveedor=id_proveedor,
+            ID_Categoria=id_categoria,
+            ImagenPrincipal=imagen_ruta
         )
 
-        db.session.add(nueva_cita)
+        db.session.add(nuevo)
         db.session.commit()
+        flash('Producto agregado con éxito', 'success')
+        return redirect(url_for('admin.agregar_producto'))
 
-        return jsonify({'success': True, 'message': 'Instalación agendada exitosamente'})
+    return render_template('administrador/agregar_producto.html',
+                           proveedores=proveedores,
+                           categorias=categorias)
 
-    # GET
-    pedidos = Pedido.query.filter_by(ID_Usuario=current_user.ID_Usuario).all()
-    direcciones = Direccion.query.filter_by(ID_Usuario=current_user.ID_Usuario).all()
+@admin.route('/productos/editar/<int:id_producto>', methods=['GET', 'POST'])
+def editar_producto(id_producto):
+    producto = Producto.query.get_or_404(id_producto)
 
-    return render_template('cliente/instalacion.html', pedidos=pedidos, direcciones=direcciones)
+    if request.method == 'POST':
+        try:
+            # Datos del formulario
+            producto.NombreProducto = request.form['nombre']
+            producto.Stock = int(request.form['stock'])
+            producto.PrecioUnidad = float(request.form['precio'])
+            producto.Material = request.form.get('material', '')
+            producto.Color = request.form.get('color', '')
+            producto.Descripcion = request.form.get('descripcion', '')
+            producto.ID_Proveedor = int(request.form['proveedor'])
+            producto.ID_Categoria = int(request.form['categoria'])
 
-@cliente.route('/ver_instalaciones')
-def ver_instalaciones():
-    query = text("""
-        SELECT 
-            c.Fecha,
-            c.Hora,
-            c.Ubicacion,
-            u.Nombre AS NombreUsuario
-        FROM calendario c
-        JOIN usuario u ON c.ID_Usuario = u.ID_Usuario
-    """)
+            # Imagen (opcional)
+            if 'imagen' in request.files:
+                imagen = request.files['imagen']
+                if imagen and imagen.filename != '':
+                    filename = secure_filename(imagen.filename)
+                    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                    imagen_path = os.path.join(UPLOAD_FOLDER, filename)
+                    imagen.save(imagen_path)
+                    producto.ImagenPrincipal = f'uploads/productos/{filename}'
 
-    result = db.session.execute(query)
-    instalaciones = [dict(row) for row in result.mappings()] 
+            db.session.commit()
+            flash('✅ Producto actualizado correctamente', 'success')
+            return redirect(url_for('admin.lista_productos'))
 
-    return render_template("cliente/ver_instalaciones.html", instalaciones=instalaciones)
+        except Exception as e:
+            db.session.rollback()
+            flash(f'❌ Error al actualizar el producto: {e}', 'danger')
 
+    # Datos para el formulario
+    proveedores = Proveedor.query.all()
+    categorias = Categorias.query.all()
 
-
-@cliente.route('/producto/<int:id>')
-def detalle_producto_catalogo(id):
-    producto = Producto.query.get_or_404(id)
-    return render_template('cliente/detalle_producto_catalogo.html', producto=producto)
-
-# ---------- RESEÑA ----------
-
-@cliente.route('/productos/<int:id>/resena', methods=['GET'])
-@login_required
-def escribir_resena(id):
-    producto = Producto.query.get_or_404(id)
-    return render_template('cliente/escribir_reseña.html', producto=producto)
-
-
-@cliente.route('/productos/<int:id>/resena', methods=['POST'])
-@login_required
-def guardar_resena(id):
-    producto = Producto.query.get_or_404(id)
-    calificacion = int(request.form.get('calificacion'))
-    comentario = request.form.get('comentario')
-
-    if not (1 <= calificacion <= 5):
-        flash('La calificación debe estar entre 1 y 5.', 'danger')
-        return redirect(url_for('cliente/escribir_reseña', id=id))
-
-    if not comentario:
-        flash('El comentario no puede estar vacío.', 'danger')
-        return redirect(url_for('cliente/escribir_reseña', id=id))
-
-    nueva_resena = Resena(
-        ID_Producto=id,
-        ID_Usuario=current_user.ID_Usuario,
-        Calificacion=calificacion,
-        Comentario=comentario
+    return render_template(
+        'administrador/editar_producto.html',
+        producto=producto,
+        proveedores=proveedores,
+        categorias=categorias
     )
-    db.session.add(nueva_resena)
-    db.session.commit()
-    flash('Reseña creada exitosamente.', 'success')
-    return redirect(url_for('cliente.detalle_producto_catalogo', id=id))  
 
-# ---------- COMPARAR ----------
+# ---------- RESEÑAS ----------
 
-@cliente.route('/comparar')
-def comparar():
-    productos = Producto.query.all()  
-    return render_template('cliente/comparar.html', productos=productos)
 
-@cliente.route('/api/comprar', methods=['POST'])
+@admin.route('/resenas')
 @login_required
-def comprar_producto():
+def ver_resenas():
+    productos = db.session.query(Producto).all()
+    return render_template('administrador/ver_reseñas.html', productos=productos)
+
+# ---------- ESTADISTICAS ----------
+
+@admin.route('/estadisticas')
+@login_required
+def estadisticas_reseñas():
+    fecha_inicio = request.args.get('fecha_inicio')
+    fecha_fin = request.args.get('fecha_fin')
+    canal = request.args.get('canal', 'todos')
+    segmento = request.args.get('segmento', 'todos')
+
+    query = Resena.query
+
+    if fecha_inicio:
+        try:
+            fecha_inicio_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d")
+            query = query.filter(Resena.Fecha >= fecha_inicio_dt)
+        except:
+            pass
+
+    if fecha_fin:
+        try:
+            fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d")
+            query = query.filter(Resena.Fecha <= fecha_fin_dt)
+        except:
+            pass
+
+    if canal != 'todos':
+        query = query.filter(Resena.canal == canal)
+
+    if segmento != 'todos':
+        query = query.filter(Resena.segmento_cliente == segmento)
+
+    reseñas_filtradas = query.all()
+
+    
+    rating_distribution = {str(i): 0 for i in range(1, 6)}
+    total_respuestas = len(reseñas_filtradas)
+    respuestas_positivas = 0
+    comentarios_negativos_por_producto = {}
+
+    for r in reseñas_filtradas:
+        cal = r.Calificacion
+        rating_distribution[str(cal)] += 1
+        if cal >= 4:
+            respuestas_positivas += 1
+        elif cal <= 2:
+            nombre_producto = r.producto.NombreProducto
+            comentarios_negativos_por_producto[nombre_producto] = comentarios_negativos_por_producto.get(nombre_producto, 0) + 1
+
+    porcentaje_positivas = round((respuestas_positivas / total_respuestas) * 100, 2) if total_respuestas else 0
+
+ 
+    productos_data = []
+    productos = Producto.query.all()
+
+    for producto in productos:
+        reseñas_producto = [r for r in reseñas_filtradas if r.ID_Producto == producto.ID_Producto]
+        if reseñas_producto:
+            suma = sum(r.Calificacion for r in reseñas_producto)
+            cantidad = len(reseñas_producto)
+            promedio = round(suma / cantidad, 2)
+            productos_data.append({
+                'nombre': producto.NombreProducto,
+                'promedio': promedio,
+                'cantidad': cantidad
+            })
+
+   
+    from sqlalchemy import func
+    compras_por_mes = (
+        db.session.query(
+            func.date_format(Resena.Fecha, "%Y-%m").label("mes"),
+            func.count(Resena.ID_Resena)
+        )
+        .filter(Resena.ID_Resena.in_([r.ID_Resena for r in reseñas_filtradas]))
+        .group_by("mes")
+        .order_by("mes")
+        .all()
+    )
+
+   
+    resolucion_por_mes = {
+        "2023-05": 12,
+        "2023-06": 17,
+        "2023-07": 14,
+        "2023-08": 19,
+        "2023-09": 21,
+    }
+
+    return render_template('administrador/estadisticas.html',
+        filtros={
+            "fecha_inicio": fecha_inicio or '',
+            "fecha_fin": fecha_fin or '',
+            "canal": canal,
+            "segmento": segmento
+        },
+        total_respuestas=total_respuestas,
+        porcentaje_positivas=porcentaje_positivas,
+        distribucion_json=json.dumps(rating_distribution),
+        comentarios_negativos=comentarios_negativos_por_producto,
+        productos=productos_data,
+        compras_por_mes=compras_por_mes,
+        resolucion_json=json.dumps(resolucion_por_mes)
+    )
+
+# ---------- PROVEEDORES ----------
+
+@admin.route('/proveedores', methods=['GET'])
+@login_required
+@role_required("admin")
+def vista_proveedores():
+    return render_template('administrador/proveedores.html')
+
+
+
+@admin.route('/api/proveedores', methods=['GET'])
+@login_required
+@role_required("admin")
+def obtener_proveedores():
+    try:
+        proveedores = Proveedor.query.all()
+        data = [
+            {
+                "id": p.ID_Proveedor,
+                "empresa": p.NombreEmpresa,
+                "contacto": p.NombreContacto,
+                "cargo": p.CargoContacto,
+                "direccion": p.Direccion,
+                "ciudad": p.Ciudad,
+                "pais": p.Pais,
+                "telefono": p.Telefono
+            } for p in proveedores
+        ]
+        return jsonify(data), 200
+    except Exception as e:
+        print("❌ ERROR GET PROVEEDORES:", e)
+        return jsonify({"mensaje": "Error interno"}), 500
+
+
+
+@admin.route('/api/proveedores', methods=['POST'])
+@login_required
+@role_required("admin")
+def agregar_proveedor():
     try:
         data = request.get_json()
-        id_producto = int(data.get('ID_Producto'))
-        id_direccion = int(data.get('ID_Direccion'))
-        metodo_pago = data.get('MetodoPago')
+        if not data:
+            return jsonify({"mensaje": "No se recibió JSON válido"}), 400
 
-       
-        direccion = Direccion.query.filter_by(ID_Direccion=id_direccion, ID_Usuario=current_user.ID_Usuario).first()
-        if not direccion:
-            return jsonify({"mensaje":"Dirección no válida"}), 400
-
-        producto = Producto.query.get(id_producto)
-        if not producto:
-            return jsonify({"mensaje":"Producto no encontrado"}), 404
-
-
-        pedido = Pedido(
-            NombreComprador=current_user.Nombre,
-            Estado='pendiente',
-            FechaPedido=datetime.today().date(),
-            Destino=f"{direccion.Direccion}, {direccion.Barrio}, {direccion.Ciudad}, {direccion.Departamento}, {direccion.Pais}",
-            Descuento=0.0,
-            ID_Usuario=current_user.ID_Usuario
+        nuevo = Proveedor(
+            NombreEmpresa=data.get('empresa'),
+            NombreContacto=data.get('contacto'),
+            CargoContacto=data.get('cargo'),
+            Direccion=data.get('direccion'),
+            Ciudad=data.get('ciudad'),
+            Pais=data.get('pais'),
+            Telefono=data.get('telefono')
         )
-        db.session.add(pedido)
-        db.session.commit()  
 
-       
-        detalle = Detalle_Pedido(
-            ID_Pedido=pedido.ID_Pedido,
-            ID_Producto=producto.ID_Producto,
-            Cantidad=1,
-            PrecioUnidad=producto.PrecioUnidad
-        )
-        db.session.add(detalle)
+        db.session.add(nuevo)
+        db.session.commit()
+        return jsonify({"mensaje": "Proveedor agregado correctamente ✅"}), 201
+    except Exception as e:
+        db.session.rollback()
+        print("❌ ERROR POST PROVEEDOR:", e)
+        return jsonify({"mensaje": "Error al guardar el proveedor ❌"}), 500
 
 
-        pago = Pagos(
-            MetodoPago=metodo_pago,
-            FechaPago=datetime.today().date(),
-            Monto=producto.PrecioUnidad,
-            ID_Pedido=pedido.ID_Pedido
-        )
-        db.session.add(pago)
+
+@admin.route('/api/proveedores/<int:id>', methods=['PUT'])
+@login_required
+@role_required("admin")
+def editar_proveedor(id):
+    try:
+        proveedor = Proveedor.query.get_or_404(id)
+        data = request.get_json()
+
+        proveedor.NombreEmpresa = data.get('empresa', proveedor.NombreEmpresa)
+        proveedor.NombreContacto = data.get('contacto', proveedor.NombreContacto)
+        proveedor.CargoContacto = data.get('cargo', proveedor.CargoContacto)
+        proveedor.Direccion = data.get('direccion', proveedor.Direccion)
+        proveedor.Ciudad = data.get('ciudad', proveedor.Ciudad)
+        proveedor.Pais = data.get('pais', proveedor.Pais)
+        proveedor.Telefono = data.get('telefono', proveedor.Telefono)
 
         db.session.commit()
-        return jsonify({"mensaje":"Compra registrada correctamente"}), 200
+        return jsonify({"mensaje": "Proveedor actualizado correctamente ✅"}), 200
+    except Exception as e:
+        db.session.rollback()
+        print("❌ ERROR PUT PROVEEDOR:", e)
+        return jsonify({"mensaje": "Error al editar el proveedor ❌"}), 500
+
+
+
+@admin.route('/api/proveedores/<int:id>', methods=['DELETE'])
+@login_required
+@role_required("admin")
+def eliminar_proveedor(id):
+    try:
+        proveedor = Proveedor.query.get_or_404(id)
+        db.session.delete(proveedor)
+        db.session.commit()
+        return jsonify({"mensaje": "Proveedor eliminado ✅"}), 200
+    except Exception as e:
+        db.session.rollback()
+        print("❌ ERROR DELETE PROVEEDOR:", e)
+        return jsonify({"mensaje": "Error al eliminar proveedor ❌"}), 500
+
+
+
+@admin.route('/api/compras', methods=['GET'])
+@login_required
+def obtener_compras():
+    compras = Compra.query.all()
+    data = []
+    for c in compras:
+        data.append({
+            "id": c.ID_Compra,
+            "producto": c.Producto,
+            "cantidad": c.Cantidad,
+            "proveedor": c.proveedor.NombreEmpresa,  
+            "fecha": c.Fecha.strftime('%Y-%m-%d')
+        })
+    return jsonify(data), 200
+
+@admin.route('/api/compras', methods=['POST'])
+@login_required
+def agregar_compra():
+    try:
+        data = request.get_json()
+      
+        proveedor = Proveedor.query.get(data['proveedor_id'])
+        if not proveedor:
+            return jsonify({"mensaje": "Proveedor no encontrado"}), 404
+
+       
+        fecha_obj = datetime.strptime(data['fecha'], '%Y-%m-%d').date()
+
+        nueva = Compra(
+            Producto=data['producto'],
+            Cantidad=data['cantidad'],
+            Fecha=fecha_obj,
+            ProveedorID=proveedor.ID_Proveedor
+        )
+        db.session.add(nueva)
+        db.session.commit()
+        return jsonify({"mensaje": "Compra registrada correctamente ✅"}), 201
 
     except Exception as e:
         db.session.rollback()
-        print("Error al realizar la compra:", e)
-        return jsonify({"mensaje":"Error al realizar la compra"}), 500
+        print("Error al registrar compra:", e)
+        return jsonify({"mensaje": "Error al registrar compra ❌"}), 500
+    
+# ---------- ASIGNAR_TRANSPORTISTA ----------
 
-@cliente.route('/api/direcciones', methods=['GET'])
-@login_required
-def get_direcciones():
-    direcciones = Direccion.query.filter_by(ID_Usuario=current_user.ID_Usuario).all()
-    data = []
-    for d in direcciones:
-        data.append({
-            "id": d.ID_Direccion,
-            "pais": d.Pais,
-            "departamento": d.Departamento,
-            "ciudad": d.Ciudad,
-            "direccion": d.Direccion,
-            "barrio": d.Barrio,
-            "destinatario": d.Destinatario,
-            "info": d.InfoAdicional
-        })
-    return jsonify(data)
+@admin.route('/asignar_transportista/<int:id_pedido>', methods=['POST'])
+def asignar_transportista(id_pedido):
+    pedido = Pedido.query.get_or_404(id_pedido)
+
+    transportista_id = request.form.get('transportista_id')
+    hora_llegada_str = request.form.get('hora_llegada')
+
+
+    if not transportista_id or not hora_llegada_str:
+        flash('Por favor, completa todos los campos.', 'warning')
+        return redirect(url_for('admin.ver_pedidos'))
+
+  
+    transportista = Usuario.query.get(transportista_id)
+    if not transportista:
+        flash('El transportista no existe.', 'danger')
+        return redirect(url_for('admin.ver_pedidos'))
+
+ 
+    try:
+        hora_llegada = datetime.strptime(hora_llegada_str, '%Y-%m-%dT%H:%M')
+    except ValueError:
+        flash('El formato de la hora de llegada no es válido.', 'danger')
+        return redirect(url_for('admin.ver_pedidos'))
+
+   
+    if pedido.Estado == 'en proceso':
+        flash('Este pedido ya tiene un transportista asignado.', 'warning')
+        return redirect(url_for('admin.ver_pedidos'))
+
+   
+    pedido.ID_Empleado = int(transportista_id)
+    pedido.HoraLlegada = hora_llegada
+    pedido.Estado = 'en proceso'  
+
+    db.session.commit()
+
+    flash(f'Transportista {transportista.Nombre} asignado al pedido #{id_pedido} correctamente.', 'success')
+    return redirect(url_for('admin.ver_pedidos'))
+
+# ---------- REPORTES ----------
+
+@admin.route('/reportes')
+def reporte_entregas():
+    pedidos_entregados = Pedido.query.filter_by(Estado='entregado').all()
+
+   
+
+    return render_template(
+        'administrador/reportes_entregas.html',
+        pedidos_entregados=pedidos_entregados
+    )
+
 
 # ---------- CHAT_EN_TIEMPO_REAL ----------
 
-@cliente.route('/chat', methods=['GET'])
+@admin.route('/chat', methods=['GET'])
 @login_required
-def chat_cliente():
-    # Filtrar mensajes solo del cliente actual
-    mensajes = Mensaje.query.filter_by(cliente_id=current_user.ID_Usuario).order_by(Mensaje.fecha).all()
-    return render_template('Cliente/chat.html', mensajes=mensajes)
+def chat_admin():
+    
+    clientes = (
+        db.session.query(Usuario)
+        .join(Mensaje, Usuario.ID_Usuario == Mensaje.cliente_id)
+        .filter(Mensaje.enviado_admin == False)  
+        .distinct()
+        .all()
+    )
+
+    mensajes = []
+
+    return render_template('Administrador/chat.html', clientes=clientes, mensajes=mensajes)
 
 
-@cliente.route('/chat/enviar_mensaje', methods=['POST'])
+@admin.route('/chat/enviar_mensaje', methods=['POST'])
 @login_required
-def enviar_mensaje_cliente():
+def enviar_mensaje_admin():
     data = request.get_json()
     contenido = data.get('contenido')
+    cliente_id = data.get('cliente_id')
 
-    if not contenido:
+    if not contenido or not cliente_id:
         return jsonify({'status': 'error', 'message': 'Faltan datos'})
 
-    msg = Mensaje(cliente_id=current_user.ID_Usuario, contenido=contenido, enviado_admin=False)
+    msg = Mensaje(cliente_id=cliente_id, contenido=contenido, enviado_admin=True)
     db.session.add(msg)
     db.session.commit()
     return jsonify({'status': 'ok'})
 
-@cliente.route('/chat/mensajes')
+@admin.route('/chat/mensajes/<int:cliente_id>', methods=['GET'])
 @login_required
-def mensajes_cliente_ajax():
-    mensajes = Mensaje.query.filter_by(cliente_id=current_user.ID_Usuario).order_by(Mensaje.fecha).all()
-    return jsonify([
+def mensajes_cliente(cliente_id):
+    mensajes = Mensaje.query.filter_by(cliente_id=cliente_id).order_by(Mensaje.fecha).all()
+    mensajes_list = [
         {
             'contenido': m.contenido,
             'enviado_admin': m.enviado_admin,
             'cliente_nombre': m.cliente.Nombre
         } for m in mensajes
-    ])
+    ]
+    return jsonify(mensajes_list)
 
-@cliente.route('/carrito')
+# ---------- GARANTIA ----------
+
+@admin.route('/lista', methods=['GET'])
 @login_required
-def ver_carrito():
-    # Obtiene las direcciones del usuario logueado
-    direcciones = current_user.direcciones  # relación desde Usuario
-    return render_template('cliente/carrito.html', direcciones=direcciones)
-
-
-# ---------- Checkout ----------
-
-def enviar_correo_confirmacion(usuario, pedido, total_pago, metodo, direccion_envio):
-    """
-    Envía un correo de confirmación con diseño HTML.
-    """
-    html_body = render_template(
-        'email/confirmacion_pedido.html',
-        nombre=usuario.Nombre,
-        id_pedido=pedido.ID_Pedido,
-        metodo=metodo.capitalize(),
-        total=f"{total_pago:,.2f}",
-        direccion=direccion_envio
-    )
-
-    msg = Message(
-        subject=f"🧾 Confirmación de tu pedido #{pedido.ID_Pedido}",
-        recipients=[usuario.Correo],
-        html=html_body
-    )
-
-    mail.send(msg)
-
-
-@cliente.route('/checkout', methods=['POST'])
-@login_required
-def checkout():
-    try:
-        data = request.get_json()
-        carrito = data.get('carrito', [])
-        metodo = data.get('metodo')
-        numero_celular = data.get('numero_celular')
-        numero_tarjeta = data.get('numero_tarjeta')
-        direccion_id = data.get('direccion_id')
-
-        if not carrito:
-            return jsonify({"success": False, "mensaje": "El carrito está vacío."}), 400
-
-        # Buscar dirección seleccionada
-        direccion_envio = "Dirección no especificada"
-        if direccion_id:
-            direccion = Direccion.query.filter_by(
-                ID_Direccion=direccion_id,
-                ID_Usuario=current_user.ID_Usuario
-            ).first()
-            if direccion:
-                direccion_envio = f"{direccion.Direccion}, {direccion.Barrio or ''}, {direccion.Ciudad or ''}"
-            else:
-                direccion_envio = "Dirección no encontrada"
-
-        # Crear pedido
-        pedido = Pedido(
-            NombreComprador=f"{current_user.Nombre} {current_user.Apellido or ''}".strip(),
-            Destino=direccion_envio,
-            Estado="pendiente",
-            FechaPedido=date.today(),
-            ID_Usuario=current_user.ID_Usuario
-        )
-        db.session.add(pedido)
-        db.session.commit()
-
-        # Calcular total y registrar pago
-        total_pago = sum(i.get('precio', 0) * i.get('cantidad', 1) for i in carrito)
-        pago = Pagos(
-            MetodoPago=metodo,
-            Monto=total_pago,
-            ID_Pedido=pedido.ID_Pedido
-        )
-        db.session.add(pago)
-        db.session.commit()
-
-        # ✅ Enviar correo de confirmación (usando la función externa)
-        enviar_correo_confirmacion(
-            usuario=current_user,
-            pedido=pedido,
-            total_pago=total_pago,
-            metodo=metodo,
-            direccion_envio=direccion_envio
-        )
-
-        # Notificación opcional para Nequi/Daviplata
-        if metodo in ['nequi', 'daviplata'] and numero_celular:
-            print(f"📱 Notificación enviada al número: {numero_celular}")
-
-        return jsonify({"success": True, "mensaje": "Pago procesado correctamente."})
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        db.session.rollback()
-        return jsonify({"success": False, "mensaje": str(e)}), 500
-
-
-# ---------- SEGUIMIENTO ----------
-
-@cliente.route('/seguimiento/<int:id_pedido>')
-@login_required
-def seguimiento_cliente(id_pedido):
-    pedido = Pedido.query.get_or_404(id_pedido)
-
-    if pedido.ID_Usuario != current_user.id and current_user.Rol not in ['admin', 'transportista']:
-        return "Acceso denegado ❌", 403
-
- 
-    transportista = pedido.empleado  
-
-    return render_template(
-        'cliente/seguimiento.html',
-        pedido=pedido,
-        transportista=transportista
-    )
-
-
-
-@cliente.route('/como_encontrar_pedido/<int:id_pedido>')
-@login_required
-def como_encontrar_pedido(id_pedido):
-    pedido = Pedido.query.get_or_404(id_pedido)
-
-    if pedido.ID_Usuario != current_user.id and current_user.Rol not in ['admin', 'transportista']:
-        return "Acceso denegado ❌", 403
+def lista_garantias():
+    if current_user.Rol != 'admin':
+        flash("No tienes permisos para acceder a esta sección.", "danger")
+        return redirect(url_for('main.index'))
     
-    # Fecha de envío = hoy
-    fecha_envio = date.today()
-
-    return render_template(
-        'cliente/como_encontrar_pedido.html',
-        pedido=pedido,
-        fecha_envio=fecha_envio,
-        transportista=None  # como no hay relación, puedes poner None o un texto genérico
-    )
+    garantias = Garantia.query.order_by(Garantia.FechaSolicitud.desc()).all()
+    return render_template('administrador/garantia_lista.html', garantias=garantias)
 
 
+# -------- Ver Detalles de una Garantía --------
+@admin.route('/detalle/<int:garantia_id>', methods=['GET'])
+@login_required
+def detalle_garantia(garantia_id):
+    if current_user.Rol != 'admin':
+        flash("No tienes permisos para acceder a esta sección.", "danger")
+        return redirect(url_for('main.index'))
+
+    garantia = Garantia.query.get_or_404(garantia_id)
+    return render_template('administrador/garantia_detalle.html', garantia=garantia)
 
 
-@cliente.route("/confirmar_entrega/<int:pedido_id>")
-def confirmar_entrega(pedido_id):
-    pedido = Pedido.query.get_or_404(pedido_id)
-    pedido.Estado = "entregado"
+# -------- Resolver Garantía (Aprobar/Rechazar) --------
+@admin.route('/resolver/<int:garantia_id>', methods=['POST'])
+@login_required
+def resolver_garantia(garantia_id):
+    if current_user.Rol != 'admin':
+        flash("No tienes permisos para realizar esta acción.", "danger")
+        return redirect(url_for('main.index'))
+
+    garantia = Garantia.query.get_or_404(garantia_id)
+    accion = request.form.get('accion')  
+    comentario = request.form.get('comentario')
+
+    if accion not in ['aprobada', 'rechazada']:
+        flash("Acción inválida.", "warning")
+        return redirect(url_for('admin_garantia.lista_garantias'))
+
+    garantia.Estado = accion
+    garantia.ComentarioAdmin = comentario
+    garantia.FechaResolucion = datetime.utcnow()
     db.session.commit()
-    return "✅ Entrega confirmada. Gracias por tu compra."
 
-# ---------- HISTORIAL_TRANSACCIONES ----------
+    flash("Garantía actualizada correctamente.", "success")
+    return redirect(url_for('admin.lista_garantias'))
+# ---------- RECURSOS HUMANOS ----------
 
-@cliente.route('/historial')
+@admin.route('/recursos-humanos')
 @login_required
-def historial():
-    cliente_id = current_user.ID_Usuario
-    
-    pedidos = Pedido.query.filter_by(ID_Usuario=cliente_id).order_by(Pedido.FechaPedido.desc()).all()
-    
-  
-    for pedido in pedidos:
-        pedido.subtotal = sum(detalle.Cantidad * detalle.PrecioUnidad for detalle in pedido.detalles_pedido)
-    
-    return render_template('cliente/historial_transacciones.html', pedidos=pedidos)
+def lista_empleados():
+    """
+    Lista todos los empleados que son instaladores o transportistas
+    """
+    empleados = Usuario.query.filter(Usuario.Rol.in_(['instalador', 'transportista'])).all()
+    return render_template('recursos_humanos/lista_empleados.html', empleados=empleados)
 
 
-
-@cliente.route('/pedido/<int:pedido_id>')
+@admin.route('/recursos-humanos/<int:id_empleado>', methods=['GET', 'POST'])
 @login_required
-def ver_pedido(pedido_id):
-    pedido = Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Usuario=current_user.ID_Usuario).first_or_404()
-    return render_template('cliente/ver_pedido.html', pedido=pedido)
+def detalle_empleado(id_empleado):
+    """
+    Muestra detalle de un empleado, incluyendo pedidos, instalaciones,
+    pagos y horas trabajadas. Permite actualizar horas diurnas y nocturnas
+    y calcula automáticamente horas extra desde los pedidos.
+    """
+    empleado = Usuario.query.get_or_404(id_empleado)
+    pedidos = Pedido.query.filter_by(ID_Empleado=id_empleado).all()
 
+    # Recuperar horas existentes en DB o inicializar
+    horas_diurnas = getattr(empleado, 'horas_diurnas', 0) or 0
+    horas_nocturnas = getattr(empleado, 'horas_nocturnas', 0) or 0
+    total_horas_extra = getattr(empleado, 'horas_extra', 0) or 0
 
-@cliente.route('/pedido/<int:pedido_id>/eliminar', methods=['POST'])
-@login_required
-def eliminar_pedido(pedido_id):
-    pedido = Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Usuario=current_user.ID_Usuario).first_or_404()
-    
-    db.session.delete(pedido)
-    db.session.commit()
-    flash('Pedido eliminado correctamente.', 'success')
-    return redirect(url_for('cliente.historial'))
+    instalaciones = []
 
-# ---------- GARANTIAS ----------
-@cliente.route('/garantia/<int:pedido_id>', methods=['GET', 'POST'])
-@login_required
-def solicitar_garantia(pedido_id):
-    pedido = Pedido.query.get_or_404(pedido_id)
-
+    # Procesar POST si se envían horas manualmente
     if request.method == 'POST':
-        motivo = request.form.get('motivo')
-        archivos = request.files.getlist('archivos')
+        try:
+            horas_diurnas = float(request.form.get('horas_diurnas', 0))
+            horas_nocturnas = float(request.form.get('horas_nocturnas', 0))
+        except ValueError:
+            flash("Horas inválidas, ingrese números válidos.", "danger")
+            return redirect(url_for('admin.detalle_empleado', id_empleado=id_empleado))
 
-        nueva_garantia = Garantia(
-            ID_Pedido=pedido.ID_Pedido,
-            ID_Usuario=current_user.ID_Usuario,
-            Motivo=motivo
-        )
-        db.session.add(nueva_garantia)
-        db.session.commit()  
-
-        # Guardar archivos
-        for archivo in archivos:
-            if archivo.filename != '':
-                filename = secure_filename(archivo.filename)
-                ruta = os.path.join(UPLOAD_FOLDER, filename)
-                archivo.save(ruta)
-                archivo_garantia = GarantiaArchivo(
-                    ID_Garantia=nueva_garantia.ID_Garantia,
-                    NombreArchivo=filename,
-                    RutaArchivo=ruta
-                )
-                db.session.add(archivo_garantia)
+       
+        empleado.horas_diurnas = horas_diurnas
+        empleado.horas_nocturnas = horas_nocturnas
 
         db.session.commit()
-        flash('Solicitud de garantía enviada correctamente.', 'success')
-        return redirect(url_for('cliente.mis_pedidos'))
+        flash("Horas actualizadas correctamente.", "success")
+        return redirect(url_for('admin.detalle_empleado', id_empleado=id_empleado))
 
-    return render_template('cliente/solicitar_garantia.html', pedido=pedido)
+    
+    total_horas = 0
+    total_horas_extra = 0
+    for pedido in pedidos:
+        if pedido.HoraLlegada and pedido.FechaEntrega:
+ 
+            if isinstance(pedido.FechaEntrega, date) and not isinstance(pedido.FechaEntrega, datetime):
+                fecha_entrega_dt = datetime.combine(pedido.FechaEntrega, datetime.min.time())
+            else:
+                fecha_entrega_dt = pedido.FechaEntrega
+
+            horas = (fecha_entrega_dt - pedido.HoraLlegada).total_seconds() / 3600
+            total_horas += horas
+            if horas > 8: 
+                total_horas_extra += horas - 8
+
+       
+        eventos_instalacion = [c for c in pedido.calendario if c.Tipo and c.Tipo.lower() == 'instalacion']
+        instalaciones.extend(eventos_instalacion)
 
 
-@cliente.route('/guardar_preferencias', methods=['POST'])
-@login_required
-def guardar_preferencias():
-    categorias = request.form.getlist('categoria')  # lista de IDs seleccionadas
-    materiales = request.form.getlist('material')
-    colores = request.form.getlist('color')
-
-    # Actualizar categorías favoritas
-    current_user.categorias_favoritas = Categorias.query.filter(Categorias.ID_Categoria.in_(categorias)).all()
-
-    # Guardar materiales y colores como JSON
-    import json
-    current_user.materiales_preferidos = json.dumps(materiales)
-    current_user.colores_preferidos = json.dumps(colores)
-
+    empleado.horas_totales = total_horas
+    empleado.horas_extra = total_horas_extra
     db.session.commit()
-    return redirect(url_for('cliente.catalogo'))
 
-def historial_actividades(usuario_id):
-    usuario = Usuario.query.get(usuario_id)
-    if not usuario:
-        return None
+   
+    pagos = Pagos.query.join(Pedido).filter(Pedido.ID_Empleado == id_empleado).all()
+    pagos_por_mes = {}
+    for pago in pagos:
+        if pago.FechaPago:
+            mes = pago.FechaPago.strftime('%Y-%m')
+            pagos_por_mes[mes] = pagos_por_mes.get(mes, 0) + pago.Monto
 
-    actividades = []
+    return render_template(
+        'recursos_humanos/detalle_empleado.html',
+        empleado=empleado,
+        pedidos=pedidos,
+        total_horas=round(total_horas, 2),
+        total_horas_extra=round(total_horas_extra, 2),
+        instalaciones=instalaciones,
+        pagos_por_mes=pagos_por_mes,
+        horas_diurnas=horas_diurnas,
+        horas_nocturnas=horas_nocturnas
+    )
 
-    # ------------------ Pedidos ------------------
-    for pedido in usuario.pedidos:
-        actividades.append({
-            "tipo": "pedido",
-            "fecha": pedido.FechaPedido.isoformat(),
-            "detalle": {
-                "ID_Pedido": pedido.ID_Pedido,
-                "Estado": pedido.Estado,
-                "Destino": pedido.Destino or "Sin dirección",
-                "detalles": [
-                    {
-                        "Producto": d.producto.NombreProducto,
-                        "Cantidad": d.Cantidad or 0,
-                        "PrecioUnidad": d.PrecioUnidad or 0,
-                        "Subtotal": (d.Cantidad or 0) * (d.PrecioUnidad or 0)
-                    } for d in pedido.detalles_pedido
-                ]
-            }
-        })
 
-        # Pagos de cada pedido
-        for pago in pedido.pagos:
-            actividades.append({
-                "tipo": "pago",
-                "fecha": pago.FechaPago.isoformat(),
-                "detalle": {
-                    "ID_Pago": pago.ID_Pagos,
-                    "Monto": pago.Monto,
-                    "MetodoPago": pago.MetodoPago,
-                    "ID_Pedido": pedido.ID_Pedido
-                }
-            })
+@admin.route('/finanzas')
+def admin_finanzas():
+    pagos = Pagos.query.order_by(Pagos.FechaPago.desc()).all()
+    total_pagos = sum(p.Monto for p in pagos)
 
-        # Comentarios del pedido
-        for c in pedido.comentarios:
-            actividades.append({
-                "tipo": "comentario",
-                "fecha": c.fecha.isoformat(),
-                "detalle": {
-                    "ID_Pedido": pedido.ID_Pedido,
-                    "Texto": c.texto
-                }
-            })
 
-    # ------------------ Reseñas ------------------
-    for r in usuario.resenas:
-        actividades.append({
-            "tipo": "resena",
-            "fecha": r.Fecha.isoformat(),
-            "detalle": {
-                "Producto": r.producto.NombreProducto,
-                "Calificacion": r.Calificacion,
-                "Comentario": r.Comentario
-            }
-        })
-
-    # ------------------ Mensajes ------------------
-    for m in usuario.mensajes:
-        actividades.append({
-            "tipo": "mensaje",
-            "fecha": m.fecha.isoformat(),
-            "detalle": {
-                "Contenido": m.contenido,
-                "EnviadoAdmin": m.enviado_admin
-            }
-        })
-
-    # ------------------ Garantías ------------------
-    for g in Garantia.query.filter_by(ID_Usuario=usuario_id).all():
-        actividades.append({
-            "tipo": "garantia",
-            "fecha": g.FechaSolicitud.isoformat(),
-            "detalle": {
-                "ID_Garantia": g.ID_Garantia,
-                "Estado": g.Estado,
-                "Motivo": g.Motivo
-            }
-        })
-
-    # ------------------ Notificaciones ------------------
-    for n in usuario.notificaciones:
-        actividades.append({
-            "tipo": "notificacion",
-            "fecha": n.Fecha.isoformat(),
-            "detalle": {
-                "Titulo": n.Titulo,
-                "Mensaje": n.Mensaje,
-                "Leida": n.Leida
-            }
-        })
-
-    # ------------------ Novedades ------------------
-    for nov in usuario.novedades:
-        actividades.append({
-            "tipo": "novedad",
-            "fecha": nov.FechaReporte.isoformat(),
-            "detalle": {
-                "ID_Producto": nov.ID_Producto,
-                "Tipo": nov.Tipo,
-                "EstadoNovedad": nov.EstadoNovedad
-            }
-        })
-
-    # Ordenar todas las actividades por fecha descendente
-    actividades.sort(key=lambda x: x["fecha"], reverse=True)
-
-    return {
-        "usuario": {
-            "Nombre": usuario.Nombre,
-            "Apellido": usuario.Apellido,
-            "Correo": usuario.Correo
-        },
-        "actividades": actividades
+    metodos = {
+        'credito': 0,
+        'nequi': 0,
+        'daviplata': 0,
+        'efectivo': 0
     }
 
+    for p in pagos:
+        if p.MetodoPago in metodos:
+            metodos[p.MetodoPago] += p.Monto
 
-@cliente.route('/historial_actividades')
+    return render_template('administrador/finanzas.html', pagos=pagos, total_pagos=total_pagos, metodos=metodos)
+
+@admin.route('/finanzas/ajax')
+def finanzas_ajax():
+    metodo = request.args.get('metodo', type=str)
+    fecha_inicio = request.args.get('fecha_inicio', type=str)
+    fecha_fin = request.args.get('fecha_fin', type=str)
+
+    query = Pagos.query.join(Pagos.pedido).join(Pedido.usuario)
+
+    # Normalización de métodos
+    metodo_map = {
+        'Tarjeta': 'credito',
+        'Transferencia': 'credito',
+        'efectivo': 'efectivo',
+        'Efectivo': 'efectivo',
+        'nequi': 'nequi',
+        'daviplata': 'daviplata'
+    }
+
+    # Filtrado por método
+    if metodo:
+        # Buscamos en los valores originales que correspondan al método normalizado
+        query = query.filter(Pagos.MetodoPago.in_([k for k, v in metodo_map.items() if v == metodo]))
+
+    # Filtrado por fechas
+    if fecha_inicio:
+        fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+        query = query.filter(Pagos.FechaPago >= fecha_inicio_dt)
+    if fecha_fin:
+        fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d')
+        query = query.filter(Pagos.FechaPago <= fecha_fin_dt)
+
+    pagos = query.order_by(Pagos.FechaPago.desc()).all()
+
+    # Total y estadísticas
+    total = sum(p.Monto for p in pagos)
+
+    metodos = { 'credito': 0, 'nequi': 0, 'daviplata': 0, 'efectivo': 0 }
+    for p in pagos:
+        clave = metodo_map.get(p.MetodoPago)
+        if clave:
+            metodos[clave] += p.Monto
+
+    # Preparar JSON
+    pagos_json = []
+    for p in pagos:
+        pagos_json.append({
+            "ID_Pagos": p.ID_Pagos,
+            "usuario": {
+                "Nombre": p.pedido.usuario.Nombre,
+                "Apellido": p.pedido.usuario.Apellido or ""
+            },
+            "MetodoPago": metodo_map.get(p.MetodoPago, p.MetodoPago),
+            "FechaPago": p.FechaPago.strftime('%Y-%m-%d'),
+            "Monto": p.Monto
+        })
+
+    return jsonify({
+        "pagos": pagos_json,
+        "total": total,
+        "metodos": metodos
+    })
+
+@admin.route('/admin/productos_defectuosos')
 @login_required
-def historial_actividades_web():
-    historial = historial_actividades(current_user.ID_Usuario)
-    return render_template("cliente/historial.html", historial=historial)
+@role_required('admin')
+def admin_productos_defectuosos():
+    registros = ProductoDefectuoso.query.order_by(ProductoDefectuoso.FechaRegistro.desc()).all()
+    instaladores = Usuario.query.filter_by(Rol='instalador', Activo=True).all()
+
+    return render_template(
+        'administrador/productos_defectuosos.html',
+        registros=registros,
+        instaladores=instaladores
+    )
 
 
-
-# ------------------ Seleccionar pedido y producto defectuoso ------------------
-@cliente.route('/seleccionar_defectuoso')
+@admin.route('/admin/solucionar_defecto/<int:id_garantia>', methods=['POST'])
 @login_required
-def seleccionar_pedido_defectuoso():
-    # Traemos los pedidos del usuario actual
-    pedidos = Pedido.query.filter_by(ID_Usuario=current_user.ID_Usuario).all()
-    return render_template('cliente/seleccionar_pedido_defectuoso.html', pedidos=pedidos)
+@role_required('admin')
+def solucionar_defecto(id_garantia):
+    # Obtener el registro de producto defectuoso
+    garantia = ProductoDefectuoso.query.get_or_404(id_garantia)
 
-# ------------------ Registrar producto defectuoso ------------------
+    accion = request.form.get('accion')
+    empleado_id = request.form.get('empleado')
+    motivo_rechazo = request.form.get('motivo_rechazo', '').strip()
 
+    # Caso: Producto rechazado
+    if accion == 'rechazada':
+        if not motivo_rechazo:
+            flash("Debes ingresar el motivo del rechazo.", "danger")
+            return redirect(url_for('admin.admin_productos_defectuosos'))
 
+        garantia.Estado = 'rechazada'
+        garantia.ComentarioAdmin = motivo_rechazo
+        garantia.ID_Empleado = None  # No necesita técnico
 
-@cliente.route('/registrar_defectuoso/<int:pedido_id>/<int:id_producto>', methods=['GET', 'POST'])
-@login_required
-def registrar_defectuoso(pedido_id, id_producto):
-    # Obtener el detalle del pedido
-    detalle = Detalle_Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Producto=id_producto).first_or_404()
+        mensaje = f"Tu reporte de producto defectuoso ha sido <strong>rechazado</strong>."
+        mensaje += f"<br>Motivo: {motivo_rechazo}"
 
-    if request.method == 'POST':
-        motivo = request.form.get('motivo')
-        archivos = request.files.getlist('archivos')
+    else:
+        # Para otras acciones, se requiere técnico
+        if not empleado_id:
+            flash("Debes seleccionar un técnico.", "danger")
+            return redirect(url_for('admin.admin_productos_defectuosos'))
 
-        if not motivo:
-            flash('Debes escribir un motivo', 'danger')
-            return redirect(request.url)
-        if not archivos or archivos[0].filename == '':
-            flash('Debes subir al menos una foto', 'danger')
-            return redirect(request.url)
+        tecnico = Usuario.query.get(empleado_id)
+        if not tecnico or tecnico.Rol != 'instalador':
+            flash("El empleado seleccionado no es válido.", "danger")
+            return redirect(url_for('admin.admin_productos_defectuosos'))
 
-        # Crear registro del producto defectuoso
-        registro = ProductoDefectuoso(
-            ID_Pedido=pedido_id,
-            ID_Usuario=current_user.ID_Usuario,
-            ID_Producto=id_producto,
-            Motivo=motivo,
-            Estado='pendiente'
-        )
-        db.session.add(registro)
-        db.session.commit()  # Guardamos primero para obtener el ID del registro
+        garantia.ID_Empleado = tecnico.ID_Usuario
 
-        # Guardar archivos
-        for archivo in archivos:
-            filename = secure_filename(archivo.filename)
-            # Crear carpeta si no existe
-            carpeta = os.path.join(UPLOAD_FOLDER)
-            os.makedirs(carpeta, exist_ok=True)
-            ruta = os.path.join(carpeta, filename)
-            archivo.save(ruta)
+        estados = {
+            "proceso": "en_proceso",
+            "tecnico": "resuelto_tecnico",
+            "devolucion": "resuelto_devolucion"
+        }
 
-            # Guardar en la tabla de archivos
-            garantia_archivo = GarantiaArchivo(
-                ID_Garantia=registro.ID,
-                NombreArchivo=filename,
-                RutaArchivo=ruta
+        if accion not in estados:
+            flash("Acción inválida.", "danger")
+            return redirect(url_for('admin.admin_productos_defectuosos'))
+
+        garantia.Estado = estados[accion]
+
+        # Crear mensaje según acción
+        if accion == "proceso":
+            mensaje = (
+                f"El técnico <strong>{tecnico.Nombre}</strong> fue asignado para revisar tu producto defectuoso."
+                f"<br>Puedes agendar la cita con él a continuación."
+                f"<br><button class='btn btn-sm btn-success mt-2' "
+                f"data-bs-toggle='modal' data-bs-target='#agendarCitaModal{garantia.ID}'>"
+                f"Agendar cita</button>"
             )
-            db.session.add(garantia_archivo)
+        elif accion == "tecnico":
+            mensaje = f"El técnico {tecnico.Nombre} ha reparado tu producto defectuoso."
+        elif accion == "devolucion":
+            mensaje = "Tu producto defectuoso ha sido devuelto y se procesará el reembolso correspondiente."
 
-        db.session.commit()
-        flash('Producto registrado como defectuoso exitosamente', 'success')
-        return redirect(url_for('cliente.seleccionar_pedido_defectuoso'))
+    # Guardar cambios y notificación
+    db.session.commit()
 
-    return render_template('cliente/registrar_defectuoso.html', detalle=detalle)
+    notificacion = Notificaciones(
+        Titulo="Actualización de producto defectuoso",
+        Mensaje=mensaje,
+        Fecha=datetime.utcnow(),
+        Leida=False,
+        ID_Usuario=garantia.ID_Usuario,
+        ID_Defecto=garantia.ID
+    )
+
+    db.session.add(notificacion)
+    db.session.commit()
+
+    flash("Estado actualizado y notificación enviada correctamente.", "success")
+    return redirect(url_for('admin.admin_productos_defectuosos'))
