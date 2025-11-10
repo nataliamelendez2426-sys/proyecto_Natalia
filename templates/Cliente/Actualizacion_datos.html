@@ -131,7 +131,7 @@
                     {% elif pedido.Estado == 'en proceso' %}bg-warning text-dark
                     {% elif pedido.Estado == 'en reparto' %}bg-info text-dark
                     {% elif pedido.Estado == 'entregado' %}bg-success
-                    {% endif %} mt-1">{{ pedido.Estado|capitalize }}</span>
+                    {% else %}bg-dark text-white{% endif %} mt-1">{{ pedido.Estado|capitalize }}</span>
                 </div>
 
                 <div class="d-flex gap-2 mt-2 mt-md-0">
@@ -177,7 +177,7 @@
             </div>
             <div class="modal-body">
               <div id="contenido-registro-fotografico">
-                <p class="text-muted"></p>
+                <p class="text-muted">Selecciona un pedido para ver las imágenes.</p>
               </div>
             </div>
           </div>
@@ -249,20 +249,7 @@
             </div>
             <div class="modal-body">
               <div id="detalle-pedido-contenido">
-                {% if detalles %}
-                  <ul class="list-group">
-                    {% for detalle in detalles %}
-                      <li class="list-group-item">
-                        <p class="mb-1"><strong>Producto:</strong> {{ detalle.Producto or 'No disponible' }}</p>
-                        <p class="mb-1 text-success"><strong>Precio unidad:</strong> ${{ "%.2f"|format(detalle.PrecioUnidad or 0) }}</p>
-                        <p class="mb-1"><strong>Cantidad:</strong> {{ detalle.Cantidad or 0 }}</p>
-                        <p class="mb-1"><strong>Total:</strong> ${{ "%.2f"|format((detalle.PrecioUnidad or 0) * (detalle.Cantidad or 0)) }}</p>
-                      </li>
-                    {% endfor %}
-                  </ul>
-                {% else %}
-                  <p class="text-danger">❌ No se pudieron cargar los detalles: Error al obtener los detalles del pedido.</p>
-                {% endif %}
+                <p class="text-muted">Selecciona un pedido para ver los detalles.</p>
               </div>
             </div>
           </div>
@@ -277,4 +264,96 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{{ url_for('static', filename='js/actualizacion.js') }}"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+<!-- Script seguro para modales dinámicos -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+  // Modal Detalle Pedido
+  const modalPedido = document.getElementById('modalPedido');
+  if (modalPedido) {
+    modalPedido.addEventListener('show.bs.modal', async event => {
+      const button = event.relatedTarget;
+      if (!button) return;
+
+      const pedidoId = button.getAttribute('data-id');
+      const contenido = document.getElementById('detalle-pedido-contenido');
+      contenido.innerHTML = `<p class="text-muted">Cargando detalles del pedido #${pedidoId}...</p>`;
+
+      try {
+        const response = await fetch(`{{ url_for('cliente.detalle_pedido_ajax', pedido_id='') }}${pedidoId}`);
+        if (!response.ok) throw new Error('Error al cargar los detalles');
+        const detalles = await response.json();
+
+        if (detalles.length === 0) {
+          contenido.innerHTML = `<p class="text-danger">❌ No se encontraron detalles para este pedido.</p>`;
+          return;
+        }
+
+        let html = '<ul class="list-group">';
+        detalles.forEach(detalle => {
+          html += `
+            <li class="list-group-item">
+              <p class="mb-1"><strong>Producto:</strong> ${detalle.Producto || 'No disponible'}</p>
+              <p class="mb-1 text-success"><strong>Precio unidad:</strong> $${detalle.PrecioUnidad.toFixed(2)}</p>
+              <p class="mb-1"><strong>Cantidad:</strong> ${detalle.Cantidad}</p>
+              <p class="mb-1"><strong>Total:</strong> $${(detalle.PrecioUnidad * detalle.Cantidad).toFixed(2)}</p>
+            </li>`;
+        });
+        html += '</ul>';
+        contenido.innerHTML = html;
+
+      } catch (err) {
+        contenido.innerHTML = `<p class="text-danger">❌ Error al obtener los detalles del pedido.</p>`;
+        console.error(err);
+      }
+    });
+  }
+
+  // Modal Registro Fotográfico
+  const modalFotos = document.getElementById('modalRegistroFotografico');
+  if (modalFotos) {
+    modalFotos.addEventListener('show.bs.modal', async event => {
+      const button = event.relatedTarget;
+      if (!button) return;
+
+      const pedidoId = button.getAttribute('data-id');
+      const contenidoFotos = document.getElementById('contenido-registro-fotografico');
+      contenidoFotos.innerHTML = `<p class="text-muted">Cargando imágenes del pedido #${pedidoId}...</p>`;
+
+      try {
+        const response = await fetch(`{{ url_for('cliente.registro_fotografico_ajax', pedido_id='') }}${pedidoId}`);
+        if (!response.ok) throw new Error('Error al cargar las imágenes');
+        const fotos = await response.json();
+
+        if (fotos.length === 0) {
+          contenidoFotos.innerHTML = `<p class="text-danger">❌ No hay imágenes disponibles para este pedido.</p>`;
+          return;
+        }
+
+        let html = '<div class="row g-2">';
+        fotos.forEach(foto => {
+          html += `
+            <div class="col-md-4">
+              <div class="card">
+                <img src="${foto.url}" class="card-img-top" alt="Foto del pedido">
+                <div class="card-body">
+                  <p class="card-text">${foto.descripcion || ''}</p>
+                </div>
+              </div>
+            </div>`;
+        });
+        html += '</div>';
+        contenidoFotos.innerHTML = html;
+
+      } catch (err) {
+        contenidoFotos.innerHTML = `<p class="text-danger">❌ Error al obtener las imágenes del pedido.</p>`;
+        console.error(err);
+      }
+    });
+  }
+
+});
+</script>
+
 {% endblock %}

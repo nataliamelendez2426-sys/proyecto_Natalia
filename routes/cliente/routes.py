@@ -204,24 +204,17 @@ def perfil():
 # ---------- DETALLE_PEDIDO ----------
 
 
-@cliente.route("/pedido/<int:id_pedido>/detalle")
+@cliente.route('/cliente/detalle_pedido_ajax/<int:pedido_id>')
 @login_required
-def ver_detalle_pedido(id_pedido):
-    pedido = Pedido.query.get_or_404(id_pedido)
-
-    try:
-        detalles = pedido.detalles_pedido  
-    except Exception as e:
-        print("Error detalles pedido:", e)
-        detalles = []
-
-    return render_template(
-        "Common/partials/detalle_pedido.html",
-        pedido=pedido,
-        detalles=detalles
-    )
-
-
+def detalle_pedido_ajax(pedido_id):
+    pedido = Pedido.query.get_or_404(pedido_id)
+    detalles = [{
+        "Producto": det.producto.NombreProducto,
+        "PrecioUnidad": float(det.PrecioUnidad),
+        "Cantidad": det.Cantidad,
+        "Total": float(det.PrecioUnidad * det.Cantidad)
+    } for det in pedido.detalles_pedido]
+    return jsonify(detalles)
 
 
 
