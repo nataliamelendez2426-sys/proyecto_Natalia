@@ -184,17 +184,19 @@
             <span class="fecha">{{ n.Fecha.strftime('%d/%m/%Y %H:%M') }}</span>
 
             {% if n.defecto %}
-              {% if not n.defecto.CitaProgramada %}
-              <!-- Botón agendar cita -->
-              <button type="button" class="btn btn-primary btn-sm mt-2" 
-                      data-bs-toggle="modal" 
-                      data-bs-target="#modalCita{{ n.ID_Notificacion }}">
-                📅 Agendar cita
-              </button>
-              {% else %}
-              <span class="badge bg-success mt-2 d-block">
-                ✅ Cita programada para {{ n.defecto.CitaProgramada.strftime('%d/%m/%Y %H:%M') }}
-              </span>
+              {% if n.defecto.Estado in ['pendiente', 'en_proceso'] %}
+                  {% if not n.defecto.CitaProgramada %}
+                  <!-- Botón agendar cita -->
+                  <button type="button" class="btn btn-primary btn-sm mt-2" 
+                          data-bs-toggle="modal" 
+                          data-bs-target="#modalCita{{ n.ID_Notificacion }}">
+                    📅 Agendar cita
+                  </button>
+                  {% else %}
+                  <span class="badge bg-success mt-2 d-block">
+                    ✅ Cita programada para {{ n.defecto.CitaProgramada.strftime('%d/%m/%Y %H:%M') }}
+                  </span>
+                  {% endif %}
               {% endif %}
             {% endif %}
           </div>
@@ -206,7 +208,7 @@
         </div>
 
         <!-- Modal de agendamiento -->
-        {% if n.defecto and not n.defecto.CitaProgramada %}
+        {% if n.defecto and n.defecto.Estado in ['pendiente', 'en_proceso'] and not n.defecto.CitaProgramada %}
         <div class="modal fade" id="modalCita{{ n.ID_Notificacion }}" tabindex="-1" aria-labelledby="modalLabel{{ n.ID_Notificacion }}" aria-hidden="true">
           <div class="modal-dialog">
             <div class="modal-content">
