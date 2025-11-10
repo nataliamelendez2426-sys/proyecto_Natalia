@@ -19,7 +19,8 @@
                             {% for detalle in pedido.detalles_pedido %}
                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                 {{ detalle.producto.NombreProducto }} - Cantidad: {{ detalle.Cantidad }}
-                                <a href="{{ url_for('cliente.registrar_defectuoso', pedido_id=pedido.ID_Pedido, producto_id=detalle.ID_Producto) }}" class="btn btn-sm btn-danger">Registrar defectuoso</a>
+                               <a href="{{ url_for('cliente.registrar_defectuoso', pedido_id=pedido.ID_Pedido, id_producto=detalle.ID_Producto) }}" class="btn btn-sm btn-danger">Registrar defectuoso</a>
+
                             </li>
                             {% endfor %}
                         </ul>
