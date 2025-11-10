@@ -1,0 +1,26 @@
+{% extends "common/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4 text-center">Registrar Producto Defectuoso</h2>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">{{ detalle.producto.NombreProducto }}</h5>
+            <p class="card-text">Cantidad: {{ detalle.Cantidad }}</p>
+        </div>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="motivo" class="form-label">Motivo</label>
+            <textarea class="form-control" id="motivo" name="motivo" rows="3" required></textarea>
+        </div>
+        <div class="mb-3">
+            <label for="archivos" class="form-label">Fotos del producto</label>
+            <input class="form-control" type="file" id="archivos" name="archivos" multiple required>
+        </div>
+        <button type="submit" class="btn btn-primary">Continuar</button>
+    </form>
+</div>
+{% endblock %}

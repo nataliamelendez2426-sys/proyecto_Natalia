@@ -1,0 +1,28 @@
+{% extends "common/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4 text-center">Confirmar Registro de Producto Defectuoso</h2>
+
+    <div class="card p-4 shadow-sm">
+        <h4>{{ registro.producto.NombreProducto }}</h4>
+        <p><strong>Pedido #:</strong> {{ registro.pedido.ID_Pedido }}</p>
+        <p><strong>Motivo:</strong> {{ registro.Motivo }}</p>
+
+        <div class="mb-3">
+            <label class="form-label">Fotos subidas:</label>
+            <div class="row">
+                {% for foto in fotos %}
+                <div class="col-md-3 mb-2">
+                    <img src="{{ url_for('static', filename=foto.RutaArchivo.split('static/')[1]) }}" class="img-fluid rounded shadow-sm">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <form method="POST">
+            <button type="submit" class="btn btn-danger w-100">Proceso de devolución</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

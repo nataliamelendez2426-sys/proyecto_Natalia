@@ -1,0 +1,35 @@
+{% extends "common/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4 text-center">Selecciona el producto defectuoso</h2>
+
+    {% if pedidos %}
+        <div class="accordion" id="pedidosAccordion">
+            {% for pedido in pedidos %}
+            <div class="accordion-item mb-2">
+                <h2 class="accordion-header" id="heading{{ pedido.ID_Pedido }}">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ pedido.ID_Pedido }}">
+                        Pedido #{{ pedido.ID_Pedido }} - Fecha: {{ pedido.FechaPedido }}
+                    </button>
+                </h2>
+                <div id="collapse{{ pedido.ID_Pedido }}" class="accordion-collapse collapse" data-bs-parent="#pedidosAccordion">
+                    <div class="accordion-body">
+                        <ul class="list-group">
+                            {% for detalle in pedido.detalles_pedido %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ detalle.producto.NombreProducto }} - Cantidad: {{ detalle.Cantidad }}
+                                <a href="{{ url_for('cliente.registrar_defectuoso', pedido_id=pedido.ID_Pedido, producto_id=detalle.ID_Producto) }}" class="btn btn-sm btn-danger">Registrar defectuoso</a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-center text-muted">No tienes pedidos disponibles para registrar defectuoso.</p>
+    {% endif %}
+</div>
+{% endblock %}

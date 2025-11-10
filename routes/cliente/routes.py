@@ -5,7 +5,7 @@ from flask_login import current_user
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session , current_app
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
-from basedatos.models import db, Usuario, Notificaciones, Direccion, Calendario,Pedido, Producto, Resena, Detalle_Pedido, Pagos,Mensaje,Garantia ,GarantiaArchivo ,Categorias
+from basedatos.models import db, Usuario, Notificaciones, Direccion, Calendario,Pedido, Producto, Resena, Detalle_Pedido, Pagos,Mensaje,Garantia ,GarantiaArchivo ,Categorias ,FotoProductoDefectuoso ,ProductoDefectuoso
 from basedatos.decoradores import role_required
 from basedatos.notificaciones import crear_notificacion
 from datetime import date,datetime
@@ -17,6 +17,7 @@ from werkzeug.utils import secure_filename
 from basedatos.decoradores import mail
 from functools import wraps
 
+UPLOAD_FOLDER_DEFECTUOSO = 'static/uploads/productos_defectuosos'
 UPLOAD_FOLDER = 'static/uploads/garantias'
 
 favoritos_usuario = set() 
@@ -770,3 +771,51 @@ def historial_actividades_web():
     historial = historial_actividades(current_user.ID_Usuario)
     return render_template("cliente/historial.html", historial=historial)
 
+
+
+# ------------------ Seleccionar pedido y producto defectuoso ------------------
+@cliente.route('/seleccionar_defectuoso')
+@login_required
+def seleccionar_pedido_defectuoso():
+    # Traemos los pedidos del usuario actual
+    pedidos = Pedido.query.filter_by(ID_Usuario=current_user.ID_Usuario).all()
+    return render_template('cliente/seleccionar_pedido_defectuoso.html', pedidos=pedidos)
+
+# ------------------ Registrar producto defectuoso ------------------
+@cliente.route('/registrar_defectuoso/<int:pedido_id>/<int:producto_id>', methods=['GET', 'POST'])
+@login_required
+def registrar_defectuoso(pedido_id, producto_id):
+    if request.method == 'POST':
+        motivo = request.form.get('motivo')
+        archivos = request.files.getlist('archivos')
+
+        # Crear registro de garantía
+        garantia = Garantia(
+            ID_Pedido=pedido_id,
+            ID_Usuario=current_user.ID_Usuario,
+            Motivo=motivo,
+            Estado='pendiente'
+        )
+        db.session.add(garantia)
+        db.session.commit()
+
+        # Guardar archivos
+        for archivo in archivos:
+            if archivo:
+                filename = archivo.filename
+                ruta = f'static/uploads/garantias/{filename}'
+                archivo.save(ruta)
+                garantia_archivo = GarantiaArchivo(
+                    ID_Garantia=garantia.ID_Garantia,
+                    NombreArchivo=filename,
+                    RutaArchivo=ruta
+                )
+                db.session.add(garantia_archivo)
+
+        db.session.commit()
+        flash('Producto registrado como defectuoso correctamente.', 'success')
+        return redirect(url_for('cliente.seleccionar_pedido_defectuoso'))
+
+    # Obtener información del pedido y producto
+    detalle = Detalle_Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Producto=producto_id).first()
+    return render_template('cliente/registrar_defectuoso.html', detalle=detalle)

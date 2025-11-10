@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from datetime import date,datetime, timedelta
 from flask import current_app
-from basedatos.models import db, Usuario, Notificaciones, Direccion, Producto, Proveedor,Categorias,Resena,Compra,Pedido, Mensaje, Garantia ,Pagos, Categorias
+from basedatos.models import db, Usuario, Notificaciones, Direccion, Producto, Proveedor,Categorias,Resena,Compra,Pedido, Mensaje, Garantia ,Pagos, Categorias ,ProductoDefectuoso 
 from werkzeug.security import generate_password_hash
 from basedatos.decoradores import role_required
 from basedatos.notificaciones import crear_notificacion
@@ -1020,3 +1020,10 @@ def finanzas_ajax():
         "total": total,
         "metodos": metodos
     })
+
+@admin.route('/admin/productos_defectuosos')
+@login_required
+@role_required('admin')
+def admin_productos_defectuosos():
+    registros = ProductoDefectuoso.query.order_by(ProductoDefectuoso.FechaRegistro.desc()).all()
+    return render_template('administrador/productos_defectuosos.html', registros=registros)

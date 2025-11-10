@@ -1,0 +1,36 @@
+{% extends "common/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4 text-center">Productos Registrados como Defectuosos</h2>
+
+    {% if registros %}
+    <div class="accordion" id="accordionDefectuosos">
+        {% for reg in registros %}
+        <div class="accordion-item mb-2">
+            <h2 class="accordion-header" id="heading{{ reg.ID }}">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ reg.ID }}" aria-expanded="false">
+                    {{ reg.producto.NombreProducto }} - Pedido #{{ reg.ID_Pedido }} - Usuario: {{ reg.usuario.Nombre }}
+                </button>
+            </h2>
+            <div id="collapse{{ reg.ID }}" class="accordion-collapse collapse" aria-labelledby="heading{{ reg.ID }}" data-bs-parent="#accordionDefectuosos">
+                <div class="accordion-body">
+                    <p><strong>Motivo:</strong> {{ reg.Motivo }}</p>
+                    <p><strong>Estado:</strong> {{ reg.Estado }}</p>
+                    <div class="row">
+                        {% for foto in reg.fotos %}
+                        <div class="col-md-3 mb-2">
+                            <img src="{{ url_for('static', filename=foto.RutaArchivo.split('static/')[1]) }}" class="img-fluid rounded shadow-sm">
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-center text-muted mt-4">No hay productos registrados como defectuosos.</p>
+    {% endif %}
+</div>
+{% endblock %}
