@@ -28,10 +28,10 @@
 {% endwith %}
 
 <div class="container mt-4">
-  <div class="noti-card">
-    <div class="noti-header">
-      <h5><i class="bi bi-bell-fill me-2"></i> NOTIFICACIONES</h5>
-      <button type="button" class="btn-select-all" onclick="seleccionarTodos()">
+  <div class="noti-card shadow p-4 rounded-3 bg-white">
+    <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+      <h4><i class="bi bi-bell-fill me-2 text-primary"></i> Notificaciones</h4>
+      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="seleccionarTodos()">
         <i class="bi bi-check2-square me-1"></i> Seleccionar todos
       </button>
     </div>
@@ -40,64 +40,58 @@
       {% if notificaciones %}
         <div class="noti-list">
           {% for noti in notificaciones %}
-            <div class="noti-item">
-              <input type="checkbox" name="ids" value="{{ noti.ID_Notificacion }}">
+            <div class="noti-item border-bottom py-3 d-flex align-items-start">
+              <input type="checkbox" name="ids" value="{{ noti.ID_Notificacion }}" class="me-3 mt-1">
               <div>
-                <p>{{ noti.Mensaje | safe }}</p>
-                <span class="fecha">{{ noti.Fecha.strftime('%d/%m/%Y %H:%M') }}</span>
+                <h6 class="mb-1 fw-bold">{{ noti.Titulo }}</h6>
+                <p class="mb-1">{{ noti.Mensaje | safe }}</p>
+                <span class="text-muted small">{{ noti.Fecha.strftime('%d/%m/%Y %H:%M') }}</span>
 
-                {# Buscar el producto defectuoso asociado #}
-                {% set defecto = noti.usuario.productos_defectuosos|last %}
-                {% if defecto and defecto.ID_Empleado %}
-                  <button type="button" class="btn btn-primary btn-sm mt-2"
+                {% if noti.defecto and noti.defecto.ID_Empleado %}
+                  <!-- Botón que abre el modal para agendar -->
+                  <button type="button"
+                          class="btn btn-sm btn-success mt-2"
                           data-bs-toggle="modal"
-                          data-bs-target="#detalleModal{{ defecto.ID }}">
-                    <i class="bi bi-info-circle me-1"></i> Ver detalles
+                          data-bs-target="#agendarCitaModal{{ noti.defecto.ID }}">
+                    <i class="bi bi-calendar-plus me-1"></i> Agendar cita
                   </button>
                 {% endif %}
               </div>
             </div>
 
-            {# Modal con detalles y cita #}
-            {% if defecto and defecto.ID_Empleado %}
-            <div class="modal fade" id="detalleModal{{ defecto.ID }}" tabindex="-1"
-                 aria-labelledby="detalleModalLabel{{ defecto.ID }}" aria-hidden="true">
+            <!-- Modal para agendar cita -->
+            {% if noti.defecto and noti.defecto.ID_Empleado %}
+            <div class="modal fade" id="agendarCitaModal{{ noti.defecto.ID }}" tabindex="-1"
+                 aria-labelledby="agendarCitaLabel{{ noti.defecto.ID }}" aria-hidden="true">
               <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
-                  <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="detalleModalLabel{{ defecto.ID }}">
-                      Detalles del producto defectuoso
+                  <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="agendarCitaLabel{{ noti.defecto.ID }}">
+                      Agendar cita con el técnico
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                   </div>
 
-                  <div class="modal-body">
-                    <p><strong>Técnico asignado:</strong> {{ defecto.empleado.Nombre }} {{ defecto.empleado.Apellido }}</p>
-                    <p><strong>Teléfono:</strong> {{ defecto.empleado.Telefono }}</p>
-                    <hr>
-                    <p><strong>Dirección del pedido:</strong></p>
-                    {% if defecto.pedido and defecto.pedido.direccion %}
-                      <p>{{ defecto.pedido.direccion.Calle }} {{ defecto.pedido.direccion.Numero }}, {{ defecto.pedido.direccion.Ciudad }}</p>
-                    {% else %}
-                      <p><em>No se encontró dirección del pedido.</em></p>
-                    {% endif %}
-                    <hr>
+                  <form method="POST" action="{{ url_for('cliente.agendar_cita', id_defecto=noti.defecto.ID) }}">
+                    <div class="modal-body">
+                      <p><strong>Técnico asignado:</strong> {{ noti.defecto.empleado.Nombre }} {{ noti.defecto.empleado.Apellido }}</p>
+                      <p><strong>Teléfono:</strong> {{ noti.defecto.empleado.Telefono }}</p>
+                      <hr>
+                      <div class="mb-3">
+                        <label class="form-label">Fecha preferida:</label>
+                        <input type="date" name="fecha" class="form-control" required min="{{ date.today().isoformat() }}">
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Hora preferida:</label>
+                        <input type="time" name="hora" class="form-control" required>
+                      </div>
+                    </div>
 
-                    <form method="POST" action="{{ url_for('cliente.agendar_cita', id_defecto=defecto.ID) }}">
-                      <div class="mb-3">
-                        <label for="fecha{{ defecto.ID }}" class="form-label">Fecha preferida:</label>
-                        <input type="date" name="fecha" id="fecha{{ defecto.ID }}" class="form-control" required min="{{ date.today().isoformat() }}">
-                      </div>
-                      <div class="mb-3">
-                        <label for="hora{{ defecto.ID }}" class="form-label">Hora preferida:</label>
-                        <input type="time" name="hora" id="hora{{ defecto.ID }}" class="form-control" required>
-                      </div>
-                      <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-success">Confirmar cita</button>
-                      </div>
-                    </form>
-                  </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                      <button type="submit" class="btn btn-success">Confirmar cita</button>
+                    </div>
+                  </form>
                 </div>
               </div>
             </div>
@@ -106,19 +100,21 @@
         </div>
 
         <div class="text-end mt-3">
-          <button type="submit" class="btn-delete">
+          <button type="submit" class="btn btn-danger btn-sm">
             <i class="bi bi-trash-fill me-1"></i> Eliminar seleccionadas
           </button>
         </div>
       {% else %}
-        <p class="empty-msg">¡No tienes notificaciones por ahora!</p>
+        <p class="text-center text-muted py-4">No tienes notificaciones por ahora.</p>
       {% endif %}
     </form>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="{{ url_for('static', filename='js/actualizacion.js') }}"></script>
-<script src="{{ url_for('static', filename='js/main.js') }}"></script>
-<script src="{{ url_for('static', filename='js/notificaciones.js') }}"></script>
+<script>
+function seleccionarTodos() {
+  document.querySelectorAll('input[name="ids"]').forEach(chk => chk.checked = true);
+}
+</script>
 {% endblock %}

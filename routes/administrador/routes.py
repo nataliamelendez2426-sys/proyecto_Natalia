@@ -1052,7 +1052,6 @@ def solucionar_defecto(id_garantia):
             return redirect(url_for('admin.admin_productos_defectuosos'))
         garantia.ID_Empleado = tecnico.ID_Usuario
 
-    # Estados válidos del producto defectuoso
     estados = {
         "proceso": "en_proceso",
         "tecnico": "resuelto_tecnico",
@@ -1069,27 +1068,25 @@ def solucionar_defecto(id_garantia):
     # --- Crear mensaje y notificación personalizada ---
     if accion == "proceso":
         mensaje = (
-            f"Tu producto registrado como defectuoso será revisado por el técnico "
-            f"{tecnico.Nombre if tecnico else 'asignado próximamente'}."
+            f"El técnico <strong>{tecnico.Nombre if tecnico else 'asignado próximamente'}</strong> "
+            f"fue asignado para revisar tu producto defectuoso."
+            f"<br>Puedes agendar la cita con él a continuación."
+            f"<br><button class='btn btn-sm btn-success mt-2' "
+            f"data-bs-toggle='modal' data-bs-target='#agendarCitaModal{garantia.ID}'>"
+            f"Agendar cita</button>"
         )
     elif accion == "tecnico":
         mensaje = f"El técnico {tecnico.Nombre if tecnico else 'asignado'} ha reparado tu producto defectuoso."
     elif accion == "devolucion":
         mensaje = "Tu producto defectuoso ha sido devuelto y se procesará el reembolso correspondiente."
 
-    # Botón "Ver detalles" + modal para agendar cita
-    mensaje += (
-        f" <br><button class='btn btn-sm btn-primary mt-2' "
-        f"data-bs-toggle='modal' data-bs-target='#detalleDireccionModal{garantia.ID}'>"
-        f"Ver detalles</button>"
-    )
-
     notificacion = Notificaciones(
         Titulo="Actualización de producto defectuoso",
         Mensaje=mensaje,
         Fecha=datetime.utcnow(),
         Leida=False,
-        ID_Usuario=garantia.ID_Usuario
+        ID_Usuario=garantia.ID_Usuario,
+        ID_Defecto=garantia.ID  # 🔹 vínculo con el defecto
     )
 
     db.session.add(notificacion)
