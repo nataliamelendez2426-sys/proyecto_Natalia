@@ -721,13 +721,19 @@ def agendar_cita_garantia(notificacion_id):
         flash("Debes ingresar fecha y hora válidas.", "danger")
         return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
-    # Combinar fecha y hora en datetime
-    cita_datetime = datetime.strptime(f"{fecha} {hora}", "%Y-%m-%d %H:%M")
+    try:
+        # Combinar fecha y hora en datetime
+        cita_datetime = datetime.strptime(f"{fecha} {hora}", "%Y-%m-%d %H:%M")
+    except ValueError:
+        flash("Formato de fecha u hora inválido.", "danger")
+        return redirect(url_for('cliente.ver_notificaciones_cliente'))
+
+    # Asignar la cita al producto defectuoso
     garantia.CitaProgramada = cita_datetime
 
-    # Obtener dirección del pedido
+    # Obtener dirección del pedido, si existe
     pedido = garantia.pedido
-    direccion = pedido.Destino if pedido.Destino else "Dirección no definida"
+    direccion = pedido.Destino if pedido and pedido.Destino else "Dirección no definida"
 
     # Registrar en calendario usando la dirección del pedido
     nuevo_evento = Calendario(
@@ -743,7 +749,6 @@ def agendar_cita_garantia(notificacion_id):
 
     flash(f"Cita agendada correctamente para {cita_datetime.strftime('%d/%m/%Y %H:%M')} en {direccion}", "success")
     return redirect(url_for('cliente.ver_notificaciones_cliente'))
-
 
 
 @cliente.route('/guardar_preferencias', methods=['POST'])
