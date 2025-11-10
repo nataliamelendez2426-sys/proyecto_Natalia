@@ -313,6 +313,10 @@ class Garantia(db.Model):
 
     archivos = db.relationship('GarantiaArchivo', backref='garantia', lazy=True, cascade="all, delete-orphan")
 
+    # 🔹 RELACIÓN CON USUARIO
+    usuario = db.relationship('Usuario', backref='garantias', lazy=True)
+
+
 # ------------------ GarantiaArchivo ------------------
 class GarantiaArchivo(db.Model):
     __tablename__ = 'GarantiaArchivo'
