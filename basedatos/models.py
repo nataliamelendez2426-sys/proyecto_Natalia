@@ -357,10 +357,11 @@ class ProductoDefectuoso(db.Model):
     Motivo = db.Column(db.String(255), nullable=False)
     CitaProgramada = db.Column(db.DateTime, nullable=True)
     Estado = db.Column(
-        db.Enum('pendiente', 'en_proceso', 'resuelto_tecnico', 'resuelto_devolucion', name='estado_defectuoso'),
-        nullable=False,
-        default='pendiente'
-    )
+    db.Enum('pendiente', 'en_proceso', 'resuelto_tecnico', 'resuelto_devolucion', 'rechazada', name='estado_defectuoso'),
+    nullable=False,
+    default='pendiente'
+)
+
     FechaRegistro = db.Column(db.DateTime, default=datetime.utcnow)
     ID_Empleado = db.Column(db.Integer, db.ForeignKey('Usuario.ID_Usuario'), nullable=True)
     usuario = db.relationship('Usuario', foreign_keys=[ID_Usuario], backref='productos_defectuosos_cliente')

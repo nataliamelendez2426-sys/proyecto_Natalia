@@ -1040,46 +1040,67 @@ def admin_productos_defectuosos():
 @login_required
 @role_required('admin')
 def solucionar_defecto(id_garantia):
+    # Obtener el registro de producto defectuoso
     garantia = ProductoDefectuoso.query.get_or_404(id_garantia)
 
     accion = request.form.get('accion')
     empleado_id = request.form.get('empleado')
+    motivo_rechazo = request.form.get('motivo_rechazo', '').strip()
 
-    tecnico = None
-    if empleado_id:
+    # Caso: Producto rechazado
+    if accion == 'rechazada':
+        if not motivo_rechazo:
+            flash("Debes ingresar el motivo del rechazo.", "danger")
+            return redirect(url_for('admin.admin_productos_defectuosos'))
+
+        garantia.Estado = 'rechazada'
+        garantia.ComentarioAdmin = motivo_rechazo
+        garantia.ID_Empleado = None  # No necesita técnico
+
+        mensaje = f"Tu reporte de producto defectuoso ha sido <strong>rechazado</strong>."
+        mensaje += f"<br>Motivo: {motivo_rechazo}"
+
+    else:
+        # Para otras acciones, se requiere técnico
+        if not empleado_id:
+            flash("Debes seleccionar un técnico.", "danger")
+            return redirect(url_for('admin.admin_productos_defectuosos'))
+
         tecnico = Usuario.query.get(empleado_id)
         if not tecnico or tecnico.Rol != 'instalador':
             flash("El empleado seleccionado no es válido.", "danger")
             return redirect(url_for('admin.admin_productos_defectuosos'))
+
         garantia.ID_Empleado = tecnico.ID_Usuario
 
-    estados = {
-        "proceso": "en_proceso",
-        "tecnico": "resuelto_tecnico",
-        "devolucion": "resuelto_devolucion"
-    }
+        estados = {
+            "proceso": "en_proceso",
+            "tecnico": "resuelto_tecnico",
+            "devolucion": "resuelto_devolucion"
+        }
 
-    if accion not in estados:
-        flash("Acción inválida.", "danger")
-        return redirect(url_for('admin.admin_productos_defectuosos'))
+        if accion not in estados:
+            flash("Acción inválida.", "danger")
+            return redirect(url_for('admin.admin_productos_defectuosos'))
 
-    garantia.Estado = estados[accion]
+        garantia.Estado = estados[accion]
+
+        # Crear mensaje según acción
+        if accion == "proceso":
+            mensaje = (
+                f"El técnico <strong>{tecnico.Nombre}</strong> fue asignado para revisar tu producto defectuoso."
+                f"<br>Puedes agendar la cita con él a continuación."
+                f"<br><button class='btn btn-sm btn-success mt-2' "
+                f"data-bs-toggle='modal' data-bs-target='#agendarCitaModal{garantia.ID}'>"
+                f"Agendar cita</button>"
+            )
+        elif accion == "tecnico":
+            mensaje = f"El técnico {tecnico.Nombre} ha reparado tu producto defectuoso."
+        elif accion == "devolucion":
+            mensaje = "Tu producto defectuoso ha sido devuelto y se procesará el reembolso correspondiente."
+
+    # Guardar cambios y notificación
     db.session.commit()
-
-    # --- Crear mensaje y notificación personalizada ---
-    if accion == "proceso":
-        mensaje = (
-            f"El técnico <strong>{tecnico.Nombre if tecnico else 'asignado próximamente'}</strong> "
-            f"fue asignado para revisar tu producto defectuoso."
-            f"<br>Puedes agendar la cita con él a continuación."
-            f"<br><button class='btn btn-sm btn-success mt-2' "
-            f"data-bs-toggle='modal' data-bs-target='#agendarCitaModal{garantia.ID}'>"
-            f"Agendar cita</button>"
-        )
-    elif accion == "tecnico":
-        mensaje = f"El técnico {tecnico.Nombre if tecnico else 'asignado'} ha reparado tu producto defectuoso."
-    elif accion == "devolucion":
-        mensaje = "Tu producto defectuoso ha sido devuelto y se procesará el reembolso correspondiente."
 
     notificacion = Notificaciones(
         Titulo="Actualización de producto defectuoso",
@@ -1087,7 +1108,7 @@ def solucionar_defecto(id_garantia):
         Fecha=datetime.utcnow(),
         Leida=False,
         ID_Usuario=garantia.ID_Usuario,
-        ID_Defecto=garantia.ID  # 🔹 vínculo con el defecto
+        ID_Defecto=garantia.ID
     )
 
     db.session.add(notificacion)
