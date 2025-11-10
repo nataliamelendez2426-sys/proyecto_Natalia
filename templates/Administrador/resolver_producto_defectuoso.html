@@ -1,0 +1,34 @@
+{% extends "common/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Resolver Producto Defectuoso</h2>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">{{ registro.producto.NombreProducto }}</h5>
+            <p><strong>Pedido #:</strong> {{ registro.ID_Pedido }}</p>
+            <p><strong>Cliente:</strong> {{ registro.usuario.Nombre }}</p>
+            <p><strong>Motivo:</strong> {{ registro.Motivo }}</p>
+        </div>
+    </div>
+
+    <form method="POST">
+        <div class="mb-3">
+            <label for="solucion" class="form-label">Solución</label>
+            <select class="form-select" id="solucion" name="solucion" required>
+                <option value="">Seleccionar</option>
+                <option value="tecnico">Enviar técnico</option>
+                <option value="devolucion">Devolución de dinero</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="comentario" class="form-label">Comentario para el cliente</label>
+            <textarea class="form-control" id="comentario" name="comentario" rows="3"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Enviar solución y notificar</button>
+    </form>
+</div>
+{% endblock %}

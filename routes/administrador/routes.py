@@ -1027,3 +1027,25 @@ def finanzas_ajax():
 def admin_productos_defectuosos():
     registros = ProductoDefectuoso.query.order_by(ProductoDefectuoso.FechaRegistro.desc()).all()
     return render_template('administrador/productos_defectuosos.html', registros=registros)
+
+@admin.route('/admin/producto_defectuoso/<int:id>/resolver', methods=['GET', 'POST'])
+@login_required
+@role_required('admin')
+def resolver_producto_defectuoso(id):
+    registro = ProductoDefectuoso.query.get_or_404(id)
+    if request.method == 'POST':
+        registro.Solucion = request.form['solucion']  # 'tecnico' o 'devolucion'
+        registro.ComentarioAdmin = request.form['comentario']
+        registro.Estado = 'en_proceso'
+        db.session.commit()
+
+        # Notificar al cliente
+        mensaje = f"Su reporte del producto '{registro.producto.NombreProducto}' está siendo procesado. Solución propuesta: {registro.Solucion}"
+        noti = Notificaciones(Titulo="Producto defectuoso en proceso", Mensaje=mensaje, ID_Usuario=registro.usuario.ID_Usuario)
+        db.session.add(noti)
+        db.session.commit()
+
+        flash('Se ha notificado al cliente y actualizado el estado.', 'success')
+        return redirect(url_for('admin.admin_productos_defectuosos'))
+
+    return render_template('administrador/resolver_producto_defectuoso.html', registro=registro)
