@@ -95,6 +95,15 @@
                                 <i class="bi bi-x-circle"></i> Rechazada
                             </button>
                         </form>
+
+                        {# --- Botón Agendar cita solo para en_proceso --- #}
+                        {% if registro.Estado == 'en_proceso' %}
+                            <button class="btn btn-sm btn-success mt-1" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#agendarCitaModal{{ registro.ID }}">
+                                Agendar cita
+                            </button>
+                        {% endif %}
                     </td>
                 </tr>
 
