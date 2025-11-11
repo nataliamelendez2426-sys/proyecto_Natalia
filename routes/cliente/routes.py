@@ -2,22 +2,20 @@ import os
 from openai import OpenAI  
 from dotenv import load_dotenv
 from flask_login import current_user
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session , current_app
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from basedatos.models import db, Usuario, Notificaciones, Direccion, Calendario,Pedido, Producto, Resena, Detalle_Pedido, Pagos,Mensaje,Garantia ,GarantiaArchivo ,Categorias ,FotoProductoDefectuoso ,ProductoDefectuoso ,GarantiaProducto
 from basedatos.decoradores import role_required
 from basedatos.notificaciones import crear_notificacion
 from datetime import date,datetime
-from flask import render_template
+from flask import render_template, request, redirect, url_for, flash, jsonify, session, current_app
 from sqlalchemy import text
 from flask_mail import Message
-from flask import url_for
 from werkzeug.utils import secure_filename
 from basedatos.decoradores import mail
 from functools import wraps
 from datetime import date
-
+import re
 
 
 UPLOAD_FOLDER = os.path.join('static', 'uploads', 'defectuosos')
@@ -71,10 +69,56 @@ def ver_notificaciones_cliente():
         .all()
     )
 
+    # Construir info de cita para notificaciones de garantía aprobada
+    cita_garantia_por_notif = {}
+    try:
+        for n in notificaciones:
+            msg = (n.Mensaje or '')
+            m = __import__('re').search(r"garant[ií]a\s*#(\d+)", msg, __import__('re').IGNORECASE)
+            if not m:
+                continue
+            gid = int(m.group(1))
+            # 1) Intentar leer CitaAgendada directo de la tabla garantia (si existe la columna)
+            try:
+                row = db.session.execute(text("SELECT CitaAgendada FROM garantia WHERE ID_Garantia = :gid"), {"gid": gid}).first()
+                if row and row[0]:
+                    cita_dt = row[0]
+                    # Para SQLite puede venir como string; intentar parseo
+                    if isinstance(cita_dt, str):
+                        try:
+                            cita_dt = datetime.strptime(cita_dt, "%Y-%m-%d %H:%M:%S")
+                        except Exception:
+                            pass
+                    if hasattr(cita_dt, 'date'):
+                        cita_garantia_por_notif[n.ID_Notificacion] = {
+                            'fecha': cita_dt.strftime('%d/%m/%Y'),
+                            'hora': cita_dt.strftime('%H:%M')
+                        }
+                        continue
+            except Exception:
+                # Si la columna no existe, ignorar y seguir con Calendario
+                pass
+
+            # 2) Fallback: buscar en Calendario con el prefijo en Ubicacion
+            ev = (Calendario.query
+                  .filter(Calendario.ID_Usuario==current_user.ID_Usuario,
+                          Calendario.Tipo=="Garantía",
+                          Calendario.Ubicacion.like(f"G#{gid} - %"))
+                  .order_by(Calendario.Fecha.desc(), Calendario.Hora.desc())
+                  .first())
+            if ev:
+                cita_garantia_por_notif[n.ID_Notificacion] = {
+                    'fecha': ev.Fecha.strftime('%d/%m/%Y'),
+                    'hora': ev.Hora.strftime('%H:%M') if hasattr(ev.Hora,'strftime') else str(ev.Hora)
+                }
+    except Exception:
+        pass
+
     return render_template(
         "cliente/notificaciones_cliente.html",
         notificaciones=notificaciones,
-        datetime=datetime  # para usar datetime en el template
+        datetime=datetime,  # para usar datetime en el template
+        cita_garantia_por_notif=cita_garantia_por_notif
     )
 
 @cliente.route('/cliente/eliminar_notificacion/<int:notificacion_id>', methods=['POST'])
@@ -85,6 +129,101 @@ def eliminar_notificacion(notificacion_id):
     if notificacion.ID_Usuario != current_user.ID_Usuario:
         flash("No puedes eliminar esta notificación.", "danger")
         return redirect(url_for('cliente.ver_notificaciones_cliente'))
+
+
+@cliente.route('/agendar_cita/<int:notificacion_id>', methods=['POST'])
+@login_required
+def agendar_cita_tecnico(notificacion_id):
+    """Agendar cita del cliente con el técnico asociado a su producto defectuoso."""
+
+    # --- Buscar notificación ---
+    notificacion = Notificaciones.query.get_or_404(notificacion_id)
+
+    # Validar que la notificación tenga un defecto asociado
+    if not notificacion.defecto:
+        flash("Esta notificación no tiene un producto para agendar cita.", "danger")
+        return redirect(url_for('cliente.ver_notificaciones_cliente'))
+
+    defecto = notificacion.defecto
+
+    # Si ya hay cita, no permitir duplicar
+    if defecto.CitaProgramada:
+        flash("Esta solicitud ya tiene una cita programada.", "warning")
+        return redirect(url_for('cliente.ver_notificaciones_cliente'))
+
+    # --- Obtener datos del formulario (nombres únicos por notificación) ---
+    fecha_str = request.form.get(f'fecha_{notificacion_id}') or request.form.get('fecha')
+    hora_str = request.form.get(f'hora_{notificacion_id}') or request.form.get('hora')
+
+    if not fecha_str or not hora_str:
+        flash("⚠️ Debes seleccionar una fecha y hora para la cita.", "warning")
+        return redirect(url_for('cliente.ver_notificaciones_cliente'))
+
+    # Validar rango de hora permitido (08:00-19:00)
+    try:
+        hh, mm = map(int, hora_str.split(':', 1))
+        if not (8 <= hh <= 19) or not (0 <= mm <= 59):
+            flash("⚠️ Hora fuera de rango (permitido 08:00 a 19:00).", "warning")
+            return redirect(url_for('cliente.ver_notificaciones_cliente'))
+    except Exception:
+        flash("❌ Formato de hora inválido.", "danger")
+        return redirect(url_for('cliente.ver_notificaciones_cliente'))
+
+    try:
+        cita_datetime = datetime.strptime(f"{fecha_str} {hora_str}", "%Y-%m-%d %H:%M")
+    except ValueError:
+        flash("❌ Formato de fecha u hora inválido.", "danger")
+        return redirect(url_for('cliente.ver_notificaciones_cliente'))
+
+    # --- Guardar la cita programada en el defecto ---
+    defecto.CitaProgramada = cita_datetime
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f"❌ Error al guardar la cita: {str(e)}", "danger")
+        return redirect(url_for('cliente.ver_notificaciones_cliente'))
+
+    # --- Registrar en calendario usando la dirección del pedido, si existe ---
+    try:
+        pedido = defecto.pedido
+        direccion = pedido.Destino if pedido and pedido.Destino else "Dirección no definida"
+        evento = Calendario(
+            Fecha=cita_datetime.date(),
+            Hora=cita_datetime.time(),
+            Ubicacion=direccion,
+            Tipo="Técnico",
+            ID_Usuario=current_user.ID_Usuario,
+            ID_Pedido=defecto.ID_Pedido
+        )
+        db.session.add(evento)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        # No bloquear por error en calendario; continuar
+
+    # --- Crear notificación para el técnico ---
+    try:
+        noti_tecnico = Notificaciones(
+            Titulo="📅 Nueva cita agendada",
+            Mensaje=(
+                f"El cliente <b>{current_user.Nombre}</b> ha agendado una cita "
+                f"para el <b>{cita_datetime.strftime('%d/%m/%Y a las %H:%M')}</b> "
+                f"relacionada con un producto defectuoso."
+            ),
+            Fecha=datetime.now(),
+            Leida=False,
+            ID_Usuario=defecto.ID_Empleado  # Técnico asignado
+        )
+        db.session.add(noti_tecnico)
+        db.session.commit()
+
+        flash("✅ Cita agendada correctamente con el técnico.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"⚠️ La cita se guardó, pero ocurrió un error al notificar al técnico: {str(e)}", "warning")
+
+    return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
     try:
         db.session.delete(notificacion)
@@ -429,154 +568,6 @@ def mensajes_cliente_ajax():
         } for m in mensajes
     ])
 
-@cliente.route('/chatbot/ask', methods=['POST'])
-def chatbot_ask():
-    data = request.get_json() or {}
-    q = (data.get('query') or '').strip()
-    if not q:
-        return jsonify({"answer": "Escribe una pregunta, por ejemplo: precio de Mesa Roble."}), 200
-
-    query_norm = q.lower()
-
-    busca_stock = 'stock' in query_norm or 'disponible' in query_norm or 'disponibilidad' in query_norm
-    busca_precio = 'precio' in query_norm or 'vale' in query_norm or 'cuesta' in query_norm
-
-    def parse_price_range(text:str):
-        nums = [float(x.replace(',', '').replace('.', '', x.count('.')-1)) for x in __import__('re').findall(r"\d+[\.,]?\d*", text)]
-        if len(nums) >= 2:
-            a,b = nums[0], nums[1]
-            return (min(a,b), max(a,b))
-        return (None, None)
-
-    precio_min, precio_max = parse_price_range(query_norm) if ('entre' in query_norm or '-' in query_norm or 'hasta' in query_norm) else (None,None)
-
-    materiales_tokens = [m[0] for m in db.session.query(Producto.Material).distinct().all() if m[0]]
-    colores_tokens = [c[0] for c in db.session.query(Producto.Color).distinct().all() if c[0]]
-    categorias_all = {c.NombreCategoria.lower(): c.ID_Categoria for c in Categorias.query.all()}
-
-    material_sel = next((m for m in materiales_tokens if m and m.lower() in query_norm), None)
-    color_sel = next((c for c in colores_tokens if c and c.lower() in query_norm), None)
-    cat_sel_id = None
-    for nombre_cat, cid in categorias_all.items():
-        if nombre_cat in query_norm:
-            cat_sel_id = cid
-            break
-
-    query = Producto.query
-    if cat_sel_id:
-        query = query.filter(Producto.ID_Categoria == cat_sel_id)
-    if material_sel:
-        query = query.filter(Producto.Material == material_sel)
-    if color_sel:
-        query = query.filter(Producto.Color == color_sel)
-    if precio_min is not None:
-        query = query.filter(Producto.PrecioUnidad >= precio_min)
-    if precio_max is not None:
-        query = query.filter(Producto.PrecioUnidad <= precio_max)
-
-    productos = query.filter(Producto.NombreProducto.ilike(f"%{q}%") if not (cat_sel_id or material_sel or color_sel or precio_min is not None or precio_max is not None) else True).limit(8).all()
-
-    if not productos:
-        palabras = [p for p in q.split() if len(p) > 2]
-        subq = None
-        for p in palabras:
-            cond = Producto.NombreProducto.ilike(f"%{p}%")
-            subq = cond if subq is None else (subq | cond)
-        if subq is not None:
-            base = Producto.query
-            if cat_sel_id:
-                base = base.filter(Producto.ID_Categoria == cat_sel_id)
-            if material_sel:
-                base = base.filter(Producto.Material == material_sel)
-            if color_sel:
-                base = base.filter(Producto.Color == color_sel)
-            if precio_min is not None:
-                base = base.filter(Producto.PrecioUnidad >= precio_min)
-            if precio_max is not None:
-                base = base.filter(Producto.PrecioUnidad <= precio_max)
-            productos = base.filter(subq).limit(8).all()
-
-    if not productos:
-        return jsonify({"answer": "No encontré productos para esa búsqueda.", "items": []}), 200
-
-    items = [
-        {
-            "id": pr.ID_Producto,
-            "nombre": pr.NombreProducto,
-            "precio": float(pr.PrecioUnidad or 0),
-            "stock": int(pr.Stock or 0),
-            "imagen": url_for('static', filename=pr.ImagenPrincipal or 'img/catalogo.png'),
-            "url": url_for('cliente.detalle_producto_catalogo', id=pr.ID_Producto)
-        } for pr in productos
-    ]
-
-    if len(items) == 1:
-        it = items[0]
-        if busca_precio and busca_stock:
-            answer = f"{it['nombre']} cuesta ${it['precio']:.2f} y hay {it['stock']} unidades."
-        elif busca_precio:
-            answer = f"{it['nombre']} cuesta ${it['precio']:.2f}."
-        elif busca_stock:
-            answer = f"{it['nombre']} tiene {it['stock']} unidades disponibles."
-        else:
-            answer = f"Encontré {it['nombre']}: precio ${it['precio']:.2f}, stock {it['stock']}."
-        return jsonify({"answer": answer, "items": items}), 200
-
-    if busca_precio and busca_stock:
-        answer = "Estos son los productos encontrados con su precio y stock."
-    elif busca_precio:
-        answer = "Estos son los precios de los productos encontrados."
-    elif busca_stock:
-        answer = "Disponibilidad de los productos encontrados."
-    else:
-        parts = []
-        if cat_sel_id: parts.append("categoría")
-        if material_sel: parts.append("material")
-        if color_sel: parts.append("color")
-        if precio_min is not None or precio_max is not None: parts.append("precio")
-        answer = "Resultados encontrados" + (" filtrados por " + ", ".join(parts) if parts else ". Puedes filtrar por categoría, material, color o precio.")
-
-    return jsonify({"answer": answer, "items": items}), 200
-
-@cliente.route('/chatbot/suggestions', methods=['GET'])
-def chatbot_suggestions():
-    sug = []
-    if current_user.is_authenticated:
-        try:
-            fav_cats = [c.NombreCategoria for c in current_user.categorias_favoritas] if getattr(current_user,'categorias_favoritas',None) else []
-            mats = []
-            cols = []
-            try:
-                import json as _json
-                mats = _json.loads(current_user.materiales_preferidos or '[]') if hasattr(current_user,'materiales_preferidos') else []
-                cols = _json.loads(current_user.colores_preferidos or '[]') if hasattr(current_user,'colores_preferidos') else []
-            except Exception:
-                pass
-            if fav_cats:
-                for c in fav_cats[:2]:
-                    sug.append(f"Ver {c} entre 200 y 600")
-            if mats:
-                sug.append(f"Productos de material {mats[0]}")
-            if cols:
-                sug.append(f"Productos color {cols[0]}")
-            ult = Producto.query.limit(1).all()
-            if ult:
-                sug.append(f"Precio y disponibilidad de {ult[0].NombreProducto}")
-        except Exception:
-            pass
-        sug.extend([
-            "Recomendaciones para mí",
-            "Ver ofertas entre 100 y 300",
-        ])
-    else:
-        sug = [
-            "Precio de Mesa",
-            "Stock de Silla",
-            "Armarios entre 200 y 500",
-            "Productos color negro",
-        ]
-    return jsonify({"suggestions": sug[:6]})
-
 @cliente.route('/carrito')
 @login_required
 def ver_carrito():
@@ -840,12 +831,6 @@ def solicitar_garantia(pedido_id):
         db.session.commit()
         flash('Solicitud de garantía enviada correctamente.', 'success')
         return redirect(url_for('cliente.ver_pedido', pedido_id=pedido.ID_Pedido))
-
-    return render_template('cliente/solicitar_garantia.html', pedido=pedido, productos=productos)
-
-@cliente.route('/agendar_cita/<int:notificacion_id>', methods=['POST'])
-@login_required
-def agendar_cita_garantia(notificacion_id):
     # Obtener la notificación
     notificacion = Notificaciones.query.get_or_404(notificacion_id)
     
@@ -1110,20 +1095,29 @@ def registrar_defectuoso(pedido_id, id_producto):
     return render_template('cliente/registrar_defectuoso.html', detalle=detalle)
 
 
-@cliente.route('/cliente/agendar_cita/<int:notificacion_id>', methods=['POST'])
+@cliente.route('/agendar_cita_garantia_aprobada/<int:notificacion_id>', methods=['POST'])
 @login_required
-def agendar_cita_tecnico(notificacion_id):
-    """Agendar cita del cliente con el técnico asociado a su producto defectuoso."""
+def agendar_cita_garantia_aprobada(notificacion_id):
+    """Agendar cita asociada a una Garantía aprobada, extrayendo el ID de garantía del mensaje."""
 
     # --- Buscar notificación ---
     notificacion = Notificaciones.query.get_or_404(notificacion_id)
 
-    # --- Obtener datos del formulario ---
-    fecha_str = request.form.get('fecha')
-    hora_str = request.form.get('hora')
-
+    # Leer fecha/hora del modal: usan nombres únicos por notificación
+    fecha_str = request.form.get(f'fecha_{notificacion_id}') or request.form.get('fecha')
+    hora_str = request.form.get(f'hora_{notificacion_id}') or request.form.get('hora')
     if not fecha_str or not hora_str:
         flash("⚠️ Debes seleccionar una fecha y hora para la cita.", "warning")
+        return redirect(url_for('cliente.ver_notificaciones_cliente'))
+
+    # Validar rango de hora permitido (08:00-19:00)
+    try:
+        hh, mm = map(int, hora_str.split(':', 1))
+        if not (8 <= hh <= 19) or not (0 <= mm <= 59):
+            flash("⚠️ Hora fuera de rango (permitido 08:00 a 19:00).", "warning")
+            return redirect(url_for('cliente.ver_notificaciones_cliente'))
+    except Exception:
+        flash("❌ Formato de hora inválido.", "danger")
         return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
     try:
@@ -1132,43 +1126,57 @@ def agendar_cita_tecnico(notificacion_id):
         flash("❌ Formato de fecha u hora inválido.", "danger")
         return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
-    # --- Buscar último producto defectuoso del usuario ---
-    defecto = ProductoDefectuoso.query.filter_by(
-        ID_Usuario=current_user.ID_Usuario
-    ).order_by(ProductoDefectuoso.FechaRegistro.desc()).first()
-
-    if not defecto:
-        flash("❌ No se encontró un producto defectuoso relacionado para agendar la cita.", "danger")
+    # Extraer ID de garantía del mensaje tipo: "Tu garantía #10 ha sido aprobada"
+    mensaje = (notificacion.Mensaje or '')
+    m = re.search(r"garant[ií]a\s*#(\d+)", mensaje, re.IGNORECASE)
+    if not m:
+        flash("❌ No se pudo identificar la garantía en la notificación.", "danger")
         return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
-    # --- Guardar la cita programada ---
-    defecto.CitaProgramada = cita_datetime
-    try:
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        flash(f"❌ Error al guardar la cita: {str(e)}", "danger")
+    garantia_id = int(m.group(1))
+    garantia = Garantia.query.get(garantia_id)
+    if not garantia or garantia.ID_Usuario != current_user.ID_Usuario:
+        flash("❌ Garantía no válida para agendar.", "danger")
         return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
-    # --- Crear notificación para el técnico ---
+    # Crear evento en Calendario y actualizar estado/fecha de Garantia
     try:
-        noti_tecnico = Notificaciones(
-            Titulo="📅 Nueva cita agendada",
-            Mensaje=(
-                f"El cliente <b>{current_user.Nombre}</b> ha agendado una cita "
-                f"para el <b>{cita_datetime.strftime('%d/%m/%Y a las %H:%M')}</b> "
-                f"relacionada con un producto defectuoso."
-            ),
-            Fecha=datetime.now(),
-            Leida=False,
-            ID_Usuario=defecto.ID_Empleado  # Técnico asignado
+        direccion_envio = None
+        pedido = Pedido.query.get(getattr(garantia, 'ID_Pedido', None)) if hasattr(garantia, 'ID_Pedido') else None
+        if pedido and pedido.Destino:
+            direccion_envio = pedido.Destino
+        evento = Calendario(
+            Fecha=cita_datetime.date(),
+            Hora=cita_datetime.time(),
+            Ubicacion=f"G#{garantia.ID_Garantia} - " + (direccion_envio or "Dirección por confirmar"),
+            Tipo="Garantía",
+            ID_Usuario=current_user.ID_Usuario,
+            ID_Pedido=getattr(garantia, 'ID_Pedido', None)
         )
-        db.session.add(noti_tecnico)
+        garantia.Estado = 'cita_agendada'
+        db.session.add(evento)
         db.session.commit()
 
-        flash("✅ Cita agendada correctamente con el técnico.", "success")
+        # Guardar CitaAgendada en tabla garantia (auto-migración si la columna no existe)
+        try:
+            db.session.execute(
+                text("UPDATE garantia SET CitaAgendada = :cita WHERE ID_Garantia = :gid"),
+                {"cita": cita_datetime, "gid": garantia.ID_Garantia}
+            )
+            db.session.commit()
+        except Exception:
+            try:
+                # Intentar crear la columna y reintentar
+                db.session.execute(text("ALTER TABLE garantia ADD COLUMN CitaAgendada DATETIME NULL"))
+                db.session.commit()
+                db.session.execute(
+                    text("UPDATE garantia SET CitaAgendada = :cita WHERE ID_Garantia = :gid"),
+                    {"cita": cita_datetime, "gid": garantia.ID_Garantia}
+                )
+                db.session.commit()
+            except Exception as _:
+                db.session.rollback()
     except Exception as e:
         db.session.rollback()
-        flash(f"⚠️ La cita se guardó, pero ocurrió un error al notificar al técnico: {str(e)}", "warning")
-
+        flash(f"❌ Error al crear el evento: {str(e)}", "danger")
     return redirect(url_for('cliente.ver_notificaciones_cliente'))

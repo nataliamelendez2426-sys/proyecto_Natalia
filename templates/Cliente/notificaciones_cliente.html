@@ -7,15 +7,15 @@
 {% block content %}
 <style>
 /* ---------- ESTILOS NOTIFICACIONES ---------- */
-.noti-card { background: linear-gradient(145deg, #d1faff, #9bd1e5); border-radius: 25px; padding: 30px; max-width: 800px; margin: 0 auto 50px auto; box-shadow: 0 10px 30px rgba(0,0,0,0.15); transition: all 0.3s; }
-.noti-card:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(0,0,0,0.2); }
+.noti-card { background: linear-gradient(145deg, #d1faff, #9bd1e5); border-radius: 25px; padding: 30px; max-width: 800px; margin: 0 auto 50px auto; box-shadow: 0 10px 30px rgba(0,0,0,0.15); transition: box-shadow 0.3s; }
+.noti-card:hover { box-shadow: 0 15px 40px rgba(0,0,0,0.2); }
 .noti-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
 .noti-header h5 { font-weight: 700; color: #157145; font-size: 1.5rem; }
 .btn-select-all { background-color: #57a773; color: white; border: none; border-radius: 50px; padding: 6px 15px; font-weight: 600; transition: all 0.3s; cursor: pointer; }
 .btn-select-all:hover { background-color: #157145; transform: scale(1.05); }
 .noti-list { display: flex; flex-direction: column; gap: 15px; max-height: 400px; overflow-y: auto; padding-right: 5px; }
-.noti-item { display: flex; align-items: center; justify-content: space-between; background: white; border-radius: 15px; padding: 12px 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); transition: all 0.3s; }
-.noti-item:hover { background: #e9f7ef; transform: translateY(-2px); }
+.noti-item { display: flex; align-items: center; justify-content: space-between; background: white; border-radius: 15px; padding: 12px 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); transition: background 0.3s, box-shadow 0.3s; }
+.noti-item:hover { background: #e9f7ef; box-shadow: 0 8px 18px rgba(0,0,0,0.08); }
 .noti-item input[type="checkbox"] { margin-right: 15px; width: 18px; height: 18px; accent-color: #57a773; }
 .noti-item p { flex: 1; margin: 0; font-size: 0.95rem; color: #333; }
 .noti-item .fecha { font-size: 0.8rem; color: #6c757d; margin-left: 15px; white-space: nowrap; }
@@ -61,42 +61,40 @@
         <div class="noti-item" data-fecha="{{ n.Fecha.strftime('%Y-%m-%d') }}">
           <input type="checkbox" name="ids" value="{{ n.ID_Notificacion }}">
           <div style="flex:1;">
-            <p>{{ n.Mensaje | safe }}</p>
+            <p>{{ n.Mensaje | striptags }}</p>
             <span class="fecha">{{ n.Fecha.strftime('%d/%m/%Y %H:%M') }}</span>
 
             {% if n.defecto %}
               {% if n.defecto.Estado == 'resuelto_tecnico' %}
                 {% if not n.defecto.CitaProgramada %}
-                <!-- Botón y modal garantía -->
+                <!-- Botón y modal técnico (solo cuando estado = resuelto_tecnico) -->
                 <button type="button" class="btn btn-primary btn-sm mt-2"
                         data-bs-toggle="modal"
-                        data-bs-target="#modalCitaGarantia{{ n.ID_Notificacion }}">
-                  📅 Agendar cita garantía
+                        data-bs-target="#modalCitaTecnico{{ n.ID_Notificacion }}">
+                  📅 Agendar cita técnico
                 </button>
 
-                <div class="modal fade" id="modalCitaGarantia{{ n.ID_Notificacion }}" tabindex="-1" aria-labelledby="modalLabelGarantia{{ n.ID_Notificacion }}" aria-hidden="true">
-                  <div class="modal-dialog">
+                <div class="modal fade" id="modalCitaTecnico{{ n.ID_Notificacion }}" tabindex="-1" aria-labelledby="modalLabelTecnico{{ n.ID_Notificacion }}" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
-                      <form action="{{ url_for('cliente.agendar_cita_garantia', notificacion_id=n.ID_Notificacion) }}" method="POST">
                         <div class="modal-header">
-                          <h5 class="modal-title" id="modalLabelGarantia{{ n.ID_Notificacion }}">Agendar cita garantía</h5>
+                          <h5 class="modal-title" id="modalLabelTecnico{{ n.ID_Notificacion }}">Agendar cita técnico</h5>
                           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
                           <div class="mb-3">
-                            <label for="fechaGarantia{{ n.ID_Notificacion }}" class="form-label">📅 Fecha:</label>
-                            <input type="date" id="fechaGarantia{{ n.ID_Notificacion }}" name="fecha" class="form-control" required min="{{ hoy }}">
+                            <label for="fechaTecnico{{ n.ID_Notificacion }}" class="form-label">📅 Fecha:</label>
+                            <input type="date" id="fechaTecnico{{ n.ID_Notificacion }}" name="fecha_{{ n.ID_Notificacion }}" class="form-control" min="{{ hoy }}">
                           </div>
                           <div class="mb-3">
-                            <label for="horaGarantia{{ n.ID_Notificacion }}" class="form-label">⏰ Hora:</label>
-                            <input type="time" id="horaGarantia{{ n.ID_Notificacion }}" name="hora" class="form-control" required>
+                            <label for="horaTecnico{{ n.ID_Notificacion }}" class="form-label">⏰ Hora:</label>
+                            <input type="time" id="horaTecnico{{ n.ID_Notificacion }}" name="hora_{{ n.ID_Notificacion }}" class="form-control" min="08:00" max="19:00">
                           </div>
                         </div>
                         <div class="modal-footer">
-                          <button type="submit" class="btn btn-success">Confirmar cita</button>
+                          <button type="submit" class="btn btn-success" formmethod="post" formaction="{{ url_for('cliente.agendar_cita_tecnico', notificacion_id=n.ID_Notificacion) }}">Confirmar cita</button>
                           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                         </div>
-                      </form>
                     </div>
                   </div>
                 </div>
@@ -105,51 +103,57 @@
                     ✅ Cita programada para {{ n.defecto.CitaProgramada.strftime('%d/%m/%Y %H:%M') }}
                   </span>
                 {% endif %}
+              {% endif %}
+            {% endif %}
+
+            {# Botón/Badge para garantía aprobada #}
+            {% set _msg = (n.Mensaje or '')|striptags|lower %}
+            {% if ('garantia' in _msg or 'garantía' in _msg) and ('aprob' in _msg) %}
+              {% set cita = cita_garantia_por_notif.get(n.ID_Notificacion) %}
+              {% if cita %}
+                <span class="badge bg-success mt-2 d-block">✅ Cita agendada: {{ cita.fecha }} {{ cita.hora }}</span>
               {% else %}
-                <!-- Botón y modal técnico (otros estados) -->
-                {% if not n.defecto.CitaProgramada %}
                 <button type="button" class="btn btn-primary btn-sm mt-2"
                         data-bs-toggle="modal"
-                        data-bs-target="#modalCitaTecnico{{ n.ID_Notificacion }}">
-                  📅 Agendar cita técnico
+                        data-bs-target="#modalCitaGarantiaAprobada{{ n.ID_Notificacion }}">
+                  📅 Agendar cita
                 </button>
 
-                <div class="modal fade" id="modalCitaTecnico{{ n.ID_Notificacion }}" tabindex="-1" aria-labelledby="modalLabelTecnico{{ n.ID_Notificacion }}" aria-hidden="true">
-                  <div class="modal-dialog">
+                <div class="modal fade" id="modalCitaGarantiaAprobada{{ n.ID_Notificacion }}" tabindex="-1" aria-labelledby="modalLabelGarantiaAprobada{{ n.ID_Notificacion }}" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
-                      <form action="{{ url_for('cliente.agendar_cita_tecnico', notificacion_id=n.ID_Notificacion) }}" method="POST">
                         <div class="modal-header">
-                          <h5 class="modal-title" id="modalLabelTecnico{{ n.ID_Notificacion }}">Agendar cita técnico</h5>
+                          <h5 class="modal-title" id="modalLabelGarantiaAprobada{{ n.ID_Notificacion }}">Agendar cita de garantía</h5>
                           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
                           <div class="mb-3">
-                            <label for="fechaTecnico{{ n.ID_Notificacion }}" class="form-label">📅 Fecha:</label>
-                            <input type="date" id="fechaTecnico{{ n.ID_Notificacion }}" name="fecha" class="form-control" required min="{{ hoy }}">
+                            <label for="fechaGarantiaAprobada{{ n.ID_Notificacion }}" class="form-label">📅 Fecha:</label>
+                            <input type="date" id="fechaGarantiaAprobada{{ n.ID_Notificacion }}" name="fecha_{{ n.ID_Notificacion }}" class="form-control" min="{{ hoy }}">
                           </div>
                           <div class="mb-3">
-                            <label for="horaTecnico{{ n.ID_Notificacion }}" class="form-label">⏰ Hora:</label>
-                            <input type="time" id="horaTecnico{{ n.ID_Notificacion }}" name="hora" class="form-control" required>
+                            <label for="horaGarantiaAprobada{{ n.ID_Notificacion }}" class="form-label">⏰ Hora:</label>
+                            <input type="time" id="horaGarantiaAprobada{{ n.ID_Notificacion }}" name="hora_{{ n.ID_Notificacion }}" class="form-control" min="08:00" max="19:00">
                           </div>
                         </div>
                         <div class="modal-footer">
-                          <button type="submit" class="btn btn-success">Confirmar cita</button>
+                          <button type="submit" class="btn btn-success" formmethod="post" formaction="{{ url_for('cliente.agendar_cita_garantia_aprobada', notificacion_id=n.ID_Notificacion) }}">Confirmar cita</button>
                           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                         </div>
-                      </form>
                     </div>
                   </div>
                 </div>
-                {% endif %}
               {% endif %}
             {% endif %}
 
           </div>
 
-          <!-- Eliminar individual -->
-          <form action="{{ url_for('cliente.eliminar_notificacion', notificacion_id=n.ID_Notificacion) }}" method="POST" onsubmit="return confirmarEliminacion(event)">
-            <button type="submit" class="btn btn-danger btn-sm ms-2">🗑️</button>
-          </form>
+          <!-- Eliminar individual (sin formulario anidado) -->
+          <button type="submit"
+                  class="btn btn-danger btn-sm ms-2"
+                  formmethod="post"
+                  formaction="{{ url_for('cliente.eliminar_notificacion', notificacion_id=n.ID_Notificacion) }}"
+                  onclick="return confirmarEliminacion(event)">🗑️</button>
         </div>
         {% endfor %}
       </div>

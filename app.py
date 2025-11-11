@@ -118,7 +118,16 @@ def catalogo():
     productos = query.all()
 
     # --- Obtener todas las categorías, materiales y colores para los filtros ---
-    todas_etiquetas = Categorias.query.all()
+    # Evitar duplicados por nombre de categoría (p.ej., 'Sillas' repetida)
+    _cats_raw = Categorias.query.order_by(Categorias.NombreCategoria.asc()).all()
+    _seen = set()
+    todas_etiquetas = []
+    for c in _cats_raw:
+        k = (c.NombreCategoria or '').strip().lower()
+        if not k or k in _seen:
+            continue
+        _seen.add(k)
+        todas_etiquetas.append(c)
     materiales = [m[0] for m in db.session.query(Producto.Material).distinct().all() if m[0]]
     colores = [c[0] for c in db.session.query(Producto.Color).distinct().all() if c[0]]
 
@@ -146,6 +155,23 @@ def catalogo():
     categorias_favoritas = [c.ID_Categoria for c in current_user.categorias_favoritas]
     materiales_preferidos = json.loads(current_user.materiales_preferidos or '[]')
     colores_preferidos = json.loads(current_user.colores_preferidos or '[]')
+
+    def _score(p):
+        s = 0
+        try:
+            if p.ID_Categoria in categorias_favoritas:
+                s += 3
+            if p.Material and p.Material in materiales_preferidos:
+                s += 2
+            if p.Color and p.Color in colores_preferidos:
+                s += 1
+        except Exception:
+            pass
+        return s
+    try:
+        productos = sorted(productos, key=lambda p: _score(p), reverse=True)
+    except Exception:
+        pass
 
     return render_template(
         'common/catalogo.html',
