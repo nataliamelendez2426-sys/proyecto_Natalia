@@ -429,6 +429,154 @@ def mensajes_cliente_ajax():
         } for m in mensajes
     ])
 
+@cliente.route('/chatbot/ask', methods=['POST'])
+def chatbot_ask():
+    data = request.get_json() or {}
+    q = (data.get('query') or '').strip()
+    if not q:
+        return jsonify({"answer": "Escribe una pregunta, por ejemplo: precio de Mesa Roble."}), 200
+
+    query_norm = q.lower()
+
+    busca_stock = 'stock' in query_norm or 'disponible' in query_norm or 'disponibilidad' in query_norm
+    busca_precio = 'precio' in query_norm or 'vale' in query_norm or 'cuesta' in query_norm
+
+    def parse_price_range(text:str):
+        nums = [float(x.replace(',', '').replace('.', '', x.count('.')-1)) for x in __import__('re').findall(r"\d+[\.,]?\d*", text)]
+        if len(nums) >= 2:
+            a,b = nums[0], nums[1]
+            return (min(a,b), max(a,b))
+        return (None, None)
+
+    precio_min, precio_max = parse_price_range(query_norm) if ('entre' in query_norm or '-' in query_norm or 'hasta' in query_norm) else (None,None)
+
+    materiales_tokens = [m[0] for m in db.session.query(Producto.Material).distinct().all() if m[0]]
+    colores_tokens = [c[0] for c in db.session.query(Producto.Color).distinct().all() if c[0]]
+    categorias_all = {c.NombreCategoria.lower(): c.ID_Categoria for c in Categorias.query.all()}
+
+    material_sel = next((m for m in materiales_tokens if m and m.lower() in query_norm), None)
+    color_sel = next((c for c in colores_tokens if c and c.lower() in query_norm), None)
+    cat_sel_id = None
+    for nombre_cat, cid in categorias_all.items():
+        if nombre_cat in query_norm:
+            cat_sel_id = cid
+            break
+
+    query = Producto.query
+    if cat_sel_id:
+        query = query.filter(Producto.ID_Categoria == cat_sel_id)
+    if material_sel:
+        query = query.filter(Producto.Material == material_sel)
+    if color_sel:
+        query = query.filter(Producto.Color == color_sel)
+    if precio_min is not None:
+        query = query.filter(Producto.PrecioUnidad >= precio_min)
+    if precio_max is not None:
+        query = query.filter(Producto.PrecioUnidad <= precio_max)
+
+    productos = query.filter(Producto.NombreProducto.ilike(f"%{q}%") if not (cat_sel_id or material_sel or color_sel or precio_min is not None or precio_max is not None) else True).limit(8).all()
+
+    if not productos:
+        palabras = [p for p in q.split() if len(p) > 2]
+        subq = None
+        for p in palabras:
+            cond = Producto.NombreProducto.ilike(f"%{p}%")
+            subq = cond if subq is None else (subq | cond)
+        if subq is not None:
+            base = Producto.query
+            if cat_sel_id:
+                base = base.filter(Producto.ID_Categoria == cat_sel_id)
+            if material_sel:
+                base = base.filter(Producto.Material == material_sel)
+            if color_sel:
+                base = base.filter(Producto.Color == color_sel)
+            if precio_min is not None:
+                base = base.filter(Producto.PrecioUnidad >= precio_min)
+            if precio_max is not None:
+                base = base.filter(Producto.PrecioUnidad <= precio_max)
+            productos = base.filter(subq).limit(8).all()
+
+    if not productos:
+        return jsonify({"answer": "No encontré productos para esa búsqueda.", "items": []}), 200
+
+    items = [
+        {
+            "id": pr.ID_Producto,
+            "nombre": pr.NombreProducto,
+            "precio": float(pr.PrecioUnidad or 0),
+            "stock": int(pr.Stock or 0),
+            "imagen": url_for('static', filename=pr.ImagenPrincipal or 'img/catalogo.png'),
+            "url": url_for('cliente.detalle_producto_catalogo', id=pr.ID_Producto)
+        } for pr in productos
+    ]
+
+    if len(items) == 1:
+        it = items[0]
+        if busca_precio and busca_stock:
+            answer = f"{it['nombre']} cuesta ${it['precio']:.2f} y hay {it['stock']} unidades."
+        elif busca_precio:
+            answer = f"{it['nombre']} cuesta ${it['precio']:.2f}."
+        elif busca_stock:
+            answer = f"{it['nombre']} tiene {it['stock']} unidades disponibles."
+        else:
+            answer = f"Encontré {it['nombre']}: precio ${it['precio']:.2f}, stock {it['stock']}."
+        return jsonify({"answer": answer, "items": items}), 200
+
+    if busca_precio and busca_stock:
+        answer = "Estos son los productos encontrados con su precio y stock."
+    elif busca_precio:
+        answer = "Estos son los precios de los productos encontrados."
+    elif busca_stock:
+        answer = "Disponibilidad de los productos encontrados."
+    else:
+        parts = []
+        if cat_sel_id: parts.append("categoría")
+        if material_sel: parts.append("material")
+        if color_sel: parts.append("color")
+        if precio_min is not None or precio_max is not None: parts.append("precio")
+        answer = "Resultados encontrados" + (" filtrados por " + ", ".join(parts) if parts else ". Puedes filtrar por categoría, material, color o precio.")
+
+    return jsonify({"answer": answer, "items": items}), 200
+
+@cliente.route('/chatbot/suggestions', methods=['GET'])
+def chatbot_suggestions():
+    sug = []
+    if current_user.is_authenticated:
+        try:
+            fav_cats = [c.NombreCategoria for c in current_user.categorias_favoritas] if getattr(current_user,'categorias_favoritas',None) else []
+            mats = []
+            cols = []
+            try:
+                import json as _json
+                mats = _json.loads(current_user.materiales_preferidos or '[]') if hasattr(current_user,'materiales_preferidos') else []
+                cols = _json.loads(current_user.colores_preferidos or '[]') if hasattr(current_user,'colores_preferidos') else []
+            except Exception:
+                pass
+            if fav_cats:
+                for c in fav_cats[:2]:
+                    sug.append(f"Ver {c} entre 200 y 600")
+            if mats:
+                sug.append(f"Productos de material {mats[0]}")
+            if cols:
+                sug.append(f"Productos color {cols[0]}")
+            ult = Producto.query.limit(1).all()
+            if ult:
+                sug.append(f"Precio y disponibilidad de {ult[0].NombreProducto}")
+        except Exception:
+            pass
+        sug.extend([
+            "Recomendaciones para mí",
+            "Ver ofertas entre 100 y 300",
+        ])
+    else:
+        sug = [
+            "Precio de Mesa",
+            "Stock de Silla",
+            "Armarios entre 200 y 500",
+            "Productos color negro",
+        ]
+    return jsonify({"suggestions": sug[:6]})
+
 @cliente.route('/carrito')
 @login_required
 def ver_carrito():
