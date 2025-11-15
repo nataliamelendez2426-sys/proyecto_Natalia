@@ -212,10 +212,7 @@
     <h1>Bienvenido a Casa en el arbol</h1>
     <p>Explora y transforma tu hogar de forma interactiva</p>
     <div class="hero-buttons">
-      <button class="btn-section" onclick="document.getElementById('categorias').scrollIntoView({behavior:'smooth'})">CATEGORÍAS</button>
       <button class="btn-section" onclick="window.location.href='{{ url_for('catalogo') }}'">CATÁLOGO</button>
-
-      <button class="btn-section" onclick="document.getElementById('ofertas').scrollIntoView({behavior:'smooth'})">OFERTAS</button>
       <button class="btn-section" onclick="document.getElementById('garantias').scrollIntoView({behavior:'smooth'})">GARANTÍAS</button>
       <button class="btn-section" onclick="window.location.href='{{ url_for('cliente.agendar_instalacion') }}'">INSTALACIONES</button>
 
