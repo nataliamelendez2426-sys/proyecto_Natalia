@@ -8,8 +8,39 @@
 <div class="container mt-4 mb-5">
     <h1><b>Historial de transacciones</b></h1>
 
+    <!-- ========================== -->
+    <!--   FORMULARIO DE FILTRO    -->
+    <!-- ========================== -->
+    <div class="filtro-container mb-4">
+        <div class="row g-3 justify-content-center">
+
+            <div class="col-md-3">
+                <label class="form-label"><b>Fecha inicio</b></label>
+                <input type="date" id="fechaInicio" class="form-control filtro-input">
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label"><b>Fecha fin</b></label>
+                <input type="date" id="fechaFin" class="form-control filtro-input">
+            </div>
+
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-filtrar w-100" onclick="filtrarFechas()">
+                    Filtrar
+                </button>
+            </div>
+
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-limpiar w-100" onclick="limpiarFiltro()">
+                    Limpiar
+                </button>
+            </div>
+
+        </div>
+    </div>
+
     {% if pedidos %}
-    <table>
+    <table id="tablaPedidos">
         <thead>
             <tr>
                 <th>ID Pedido</th>
@@ -22,10 +53,12 @@
             {% for pedido in pedidos %}
             <tr>
                 <td>{{ pedido.ID_Pedido }}</td>
-                <td>{{ pedido.FechaPedido.strftime('%d/%m/%Y') }}</td>
+                <td class="fecha">{{ pedido.FechaPedido.strftime('%Y-%m-%d') }}</td>
                 <td>${{ '%.2f' | format(pedido.subtotal) }}</td>
                 <td>
-                    <a class="btn btn-ver" href="{{ url_for('cliente.ver_pedido', pedido_id=pedido.ID_Pedido) }}">Ver detalles</a>
+                    <a class="btn btn-ver" href="{{ url_for('cliente.ver_pedido', pedido_id=pedido.ID_Pedido) }}">
+                        Ver detalles
+                    </a>
                 </td>
             </tr>
             {% endfor %}
@@ -36,6 +69,46 @@
     {% endif %}
 </div>
 
+<!-- ===================================== -->
+<!--          FILTRO CON JAVASCRIPT        -->
+<!-- ===================================== -->
+
+<script>
+function filtrarFechas() {
+    const inicio = document.getElementById("fechaInicio").value;
+    const fin = document.getElementById("fechaFin").value;
+
+    const rows = document.querySelectorAll("#tablaPedidos tbody tr");
+
+    rows.forEach(row => {
+        const fechaText = row.querySelector(".fecha").textContent.trim();
+        const fecha = new Date(fechaText);
+
+        let mostrar = true;
+
+        if (inicio) {
+            const fechaInicio = new Date(inicio);
+            if (fecha < fechaInicio) mostrar = false;
+        }
+
+        if (fin) {
+            const fechaFin = new Date(fin);
+            if (fecha > fechaFin) mostrar = false;
+        }
+
+        row.style.display = mostrar ? "" : "none";
+    });
+}
+
+function limpiarFiltro() {
+    document.getElementById("fechaInicio").value = "";
+    document.getElementById("fechaFin").value = "";
+
+    const rows = document.querySelectorAll("#tablaPedidos tbody tr");
+    rows.forEach(row => row.style.display = "");
+}
+</script>
+
 <style>
 :root {
     --verde: #57a773;
@@ -44,12 +117,14 @@
     --celeste: #d1faff;
 }
 
+/* --- Título --- */
 h1 {
     text-align: center;
     color: var(--verde-oscuro);
     margin-bottom: 30px;
 }
 
+/* --- Tabla --- */
 table {
     width: 100%;
     border-collapse: collapse;
@@ -78,6 +153,7 @@ tr:hover {
     background-color: var(--celeste-claro);
 }
 
+/* --- Botones --- */
 .btn {
     padding: 6px 12px;
     text-decoration: none;
@@ -99,6 +175,28 @@ tr:hover {
     transform: scale(1.05);
 }
 
+.btn-filtrar {
+    background-color: var(--verde);
+    color: white;
+}
+.btn-filtrar:hover {
+    background-color: var(--verde-oscuro);
+}
+
+.btn-limpiar {
+    background-color: #999;
+    color: white;
+}
+.btn-limpiar:hover {
+    background-color: #777;
+}
+
+/* --- Inputs --- */
+.filtro-input {
+    border: 2px solid var(--verde);
+    border-radius: 6px;
+}
+
 .no-pedidos {
     text-align: center;
     font-size: 18px;
@@ -106,4 +204,5 @@ tr:hover {
     color: #7f8c8d;
 }
 </style>
+
 {% endblock %}
