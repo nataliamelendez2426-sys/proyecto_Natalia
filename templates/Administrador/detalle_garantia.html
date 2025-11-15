@@ -1,49 +1,95 @@
 {% extends "common/base.html" %}
+
 {% block navbar %}
   {% include "common/partials/navbar_admin.html" %}
 {% endblock %}
+
 {% block content %}
-<div class="mb-3">
-  <a href="{{ url_for('admin.ver_garantias') }}" class="btn btn-outline-secondary">
-    <i class="bi bi-arrow-left"></i> Volver
-  </a>
-  </div>
-<h3>Garantía #{{ garantia.ID_Garantia }}</h3>
-<p><strong>Usuario:</strong> {{ garantia.usuario.Nombre }} {{ garantia.usuario.Apellido }}</p>
-<p><strong>Pedido:</strong> {{ garantia.pedido.ID_Pedido }}</p>
-<p><strong>Motivo:</strong> {{ garantia.Motivo }}</p>
-<p><strong>Estado actual:</strong> {{ garantia.Estado }}</p>
 
-<form method="POST" action="{{ url_for('admin.actualizar_garantia', garantia_id=garantia.ID_Garantia) }}">
+<div class="container mt-4 mb-5">
+
+  <!-- Botón volver -->
   <div class="mb-3">
-    <label for="estado" class="form-label">Cambiar estado</label>
-    <select name="estado" id="estado" class="form-select" onchange="toggleInstalador(this.value)">
-      <option value="pendiente" {% if garantia.Estado=='pendiente' %}selected{% endif %}>Pendiente</option>
-      <option value="aprobada" {% if garantia.Estado=='aprobada' %}selected{% endif %}>Aprobada</option>
-      <option value="rechazada" {% if garantia.Estado=='rechazada' %}selected{% endif %}>Rechazada</option>
-      <option value="completada" {% if garantia.Estado=='completada' %}selected{% endif %}>Completada</option>
-    </select>
+    <a href="{{ url_for('admin.ver_garantias') }}" class="btn btn-outline-success rounded-pill px-4">
+      <i class="bi bi-arrow-left"></i> Volver
+    </a>
   </div>
 
-  <div class="mb-3">
-    <label for="comentario" class="form-label">Comentario del admin</label>
-    <textarea name="comentario" id="comentario" class="form-control" rows="3">{{ garantia.ComentarioAdmin or '' }}</textarea>
+  <!-- Card principal -->
+  <div class="card shadow-lg border-0 rounded-4">
+    <div class="card-header bg-success text-white rounded-top-4 py-3">
+      <h3 class="mb-0 text-center">
+        <i class="bi bi-shield-check me-2"></i>
+        Garantía #{{ garantia.ID_Garantia }}
+      </h3>
+    </div>
+
+    <div class="card-body">
+
+      <!-- Información principal -->
+      <div class="mb-4">
+        <p><strong>Usuario:</strong> {{ garantia.usuario.Nombre }} {{ garantia.usuario.Apellido }}</p>
+        <p><strong>Pedido:</strong> {{ garantia.pedido.ID_Pedido }}</p>
+        <p><strong>Motivo:</strong> {{ garantia.Motivo }}</p>
+        <p>
+          <strong>Estado actual:</strong>
+          <span class="badge 
+            {% if garantia.Estado == 'pendiente' %} bg-warning text-dark
+            {% elif garantia.Estado == 'aprobada' %} bg-success
+            {% elif garantia.Estado == 'rechazada' %} bg-danger
+            {% elif garantia.Estado == 'completada' %} bg-info text-dark
+            {% else %} bg-secondary
+            {% endif %}
+          ">
+            {{ garantia.Estado }}
+          </span>
+        </p>
+      </div>
+
+      <!-- Formulario -->
+      <form method="POST" action="{{ url_for('admin.actualizar_garantia', garantia_id=garantia.ID_Garantia) }}">
+
+        <!-- Cambiar estado -->
+        <div class="mb-3">
+          <label for="estado" class="form-label fw-bold">Cambiar estado</label>
+          <select name="estado" id="estado" class="form-select shadow-sm" onchange="toggleInstalador(this.value)">
+            <option value="pendiente" {% if garantia.Estado=='pendiente' %}selected{% endif %}>Pendiente</option>
+            <option value="aprobada" {% if garantia.Estado=='aprobada' %}selected{% endif %}>Aprobada</option>
+            <option value="rechazada" {% if garantia.Estado=='rechazada' %}selected{% endif %}>Rechazada</option>
+            <option value="completada" {% if garantia.Estado=='completada' %}selected{% endif %}>Completada</option>
+          </select>
+        </div>
+
+        <!-- Comentario admin -->
+        <div class="mb-3">
+          <label for="comentario" class="form-label fw-bold">Comentario del admin</label>
+          <textarea name="comentario" id="comentario" class="form-control shadow-sm" rows="3">{{ garantia.ComentarioAdmin or '' }}</textarea>
+        </div>
+
+        <!-- Instalador (solo si aprobada) -->
+        <div class="mb-3" id="div-instalador" style="{% if garantia.Estado != 'aprobada' %}display:none;{% endif %}">
+          <label for="instalador" class="form-label fw-bold">Asignar instalador</label>
+          <select name="instalador_id" id="instalador" class="form-select shadow-sm">
+            <option value="">-- Selecciona un instalador --</option>
+            {% for inst in instaladores %}
+              <option value="{{ inst.ID_Usuario }}" {% if garantia.ID_Empleado == inst.ID_Usuario %}selected{% endif %}>
+                {{ inst.Nombre }} {{ inst.Apellido }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Botón actualizar -->
+        <button type="submit" class="btn btn-success rounded-pill px-4 shadow-sm">
+          <i class="bi bi-check-circle me-1"></i> Actualizar
+        </button>
+
+      </form>
+
+    </div>
   </div>
 
-  <div class="mb-3" id="div-instalador" style="{% if garantia.Estado != 'aprobada' %}display:none;{% endif %}">
-    <label for="instalador" class="form-label">Asignar instalador</label>
-    <select name="instalador_id" id="instalador" class="form-select">
-      <option value="">-- Selecciona un instalador --</option>
-      {% for inst in instaladores %}
-        <option value="{{ inst.ID_Usuario }}" {% if garantia.ID_Empleado == inst.ID_Usuario %}selected{% endif %}>
-          {{ inst.Nombre }} {{ inst.Apellido }}
-        </option>
-      {% endfor %}
-    </select>
-  </div>
-
-  <button type="submit" class="btn btn-success">Actualizar</button>
-</form>
+</div>
 
 <script>
 function toggleInstalador(estado) {
@@ -51,4 +97,5 @@ function toggleInstalador(estado) {
     div.style.display = (estado === 'aprobada') ? 'block' : 'none';
 }
 </script>
+
 {% endblock %}
