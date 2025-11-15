@@ -1,59 +1,77 @@
 {% extends "transportista/base.html" %}
 
 {% block transportista_content %}
-<div class="container-fluid mt-3">
+<div class="container-fluid mt-3 custom-bg">
     <div class="row">
-        <!-- Sección Pedidos -->
+
+        <!-- =============== PEDIDOS / INSTALACIONES =============== -->
         <div class="col-lg-8 mb-4">
-            <div class="card border-0 shadow-sm" style="background-color: #f8f9fa;">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">{% if es_instalador %}Mis Instalaciones Asignadas{% else %}Mis Pedidos Asignados{% endif %}</h5>
+            <div class="card card-beauty shadow-lg border-0">
+                <div class="card-header card-header-green">
+                    <h5 class="mb-0 text-white fw-bold">
+                        {% if es_instalador %}
+                            Mis Instalaciones Asignadas
+                        {% else %}
+                            Mis Pedidos Asignados
+                        {% endif %}
+                    </h5>
                 </div>
+
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light">
+                        <table class="table table-hover table-beauty align-middle">
+                            <thead>
                                 <tr>
                                     <th>ID</th>
                                     <th>Cliente</th>
                                     <th>Dirección</th>
                                     <th>Estado</th>
-                                    <th>{% if es_instalador %}Fecha/Hora Instalación{% else %}Fecha Entrega{% endif %}</th>
+                                    <th>
+                                        {% if es_instalador %}
+                                            Fecha/Hora Instalación
+                                        {% else %}
+                                            Hora Llegada
+                                        {% endif %}
+                                    </th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for pedido in pedidos %}
                                 <tr>
-                                    <td>{{ pedido.ID_Pedido }}</td>
+                                    <td><b>{{ pedido.ID_Pedido }}</b></td>
                                     <td>{{ pedido.usuario.Nombre }} {{ pedido.usuario.Apellido or '' }}</td>
                                     <td>{{ pedido.Destino or 'Sin dirección' }}</td>
+
                                     <td>
-                                        <span class="badge 
-                                            {% if pedido.Estado == 'pendiente' %}bg-secondary
-                                            {% elif pedido.Estado == 'en proceso' %}bg-warning text-dark
-                                            {% elif pedido.Estado == 'en reparto' %}bg-primary
-                                            {% else %}bg-success{% endif %}">
+                                        <span class="badge rounded-pill px-3 py-2
+                                            {% if pedido.Estado == 'pendiente' %} bg-secondary
+                                            {% elif pedido.Estado == 'en proceso' %} bg-warning text-dark
+                                            {% elif pedido.Estado == 'en reparto' %} bg-primary
+                                            {% else %} bg-success{% endif %}
+                                        ">
                                             {{ pedido.Estado }}
                                         </span>
                                     </td>
+
                                     <td>
                                         {% if es_instalador %}
                                             {% set cal = calendario_por_pedido.get(pedido.ID_Pedido) %}
                                             {% if cal %}
-                                                {{ cal.Fecha.strftime('%d/%m/%Y') if cal.Fecha.strftime is defined else cal.Fecha }}
-                                                {{ cal.Hora.strftime('%H:%M') if cal.Hora.strftime is defined else cal.Hora }}
+                                                {{ cal.Fecha.strftime('%d/%m/%Y') }}
+                                                {{ cal.Hora.strftime('%H:%M') }}
                                             {% else %}
-                                                Por definir
+                                                <span class="text-muted">Por definir</span>
                                             {% endif %}
                                         {% else %}
-                                            {{ pedido.FechaEntrega.strftime('%d/%m/%Y') if pedido.FechaEntrega else 'Por definir' }}
+                                            {{ pedido.HoraLlegada.strftime('%H:%M') if pedido.HoraLlegada else 'Por definir' }}
                                         {% endif %}
                                     </td>
+
                                     <td>
                                         <a href="{{ url_for('transportista.seguimiento', id_pedido=pedido.ID_Pedido) }}" 
-                                           class="btn btn-sm btn-success">
-                                           <i class="bi bi-eye"></i> Ver
+                                           class="btn btn-success btn-sm btn-view">
+                                            <i class="bi bi-eye"></i> Ver
                                         </a>
                                     </td>
                                 </tr>
@@ -62,29 +80,33 @@
                         </table>
                     </div>
                 </div>
+
             </div>
         </div>
 
-        <!-- Sección Calendario -->
+        <!-- =============== CALENDARIO =============== -->
         <div class="col-lg-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">Mi Calendario</h5>
+            <div class="card card-beauty shadow-lg border-0">
+                <div class="card-header card-header-green">
+                    <h5 class="mb-0 text-white fw-bold">Mi Calendario</h5>
                 </div>
                 <div class="card-body">
-                    <div id="calendar-transportista"></div>
-                    <a href="{{ url_for('transportista.calendario') }}" class="btn btn-sm btn-outline-success mt-2">
+                    <div id="calendar-transportista" class="rounded shadow-sm p-2 bg-white"></div>
+
+                    <a href="{{ url_for('transportista.calendario') }}" class="btn btn-outline-success mt-3 w-100 fw-bold">
                         <i class="bi bi-arrow-right"></i> Ver completo
                     </a>
                 </div>
             </div>
         </div>
+
     </div>
 </div>
 
-<!-- Incluir CSS/JS del calendario -->
+<!-- CALENDARIO -->
 <link href="{{ url_for('static', filename='css/fullcalendar.min.css') }}" rel="stylesheet">
 <script src="{{ url_for('static', filename='js/fullcalendar.min.js') }}"></script>
+
 <script>
 $(function() {
     $('#calendar-transportista').calendar({
@@ -94,4 +116,67 @@ $(function() {
     });
 });
 </script>
+
+<!-- ESTILOS PREMIUM -->
+<style>
+/* Fondo general */
+.custom-bg {
+    background: #f6fff7;
+}
+
+/* Card modernizada */
+.card-beauty {
+    border-radius: 18px !important;
+    overflow: hidden;
+    background: white;
+}
+
+/* Header verde con degradado */
+.card-header-green {
+    background: linear-gradient(135deg, #1c8c47, #28a745);
+    padding: 15px 20px;
+}
+
+/* Tabla moderna */
+.table-beauty thead {
+    background: #e4f7e9;
+    font-weight: bold;
+}
+
+.table-beauty tbody tr {
+    transition: 0.25s ease;
+}
+
+.table-beauty tbody tr:hover {
+    background-color: #dff5e1 !important;
+    transform: scale(1.01);
+}
+
+/* Botón ver */
+.btn-view {
+    transition: 0.25s;
+}
+
+.btn-view:hover {
+    transform: scale(1.08);
+    background-color: #0f7c33;
+}
+
+/* Badges redondas elegantes */
+.badge {
+    font-size: 0.85rem;
+    padding: 8px 12px !important;
+}
+
+/* Calendario */
+#calendar-transportista {
+    border-radius: 12px;
+}
+
+/* Sombra bonita */
+.shadow-lg {
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15) !important;
+}
+</style>
+
 {% endblock %}
