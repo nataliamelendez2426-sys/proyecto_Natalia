@@ -148,24 +148,28 @@
   }
 
   /* Icono flotante de Chatbot */
-  .chatbot {
+  .chat#botonSoporte, #botonDefectuoso {
     position: fixed;
-    bottom: 30px;
-    right: 30px;
-    background: var(--verde);
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
+    right: 25px;
+    background: linear-gradient(135deg, #1b5e20, #2e7d32);
+    color: white;
+    border-radius: 50px;
+    padding: 12px 18px;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.2);
     display: flex;
-    justify-content: center;
     align-items: center;
-    cursor: pointer;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    transition: transform 0.3s, background 0.3s;
-    z-index: 1000;
+    gap: 10px;
+    text-decoration: none;
+    transition: background 0.3s, transform 0.2s;
+    z-index: 9999;
   }
 
-  .chatbot:hover { transform: scale(1.1); background: var(--verde-oscuro); }
+  #botonDefectuoso:hover {
+    background: linear-gradient(135deg, #0f5132, #1aa87f);
+    transform: scale(1.05);
+  }
 
   .chatbot img {
     width: 30px;
@@ -178,6 +182,58 @@
     .tarjeta { font-size:1.2rem; height:180px; }
     .chatbot { width:50px; height:50px; }
     .chatbot img { width:25px; height:25px; }
+  }
+
+  /* Widget Chat */
+  #chatWidget {
+    position: fixed;
+    bottom: 100px;
+    right: 30px;
+    width: 330px;
+    max-height: 60vh;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.2);
+    overflow: hidden;
+    display: none;
+    z-index: 1001;
+    border: 1px solid #e6f4ea;
+  }
+  #chatHeader {
+    background: linear-gradient(135deg, var(--verde-oscuro), var(--verde));
+    color: #fff;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  #chatTitle { font-weight: 700; }
+  #chatClose { background: transparent; border: 0; color: #fff; font-size: 18px; cursor: pointer; }
+  #chatBody {
+    background: #f8fff9;
+    padding: 12px;
+    height: 46vh;
+    overflow-y: auto;
+  }
+  .msg { display: flex; margin-bottom: 10px; }
+  .msg .bubble { padding: 8px 12px; border-radius: 14px; max-width: 80%; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .msg.client { justify-content: flex-end; }
+  .msg.client .bubble { background: #e8f5e9; color: #134e18; border-bottom-right-radius: 4px; }
+  .msg.bot { justify-content: flex-start; }
+  .msg.bot .bubble { background: #ffffff; border: 1px solid #e0f0e4; color: #1b5e20; border-bottom-left-radius: 4px; }
+  #chatFooter { padding: 10px 12px; border-top: 1px solid #e6f4ea; background: #fff; }
+  #chatInput { width: 100%; border: 1px solid #d7eadb; border-radius: 20px; padding: 10px 12px; outline: none; }
+  #sendBtn { margin-left: 8px; border: none; background: var(--verde); color: #fff; padding: 8px 12px; border-radius: 18px; }
+  #sendBtn:hover { background: var(--verde-oscuro); }
+  #chatPedidoSelect { min-width: 120px; border: 1px solid #cfe8d1; border-radius: 14px; padding: 6px 8px; margin-right: 6px; font-size: 12px; background: #f6fffa; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .chip { background: #e6f4ea; color: #146c43; border: 1px solid #cfe8d1; padding: 6px 10px; border-radius: 16px; cursor: pointer; font-size: 12px; }
+  .chip:hover { background: #dff5e6; }
+
+  @media(max-width:768px){
+    .hero h1 { font-size:2.5rem; }
+    .hero p { font-size:1.2rem; }
+    .tarjeta { font-size:1.2rem; height:180px; }
   }
 </style>
 
@@ -297,9 +353,9 @@
 </style>
 
 <!-- Botón flotante -->
-<a href="{{ url_for('cliente.chat_cliente') }}" id="botonSoporte">
+<a href="#" id="botonSoporte" title="Chat con CasaBot">
     <i class="fas fa-headset"></i>
-    Soporte Técnico
+    Chat Soporte
 </a>
 <!-- Nuevo botón flotante Registrar Producto Defectuoso -->
 <a href="{{ url_for('cliente.seleccionar_pedido_defectuoso') }}" id="botonDefectuoso">
@@ -307,58 +363,112 @@
     Registrar producto defectuoso
 </a>
 
+<!-- Chat Widget -->
+<div id="chatWidget" role="dialog" aria-label="Chat con CasaBot">
+  <div id="chatHeader">
+    <span id="chatTitle">CasaBot</span>
+    <button id="chatClose" aria-label="Cerrar">×</button>
+  </div>
+  <div id="chatBody">
+    <div class="chips">
+      <span class="chip" data-text="ver mis pedidos">ver mis pedidos</span>
+      <span class="chip" data-text="horarios de atencion">horarios de atencion</span>
+      <span class="chip" data-text="estado de mi pedido">estado de mi pedido</span>
+    </div>
+    <div id="chatMessages"></div>
+  </div>
+  <div id="chatFooter" class="d-flex align-items-center">
+    <select id="chatPedidoSelect" title="Pedido">
+      <option value="">Pedido...</option>
+    </select>
+    <input id="chatInput" type="text" placeholder="Escribe tu mensaje..." />
+    <button id="sendBtn">Enviar</button>
+  </div>
+  
+</div>
 
-<style>
-#botonSoporte, #botonDefectuoso {
-    position: fixed;
-    right: 25px;
-    background: #007bff;
-    color: white;
-    border-radius: 50px;
-    padding: 12px 18px;
-    font-weight: 600;
-    font-family: 'Poppins', sans-serif;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    text-decoration: none;
-    transition: background 0.3s, transform 0.2s;
-    z-index: 9999;
-}
+<script>
+(function(){
+  const el = {
+    toggle: document.getElementById('botonSoporte'),
+    widget: document.getElementById('chatWidget'),
+    close: document.getElementById('chatClose'),
+    input: document.getElementById('chatInput'),
+    send: document.getElementById('sendBtn'),
+    msgs: document.getElementById('chatMessages'),
+    chips: document.querySelectorAll('.chip'),
+    sel: document.getElementById('chatPedidoSelect')
+  };
 
-/* Botón de soporte técnico abajo */
-#botonSoporte {
-    bottom: 25px;
-}
+  let lastTs = null;
+  const fetchUrl = "{{ url_for('cliente.api_chat_fetch') }}";
+  const sendUrl = "{{ url_for('cliente.api_chat_send') }}";
+  const pedidosUrl = "{{ url_for('cliente.api_chat_pedidos') }}";
 
-/* Botón de registrar producto defectuoso encima del soporte técnico */
-#botonDefectuoso {
-    bottom: 95px;
-    background: #28a745;
-}
+  function scrollBottom(){ el.msgs.parentElement.scrollTop = el.msgs.parentElement.scrollHeight; }
 
-#botonDefectuoso:hover {
-    background: #1e7e34;
-    transform: scale(1.05);
-}
+  function renderMessage({contenido, enviado_admin, fecha}) {
+    const wrap = document.createElement('div');
+    wrap.className = 'msg ' + (enviado_admin ? 'bot' : 'client');
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    b.textContent = contenido;
+    wrap.appendChild(b);
+    el.msgs.appendChild(wrap);
+  }
 
-#botonSoporte:hover {
-    background: #0056b3;
-    transform: scale(1.05);
-}
+  async function fetchMessages(){
+    try {
+      const params = lastTs ? ('?after='+encodeURIComponent(lastTs)) : '';
+      const res = await fetch(fetchUrl + params);
+      const data = await res.json();
+      if (data && data.ok && Array.isArray(data.mensajes)){
+        data.mensajes.forEach(m => {
+          renderMessage(m);
+          lastTs = m.fecha;
+        });
+        if (data.mensajes.length){ scrollBottom(); }
+      }
+    } catch(e) { /* silencioso */ }
+  }
 
-#botonSoporte:active, #botonDefectuoso:active {
-    transform: scale(0.95);
-}
+  async function sendMessage(text){
+    if (!text) return;
+    // pinta inmediato lado cliente
+    renderMessage({contenido: text, enviado_admin: false, fecha: new Date().toISOString()});
+    scrollBottom();
+    el.input.value='';
+    try {
+      await fetch(sendUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mensaje: text, pedido_id: el.sel && el.sel.value ? Number(el.sel.value) : null })
+      });
+      // pequeño delay y trae respuesta del bot
+      setTimeout(fetchMessages, 400);
+    } catch(e) { /* silencioso */ }
+  }
 
-#botonSoporte i, #botonDefectuoso i {
-    font-size: 1.2rem;
-}
-</style>
+  async function loadPedidos(){
+    try {
+      const res = await fetch(pedidosUrl);
+      const data = await res.json();
+      if (data && data.ok && Array.isArray(data.pedidos)){
+        el.sel.innerHTML = '<option value="">Pedido...</option>' + data.pedidos.map(p => `<option value="${p.id}">#${p.id} (${p.estado||''})</option>`).join('');
+      }
+    } catch(e) {}
+  }
 
+  el.toggle.addEventListener('click', async (e)=>{ e.preventDefault(); el.widget.style.display = 'block'; await loadPedidos(); fetchMessages(); });
+  el.close.addEventListener('click', ()=>{ el.widget.style.display = 'none'; });
+  el.send.addEventListener('click', ()=> sendMessage(el.input.value.trim()));
+  el.input.addEventListener('keydown', (ev)=>{ if (ev.key === 'Enter') sendMessage(el.input.value.trim()); });
+  el.chips.forEach(c => c.addEventListener('click', ()=> sendMessage(c.dataset.text)));
 
-
+  // Polling ligero cada 5s cuando está abierto
+  setInterval(()=>{ if (el.widget.style.display === 'block') fetchMessages(); }, 5000);
+})();
+</script>
 
 {% if mostrar_bienvenida %}
 <style>
@@ -437,5 +547,3 @@ document.addEventListener('DOMContentLoaded', () => {
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 
 {% endblock %}
-
-

@@ -24,12 +24,12 @@
         <tbody>
             {% set subtotal = 0 %}
             {% for detalle in pedido.detalles_pedido %}
-                {% set item_total = detalle.Cantidad * detalle.PrecioUnidad %}
+                {% set item_total = (detalle.Cantidad or 0) * (detalle.PrecioUnidad or 0) %}
                 {% set subtotal = subtotal + item_total %}
                 <tr>
                     <td>{{ detalle.producto.NombreProducto }}</td>
                     <td>{{ detalle.Cantidad }}</td>
-                    <td>${{ '%.2f'|format(detalle.PrecioUnidad) }}</td>
+                    <td>${{ '%.2f'|format(detalle.PrecioUnidad or 0) }}</td>
                     <td>${{ '%.2f'|format(item_total) }}</td>
                 </tr>
             {% endfor %}
@@ -47,7 +47,9 @@
         <p><em>No se han registrado pagos</em></p>
     {% endif %}
 
-    <p class="total"><b>Total: ${{ '%.2f'|format(subtotal) }}</b></p>
+    <p class="total">
+        <b>Total: ${{ '%.2f'|format(total_final or 0) }}</b>
+    </p>
 
     <button class="btn-volver" id="btnPDF">Generar PDF</button>
     <a href="{{ url_for('cliente.historial') }}" class="btn-volver">Volver al historial</a>
@@ -158,13 +160,19 @@ document.getElementById("btnPDF").addEventListener("click", () => {
         startY: 60
     });
 
+    // Total
+    const totalFinalStr = "{{ '%.2f'|format(total_final or 0) }}";
+    doc.setFontSize(14);
+    doc.text("Total: $" + totalFinalStr, 20, doc.lastAutoTable.finalY + 12);
+
     // Pagos
     {% if pedido.pagos %}
         let pagos_text = "Pagos:\n";
         {% for pago in pedido.pagos %}
             pagos_text += "- ${{ '%.2f'|format(pago.Monto) }} ({{ pago.MetodoPago }}) el {{ pago.FechaPago.strftime('%d/%m/%Y') }}\n";
         {% endfor %}
-        doc.text(pagos_text, 20, doc.lastAutoTable.finalY + 20);
+        doc.setFontSize(12);
+        doc.text(pagos_text, 20, doc.lastAutoTable.finalY + 24);
     {% endif %}
 
     doc.save(`recibo_{{ pedido.ID_Pedido }}.pdf`);

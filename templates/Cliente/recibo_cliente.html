@@ -4,34 +4,94 @@
     <meta charset="UTF-8">
     <title>Recibo Pedido {{ pedido.ID_Pedido }}</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        h2 { text-align: center; color: #5f8f3f; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; }
-        th { background-color: #5f8f3f; color: white; }
+        :root {
+            --verde: #2e7d32;
+            --verde-oscuro: #1b5e20;
+            --verde-suave: #e8f5e9;
+            --gris-borde: #dfe5db;
+        }
+        body { font-family: Arial, sans-serif; padding: 28px; background: #f7faf7; color:#2b2b2b; }
+        .recibo { max-width: 900px; margin: 0 auto; background: #fff; border: 1px solid var(--gris-borde); border-radius: 12px; overflow: hidden; box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+        .recibo-header { background: linear-gradient(135deg, var(--verde-oscuro), var(--verde)); color: #fff; padding: 20px 24px; }
+        .recibo-header h2 { margin: 0; text-align: center; font-weight: 700; letter-spacing: .3px; }
+        .recibo-body { padding: 22px 24px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+        .info-card { background: var(--verde-suave); border: 1px solid var(--gris-borde); border-radius: 10px; padding: 12px 14px; }
+        .info-card h4 { margin: 0 0 6px; color: var(--verde-oscuro); font-size: 15px; }
+        .info-card p { margin: 2px 0; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 18px; }
+        th, td { border: 1px solid var(--gris-borde); padding: 10px; font-size: 14px; }
+        thead th { background-color: var(--verde); color: white; }
+        tfoot td { font-weight: bold; }
+        .totales { margin-top: 16px; display: grid; gap: 8px; max-width: 360px; margin-left: auto; }
+        .row-total { display: flex; justify-content: space-between; background: #fafdf9; border: 1px solid var(--gris-borde); border-radius: 8px; padding: 10px 12px; }
+        .total-final { background: var(--verde); color: #fff; border: none; }
+        .footer { padding: 12px 16px; text-align: center; color:#5d6b5d; font-size: 12px; border-top: 1px solid var(--gris-borde); }
     </style>
 </head>
 <body>
-    <h2>Recibo de Pedido #{{ pedido.ID_Pedido }}</h2>
-    <p><strong>Cliente:</strong> {{ pedido.NombreComprador }}</p>
-    <p><strong>Transportista:</strong> {{ pedido.TransportistaNombre or 'No asignado' }}</p>
-    <p><strong>Dirección de Entrega:</strong> {{ pedido.Destino }}</p>
+    <div class="recibo">
+        <div class="recibo-header">
+            <h2>Recibo de Pedido #{{ pedido.ID_Pedido }}</h2>
+        </div>
+        <div class="recibo-body">
+            <div class="grid">
+                <div class="info-card">
+                    <h4>Datos del Cliente</h4>
+                    <p><strong>Nombre:</strong> {{ pedido.usuario.Nombre }} {{ pedido.usuario.Apellido or '' }}</p>
+                    <p><strong>Correo:</strong> {{ pedido.usuario.Correo }}</p>
+                    <p><strong>Teléfono:</strong> {{ pedido.usuario.Telefono or 'No registrado' }}</p>
+                </div>
+                <div class="info-card">
+                    <h4>Entrega</h4>
+                    <p><strong>Dirección:</strong> {{ pedido.Destino or 'No especificada' }}</p>
+                    <p><strong>Estado:</strong> {{ pedido.Estado|capitalize }}</p>
+                    <p><strong>Hora llegada:</strong> {{ pedido.HoraLlegada.strftime('%d/%m/%Y %H:%M') if pedido.HoraLlegada else 'Por definir' }}</p>
+                </div>
+                <div class="info-card">
+                    <h4>Pedido</h4>
+                    <p><strong>Fecha de pedido:</strong> {{ pedido.FechaPedido.strftime('%d/%m/%Y') if pedido.FechaPedido else '-' }}</p>
+                    {% set pago = pedido.pagos[0] if pedido.pagos else None %}
+                    <p><strong>Método de pago:</strong> {{ pago.MetodoPago if pago else 'Por confirmar' }}</p>
+                    <p><strong>Transportista:</strong> {{ (pedido.empleado.Nombre ~ ' ' ~ (pedido.empleado.Apellido or '')) if pedido.empleado else 'No asignado' }}</p>
+                </div>
+            </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Producto</th>
-                <th>Cantidad</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for detalle in pedido.detalles_pedido %}
-            <tr>
-                <td>{{ detalle.producto.NombreProducto }}</td>
-                <td>{{ detalle.Cantidad }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Precio</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% set total = 0 %}
+                {% for detalle in pedido.detalles_pedido %}
+                {% set subtotal = (detalle.Cantidad or 0) * (detalle.PrecioUnidad or 0) %}
+                {% set total = total + subtotal %}
+                <tr>
+                    <td>{{ detalle.producto.NombreProducto }}</td>
+                    <td>{{ detalle.Cantidad }}</td>
+                    <td>${{ '%.2f' | format(detalle.PrecioUnidad or 0) }}</td>
+                    <td>${{ '%.2f' | format(subtotal) }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+
+            {% set descuento = pedido.Descuento or 0 %}
+            {% set total_final = (total - descuento) if total > 0 else 0 %}
+            <div class="totales">
+                <div class="row-total"><span>Subtotal</span><span>${{ '%.2f' | format(total) }}</span></div>
+                <div class="row-total"><span>Descuento</span><span>-${{ '%.2f' | format(descuento) }}</span></div>
+                <div class="row-total total-final"><span>Total a pagar</span><span>${{ '%.2f' | format(total_final if total_final > 0 else 0) }}</span></div>
+            </div>
+        </div>
+        <div class="footer">
+            Gracias por su compra. Este recibo fue generado automáticamente.
+        </div>
+    </div>
 </body>
 </html>

@@ -158,6 +158,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   let carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
+  const clienteNombre = "{{ current_user.Nombre }} {{ current_user.Apellido or '' }}";
 
   const listaCarritoDOM = document.getElementById('lista-carrito');
   const carritoTotalDOM = document.getElementById('carrito-total');
@@ -185,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
       col.className = 'col-12 col-md-6 col-lg-4';
       col.innerHTML = `
         <div class="card card-modern h-100">
-          <img src="${item.imagen || '{{ url_for('static', filename='img/catalogo.png') }}'}" 
+          <img src="${item.imagen || "{{ url_for('static', filename='img/catalogo.png') }}"}" 
                class="card-img-top p-3" alt="${item.nombre}" 
                style="height:200px;object-fit:contain;">
           <div class="card-body d-flex flex-column">
@@ -232,18 +233,65 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  const generarPDF = (items, total) => {
+  const generarPDF = (items, total, meta = {}) => {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text("Recibo de Compra", 105, 15, { align: "center" });
-    doc.setFontSize(12);
+    // Header verde
+    doc.setFillColor(40, 167, 69); // verde bootstrap
+    doc.rect(0, 0, 210, 22, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(18);
+    doc.text("Recibo de Compra", 105, 14, { align: "center" });
+
+    // Info básica
+    doc.setTextColor(0,0,0);
+    doc.setFontSize(11);
+    const fechaStr = (meta.fecha instanceof Date ? meta.fecha : new Date()).toLocaleString();
+    const metodoStr = meta.metodo ? String(meta.metodo) : 'No especificado';
+    const dirStr = meta.direccion ? String(meta.direccion) : 'No especificada';
+    const pedidoIdStr = meta.pedido_id ? `Pedido #${meta.pedido_id}` : '';
+
     let y = 30;
+    doc.text(`Cliente: ${clienteNombre}`, 14, y); y += 7;
+    if (pedidoIdStr) { doc.text(pedidoIdStr, 14, y); y += 7; }
+    doc.text(`Fecha: ${fechaStr}`, 14, y); y += 7;
+    doc.text(`Método de pago: ${metodoStr}`, 14, y); y += 7;
+    doc.text(`Dirección: ${dirStr}`, 14, y); y += 10;
+
+    // Encabezados tabla
+    doc.setFillColor(46, 125, 50);
+    doc.setTextColor(255,255,255);
+    doc.rect(14, y, 182, 8, 'F');
+    doc.text('Producto', 16, y+5);
+    doc.text('Cant.', 120, y+5);
+    doc.text('Precio', 142, y+5);
+    doc.text('Subtotal', 170, y+5);
+
+    // Filas
+    doc.setTextColor(0,0,0);
+    y += 12;
     items.forEach(item => {
-      doc.text(`${item.nombre} x ${item.cantidad} = $${(item.precio*item.cantidad).toFixed(2)}`, 20, y);
-      y += 10;
+      const nombre = String(item.nombre || '');
+      const cant = Number(item.cantidad || 0);
+      const precio = Number(item.precio || 0);
+      const sub = cant * precio;
+      doc.text(nombre.substring(0, 60), 16, y);
+      doc.text(String(cant), 122, y, { align: 'left' });
+      doc.text(`$${precio.toFixed(2)}`, 144, y, { align: 'left' });
+      doc.text(`$${sub.toFixed(2)}`, 172, y, { align: 'left' });
+      y += 8;
+      if (y > 270) { doc.addPage(); y = 20; }
     });
-    doc.text(`Total: $${total.toFixed(2)}`, 20, y + 10);
+
+    // Total
+    y += 4;
+    doc.setDrawColor(220);
+    doc.line(14, y, 196, y);
+    y += 8;
+    doc.setFontSize(12);
+    doc.setTextColor(46,125,50);
+    doc.text(`Total: $${total.toFixed(2)}`, 196, y, { align: 'right' });
+
     doc.save("recibo.pdf");
   };
 
@@ -290,6 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const carritoParaBackend = carrito.map(item => ({
       ID_Producto: item.id,
+      nombre: item.nombre,
       cantidad: item.cantidad || 1,
       precio: item.precio
     }));
@@ -309,7 +358,12 @@ document.addEventListener('DOMContentLoaded', () => {
         renderizarCarrito();
         document.getElementById('total-modal').textContent = `Total: $${totalCompra.toFixed(2)}`;
         btnPDF.classList.remove('d-none');
-        btnPDF.onclick = () => generarPDF(carritoParaBackend, totalCompra);
+        const direccionTexto = direccionSelect.value || '';
+        btnPDF.onclick = () => generarPDF(
+          carritoParaBackend,
+          totalCompra,
+          { fecha: new Date(), metodo, direccion: direccionTexto, pedido_id: data.pedido_id }
+        );
         new bootstrap.Modal(document.getElementById('modalConfirmacion')).show();
       } else {
         alert(data.mensaje || 'Error procesando pago');

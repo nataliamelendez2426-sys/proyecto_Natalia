@@ -5,6 +5,7 @@ from flask_login import current_user
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from basedatos.models import db, Usuario, Notificaciones, Direccion, Calendario,Pedido, Producto, Resena, Detalle_Pedido, Pagos,Mensaje,Garantia ,GarantiaArchivo ,Categorias ,FotoProductoDefectuoso ,ProductoDefectuoso ,GarantiaProducto
+from basedatos.models import Mensaje
 from basedatos.decoradores import role_required
 from basedatos.notificaciones import crear_notificacion
 from datetime import date,datetime
@@ -41,6 +42,97 @@ def dashboard():
         mostrar_bienvenida=mostrar_bienvenida,
         nombre_completo=nombre_completo
     )
+
+
+# ---------- CHAT CLIENTE (API) ----------
+@cliente.route('/api/chat/send', methods=['POST'])
+@login_required
+def api_chat_send():
+    data = request.get_json(silent=True) or {}
+    texto = (data.get('mensaje') or '').strip()
+    pedido_id = data.get('pedido_id')
+    if not texto:
+        return jsonify({"ok": False, "error": "Mensaje vacío"}), 400
+
+    # Guardar mensaje del cliente
+    msg = Mensaje(cliente_id=current_user.ID_Usuario, contenido=texto, enviado_admin=False)
+    db.session.add(msg)
+    db.session.commit()
+
+    # Generar respuesta básica de CasaBot según intentos simples
+    lower = texto.lower()
+    respuesta = None
+
+    if 'ver mis pedidos' in lower or 'mis pedidos' in lower:
+        respuesta = f"Puedes ver tus pedidos aquí: {url_for('cliente.historial')}"
+    elif 'horarios' in lower or 'atencion' in lower:
+        respuesta = "Nuestro horario de atención es L-V 8:00-18:00 y Sáb 9:00-13:00."
+    elif 'estado de mi pedido' in lower or 'estado pedido' in lower:
+        consulta = None
+        if pedido_id:
+            consulta = Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Usuario=current_user.ID_Usuario).first()
+        if not consulta:
+            consulta = Pedido.query.filter_by(ID_Usuario=current_user.ID_Usuario).order_by(Pedido.FechaPedido.desc()).first()
+        if consulta:
+            respuesta = f"El pedido #{consulta.ID_Pedido} está en estado: {consulta.Estado}."
+        else:
+            respuesta = "Aún no encuentro pedidos en tu cuenta."
+    elif 'hablar con un asesor' in lower or 'asesor' in lower:
+        respuesta = "He notificado a un asesor. Te responderá a la brevedad por este chat."
+    elif 'solicitar garantia' in lower or 'garantia' in lower:
+        respuesta = f"Para solicitar garantía, elige tu pedido aquí: {url_for('cliente.seleccionar_pedido_defectuoso')}"
+    elif 'ver notificaciones' in lower or 'notificaciones' in lower:
+        respuesta = f"Puedes ver tus notificaciones aquí: {url_for('cliente.ver_notificaciones_cliente')}"
+    elif 'registrar producto defectuoso' in lower or 'producto defectuoso' in lower or 'defectuoso' in lower:
+        respuesta = f"Registra tu producto defectuoso aquí: {url_for('cliente.seleccionar_pedido_defectuoso')}"
+    else:
+        respuesta = "Gracias por tu mensaje. Un asesor te responderá pronto. También puedes usar las sugerencias."
+
+    bot = Mensaje(cliente_id=current_user.ID_Usuario, contenido=respuesta, enviado_admin=True)
+    db.session.add(bot)
+    db.session.commit()
+
+    return jsonify({"ok": True})
+
+
+@cliente.route('/api/chat/fetch', methods=['GET'])
+@login_required
+def api_chat_fetch():
+    after = request.args.get('after')
+    q = Mensaje.query.filter_by(cliente_id=current_user.ID_Usuario)
+    if after:
+        # formato ISO: 'YYYY-MM-DDTHH:MM:SS'
+        try:
+            from datetime import datetime
+            dt = datetime.fromisoformat(after)
+            q = q.filter(Mensaje.fecha > dt)
+        except Exception:
+            pass
+    msgs = q.order_by(Mensaje.fecha.asc()).all()
+    return jsonify({
+        "ok": True,
+        "mensajes": [
+            {
+                "id": m.id,
+                "contenido": m.contenido,
+                "enviado_admin": bool(m.enviado_admin),
+                "fecha": m.fecha.isoformat()
+            } for m in msgs
+        ]
+    })
+
+
+@cliente.route('/api/chat/pedidos', methods=['GET'])
+@login_required
+def api_chat_pedidos():
+    pedidos = Pedido.query.filter_by(ID_Usuario=current_user.ID_Usuario).order_by(Pedido.FechaPedido.desc()).all()
+    return jsonify({
+        "ok": True,
+        "pedidos": [
+            {"id": p.ID_Pedido, "estado": p.Estado, "fecha": p.FechaPedido.isoformat() if p.FechaPedido else None}
+            for p in pedidos
+        ]
+    })
 
 
 @cliente.route("/notificaciones", methods=["GET", "POST"])
@@ -735,7 +827,12 @@ def historial():
     
   
     for pedido in pedidos:
-        pedido.subtotal = sum(detalle.Cantidad * detalle.PrecioUnidad for detalle in pedido.detalles_pedido)
+        subtotal = 0.0
+        for detalle in pedido.detalles_pedido:
+            cant = float(detalle.Cantidad or 0)
+            precio = detalle.PrecioUnidad if detalle.PrecioUnidad not in (None, 0) else (detalle.producto.PrecioUnidad or 0)
+            subtotal += cant * float(precio or 0)
+        pedido.subtotal = subtotal
     
     return render_template('cliente/historial_transacciones.html', pedidos=pedidos)
 
@@ -745,7 +842,33 @@ def historial():
 @login_required
 def ver_pedido(pedido_id):
     pedido = Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Usuario=current_user.ID_Usuario).first_or_404()
-    return render_template('cliente/ver_pedido.html', pedido=pedido)
+    # Calcular totales de forma segura
+    subtotal = 0.0
+    for det in pedido.detalles_pedido:
+        try:
+            cantidad = float(det.Cantidad or 0)
+            precio_raw = det.PrecioUnidad if det.PrecioUnidad not in (None, 0) else (getattr(det.producto, 'PrecioUnidad', 0) or 0)
+            precio = float(precio_raw or 0)
+        except Exception:
+            cantidad = 0.0
+            precio = 0.0
+        subtotal += (cantidad * precio)
+    # Fallback: si no hay detalle con precio/cantidad, usar suma de pagos
+    if (subtotal == 0.0 or subtotal is None) and pedido.pagos:
+        try:
+            subtotal = float(sum(p.Monto or 0 for p in pedido.pagos))
+        except Exception:
+            subtotal = 0.0
+    descuento = float(pedido.Descuento or 0)
+    total_final = max(subtotal - descuento, 0.0)
+
+    return render_template(
+        'cliente/ver_pedido.html',
+        pedido=pedido,
+        subtotal=subtotal,
+        descuento=descuento,
+        total_final=total_final
+    )
 
 
 @cliente.route('/pedido/<int:pedido_id>/eliminar', methods=['POST'])
