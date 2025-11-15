@@ -2,147 +2,168 @@
 {% block navbar %}
   {% include "common/partials/navbar_admin.html" %}
 {% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <h2 class="mb-4 text-center"><i class="bi bi-tools me-2"></i>Gestión de Productos Defectuosos</h2>
 
-    {# --- Mensajes flash --- #}
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+<div class="container mt-5 mb-5">
 
-    <div class="table-responsive shadow-sm rounded">
-        <table class="table table-bordered align-middle text-center">
-            <thead class="table-dark">
-                <tr>
-                    <th>ID</th>
-                    <th>Producto</th>
-                    <th>Cliente</th>
-                    <th>Motivo</th>
-                    <th>Estado</th>
-                    <th>Fecha Registro</th>
-                    <th>Técnico Asignado</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for registro in registros %}
-                <tr>
-                    <td>{{ registro.ID }}</td>
-                    <td>{{ registro.producto.NombreProducto }}</td>
-                    <td>{{ registro.usuario.Nombre }} {{ registro.usuario.Apellido }}</td>
-                    <td>{{ registro.Motivo }}</td>
-                    <td>
-                        {% if registro.Estado == 'pendiente' %}
-                            <span class="badge bg-secondary">Pendiente</span>
-                        {% elif registro.Estado == 'en_proceso' %}
-                            <span class="badge bg-warning text-dark">En Proceso</span>
-                        {% elif registro.Estado == 'resuelto_tecnico' %}
-                            <span class="badge bg-success">Resuelto (Técnico)</span>
-                        {% elif registro.Estado == 'resuelto_devolucion' %}
-                            <span class="badge bg-info text-dark">Resuelto (Devolución)</span>
-                        {% elif registro.Estado == 'rechazada' %}
-                            <span class="badge bg-danger">Rechazada</span>
-                            {% if registro.ComentarioAdmin %}
-                                <div class="text-muted small">{{ registro.ComentarioAdmin }}</div>
-                            {% endif %}
-                        {% endif %}
-                    </td>
-                    <td>{{ registro.FechaRegistro.strftime('%d/%m/%Y %H:%M') }}</td>
-                    <td>
-                        {% if registro.ID_Empleado %}
-                            {{ registro.empleado.Nombre }} {{ registro.empleado.Apellido }}
-                        {% else %}
-                            <span class="text-muted">No asignado</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <form action="{{ url_for('admin.solucionar_defecto', id_garantia=registro.ID) }}"
-                              method="POST" class="d-flex flex-column gap-2" onsubmit="return validarForm(this);">
+    <div class="card shadow-lg border-0 rounded-4">
+        <div class="card-header bg-success text-white rounded-top-4 py-3">
+            <h2 class="mb-0 text-center">
+                <i class="bi bi-tools me-2"></i>Gestión de Productos Defectuosos
+            </h2>
+        </div>
 
-                            <!-- Select de técnico -->
-                            <select name="empleado" class="form-select form-select-sm">
-                                <option value="">Seleccionar técnico</option>
-                                {% for emp in instaladores %}
-                                    <option value="{{ emp.ID_Usuario }}"
-                                            {% if registro.ID_Empleado == emp.ID_Usuario %}selected{% endif %}>
-                                        {{ emp.Nombre }} {{ emp.Apellido }}
-                                    </option>
-                                {% endfor %}
-                            </select>
+        <div class="card-body">
 
-                            <div class="btn-group mb-2" role="group">
-                                <button type="submit" name="accion" value="proceso" class="btn btn-warning btn-sm">
-                                    <i class="bi bi-hourglass-split"></i> En Proceso
-                                </button>
-                                <button type="submit" name="accion" value="tecnico" class="btn btn-success btn-sm">
-                                    <i class="bi bi-check-circle"></i> Resuelto Técnico
-                                </button>
-                                <button type="submit" name="accion" value="devolucion" class="btn btn-info btn-sm">
-                                    <i class="bi bi-arrow-repeat"></i> Devolución
-                                </button>
-                            </div>
-
-                            <!-- Motivo de rechazo -->
-                            <textarea name="motivo_rechazo" class="form-control form-control-sm mb-1" 
-                                      placeholder="Motivo de rechazo (solo si va a rechazar)" rows="2"></textarea>
-                            <button type="submit" name="accion" value="rechazada" class="btn btn-danger btn-sm">
-                                <i class="bi bi-x-circle"></i> Rechazada
-                            </button>
-                        </form>
-
-                        {# --- Botón Agendar cita solo para en_proceso --- #}
-                        {% if registro.Estado == 'en_proceso' %}
-                            <button class="btn btn-sm btn-success mt-1" 
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#agendarCitaModal{{ registro.ID }}">
-                                Agendar cita
-                            </button>
-                        {% endif %}
-                    </td>
-                </tr>
-
-                {# --- Fotos asociadas --- #}
-                {% if registro.fotos %}
-                <tr>
-                    <td colspan="8" class="bg-light">
-                        <div class="d-flex flex-wrap justify-content-center gap-2 py-2">
-                            {% for foto in registro.fotos %}
-                                {% set ruta = foto.RutaArchivo.replace('static\\', '').replace('\\', '/') %}
-                                <a href="{{ url_for('static', filename=ruta) }}" target="_blank">
-                                    <img src="{{ url_for('static', filename=ruta) }}"
-                                         alt="Foto defecto"
-                                         class="img-thumbnail border"
-                                         style="width: 110px; height: 110px; object-fit: cover;">
-                                </a>
-                            {% endfor %}
+            {# --- Mensajes flash --- #}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm rounded-3" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
-                    </td>
-                </tr>
+                    {% endfor %}
                 {% endif %}
+            {% endwith %}
 
-                {% else %}
-                <tr>
-                    <td colspan="8" class="text-center py-4 text-muted">
-                        <i class="bi bi-emoji-smile"></i> No hay reportes de productos defectuosos.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+            <div class="table-responsive shadow-sm rounded">
+                <table class="table table-hover table-bordered align-middle text-center">
+                    <thead class="table-success">
+                        <tr>
+                            <th>ID</th>
+                            <th>Producto</th>
+                            <th>Cliente</th>
+                            <th>Motivo</th>
+                            <th>Estado</th>
+                            <th>Fecha Registro</th>
+                            <th>Técnico Asignado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for registro in registros %}
+                        <tr>
+                            <td>{{ registro.ID }}</td>
+                            <td>{{ registro.producto.NombreProducto }}</td>
+                            <td>{{ registro.usuario.Nombre }} {{ registro.usuario.Apellido }}</td>
+                            <td>{{ registro.Motivo }}</td>
+
+                            <!-- Estado con badges -->
+                            <td>
+                                {% if registro.Estado == 'pendiente' %}
+                                    <span class="badge bg-secondary">Pendiente</span>
+                                {% elif registro.Estado == 'en_proceso' %}
+                                    <span class="badge bg-warning text-dark">En Proceso</span>
+                                {% elif registro.Estado == 'resuelto_tecnico' %}
+                                    <span class="badge bg-success">Resuelto (Técnico)</span>
+                                {% elif registro.Estado == 'resuelto_devolucion' %}
+                                    <span class="badge bg-info text-dark">Resuelto (Devolución)</span>
+                                {% elif registro.Estado == 'rechazada' %}
+                                    <span class="badge bg-danger">Rechazada</span>
+                                    {% if registro.ComentarioAdmin %}
+                                        <div class="text-muted small">{{ registro.ComentarioAdmin }}</div>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+
+                            <td>{{ registro.FechaRegistro.strftime('%d/%m/%Y %H:%M') }}</td>
+
+                            <td>
+                                {% if registro.ID_Empleado %}
+                                    {{ registro.empleado.Nombre }} {{ registro.empleado.Apellido }}
+                                {% else %}
+                                    <span class="text-muted">No asignado</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                <form action="{{ url_for('admin.solucionar_defecto', id_garantia=registro.ID) }}"
+                                      method="POST" class="d-flex flex-column gap-2" onsubmit="return validarForm(this);">
+
+                                    <!-- Select técnico -->
+                                    <select name="empleado" class="form-select form-select-sm shadow-sm">
+                                        <option value="">Seleccionar técnico</option>
+                                        {% for emp in instaladores %}
+                                            <option value="{{ emp.ID_Usuario }}"
+                                                    {% if registro.ID_Empleado == emp.ID_Usuario %}selected{% endif %}>
+                                                {{ emp.Nombre }} {{ emp.Apellido }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+
+                                    <!-- Botones de acciones -->
+                                    <div class="btn-group mb-2" role="group">
+                                        <button type="submit" name="accion" value="proceso" class="btn btn-warning btn-sm">
+                                            <i class="bi bi-hourglass-split"></i> En Proceso
+                                        </button>
+                                        <button type="submit" name="accion" value="tecnico" class="btn btn-success btn-sm">
+                                            <i class="bi bi-check-circle"></i> Resuelto Técnico
+                                        </button>
+                                        <button type="submit" name="accion" value="devolucion" class="btn btn-info btn-sm">
+                                            <i class="bi bi-arrow-repeat"></i> Devolución
+                                        </button>
+                                    </div>
+
+                                    <!-- Rechazo -->
+                                    <textarea name="motivo_rechazo" class="form-control form-control-sm shadow-sm"
+                                              placeholder="Motivo de rechazo (si aplica)" rows="2"></textarea>
+                                    <button type="submit" name="accion" value="rechazada" class="btn btn-danger btn-sm">
+                                        <i class="bi bi-x-circle"></i> Rechazada
+                                    </button>
+                                </form>
+
+                                <!-- Botón agendar cita -->
+                                {% if registro.Estado == 'en_proceso' %}
+                                    <button class="btn btn-sm btn-success mt-1 rounded-pill px-3"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#agendarCitaModal{{ registro.ID }}">
+                                        Agendar cita
+                                    </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+
+                        <!-- Fotos -->
+                        {% if registro.fotos %}
+                        <tr>
+                            <td colspan="8" class="bg-light">
+                                <div class="d-flex flex-wrap justify-content-center gap-2 py-2">
+                                    {% for foto in registro.fotos %}
+                                        {% set ruta = foto.RutaArchivo.replace('static\\', '').replace('\\', '/') %}
+                                        <a href="{{ url_for('static', filename=ruta) }}" target="_blank">
+                                            <img src="{{ url_for('static', filename=ruta) }}"
+                                                 class="img-thumbnail border shadow-sm"
+                                                 style="width: 110px; height: 110px; object-fit: cover;">
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
+
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-muted">
+                                <i class="bi bi-emoji-smile"></i> No hay reportes de productos defectuosos.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+
+                </table>
+            </div>
+
+        </div>
     </div>
+
 </div>
 
 <script>
 function validarForm(form) {
-    const accion = document.activeElement.value; // Botón presionado
+    const accion = document.activeElement.value;
     const tecnico = form.empleado.value.trim();
     const motivo = form.motivo_rechazo.value.trim();
 
@@ -162,8 +183,13 @@ function validarForm(form) {
 </script>
 
 <style>
+.img-thumbnail {
+    transition: transform .2s ease;
+}
+
 .img-thumbnail:hover {
     transform: scale(1.1);
 }
 </style>
+
 {% endblock %}
