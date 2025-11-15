@@ -3,35 +3,33 @@
 {% block transportista_content %}
 
 <style>
-    /* ----------- ESTILOS COMPACTOS ----------- */
+
+    /* ---- ANCHO REDUCIDO ---- */
+    .tracking-container {
+        max-width: 650px;
+        margin: 0 auto;
+    }
+
+    /* ----------- ESTILOS GENERALES ----------- */
     .card {
-        border-radius: 12px;
+        border-radius: 15px;
         overflow: hidden;
-        font-size: 0.9rem;
     }
 
     .card-header.bg-success {
         background-color: #198754 !important;
-        padding: 10px 15px;
+        padding: 15px 20px;
     }
 
     .tracking-panel h2 {
         color: #157145;
-        font-weight: 600;
-        font-size: 1.2rem;
-        margin-bottom: 10px;
+        font-weight: 700;
     }
 
-    /* ----------- PRODUCTOS ----------- */
+    /* ----------- TABLAS Y TARJETAS ----------- */
     .card h6 {
         color: #157145;
         font-weight: 600;
-        font-size: 0.9rem;
-    }
-
-    .card-body p {
-        margin-bottom: 3px;
-        font-size: 0.85rem;
     }
 
     /* ----------- BOTONES ----------- */
@@ -39,9 +37,9 @@
         background-color: #198754;
         color: white;
         border: none;
-        padding: 7px 15px;
-        border-radius: 6px;
-        font-size: 0.85rem;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: bold;
         transition: 0.3s;
     }
 
@@ -53,26 +51,30 @@
     .firma-btns button {
         background-color: #20c997;
         border: none;
-        padding: 6px 10px;
+        padding: 8px 12px;
         color: white;
         border-radius: 6px;
-        font-size: 0.8rem;
         margin-right: 5px;
         cursor: pointer;
     }
 
-    /* ----------- CANVAS PEQUEÑO ----------- */
+    #entregadoOpciones button:hover,
+    .firma-btns button:hover {
+        background-color: #198754;
+    }
+
+    /* ----------- CANVAS DE FIRMA ----------- */
     #firmaCanvas {
         width: 100%;
-        height: 140px;
+        height: 200px;
         border: 2px solid #198754;
         border-radius: 10px;
         background: white;
     }
 
-    /* ----------- ESPACIO INFERIOR ----------- */
+    /* ----------- ESPACIO INFERIOR GRANDE ----------- */
     .big-space-bottom {
-        height: 100px;
+        height: 180px;
     }
 </style>
 
@@ -80,84 +82,87 @@
     <div class="card border-0 shadow-sm" style="background-color: #f8f9fa;">
         <div class="card-header bg-success text-white">
             <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">Pedido #{{ pedido.ID_Pedido }}</h6>
+                <h5 class="mb-0">Seguimiento del Pedido #{{ pedido.ID_Pedido }}</h5>
                 <a href="{{ url_for('transportista.dashboard') }}" class="btn btn-light btn-sm">
                     <i class="bi bi-arrow-left"></i> Volver
                 </a>
             </div>
         </div>
 
-        <div class="card-body" style="padding: 15px;">
+        <div class="card-body">
+
             <div class="tracking-container">
                 <div class="tracking-panel">
 
-                    <h2>Seguimiento del pedido</h2>
+                    <h2>Seguimiento en tiempo real</h2>
 
-                    <p><strong>ID Pedido:</strong> #{{ pedido.ID_Pedido }}</p>
-                    <p><strong>Cliente:</strong> {{ pedido.usuario.Nombre }} {{ pedido.usuario.Apellido }}</p>
+                    <div class="tracking-data-block">
+                        <p><strong>ID Pedido:</strong> #{{ pedido.ID_Pedido }}</p>
+                        <p><strong>Cliente:</strong> {{ pedido.usuario.Nombre }} {{ pedido.usuario.Apellido }}</p>
 
-                    <!-- Productos -->
-                    <div class="card mb-3">
-                        <div class="card-header bg-light py-2">
-                            <h6 class="m-0">Productos</h6>
-                        </div>
-                        <div class="card-body" style="padding: 10px 15px;">
-                            <div class="row">
-                                {% for detalle in pedido.detalles_pedido %}
-                                <div class="col-md-6 mb-2">
-                                    <div class="card h-100 shadow-sm">
-                                        <img src="{{ url_for('static', filename=detalle.producto.ImagenPrincipal) }}"
-                                             class="card-img-top"
-                                             alt="{{ detalle.producto.NombreProducto }}"
-                                             style="max-height: 150px; object-fit: contain;">
-                                        <div class="card-body" style="padding: 10px;">
-                                            <h6>{{ detalle.producto.NombreProducto }}</h6>
-                                            <p>Cantidad: {{ detalle.Cantidad }}</p>
-                                            <p>Precio: ${{ "{:,.0f}".format(detalle.PrecioUnidad) }}</p>
+                        <!-- Productos -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h6>Productos</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    {% for detalle in pedido.detalles_pedido %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100 shadow-sm">
+                                            <img src="{{ url_for('static', filename=detalle.producto.ImagenPrincipal) }}"
+                                                 class="card-img-top"
+                                                 alt="{{ detalle.producto.NombreProducto }}"
+                                                 style="max-height: 200px; object-fit: contain;">
+                                            <div class="card-body">
+                                                <h6>{{ detalle.producto.NombreProducto }}</h6>
+                                                <p>Cantidad: {{ detalle.Cantidad }}</p>
+                                                <p>Precio: ${{ "{:,.0f}".format(detalle.PrecioUnidad) }}</p>
+                                            </div>
                                         </div>
                                     </div>
+                                    {% endfor %}
                                 </div>
-                                {% endfor %}
                             </div>
                         </div>
+
+                        <div class="alert alert-info">
+                            <strong>Dirección de entrega:</strong> {{ pedido.Destino or 'No especificada' }}
+                        </div>
+
+                        <p><strong>Tipo de pago:</strong> {{ pedido.pagos[0].MetodoPago if pedido.pagos else 'Por confirmar' }}</p>
+
+                        <p><strong>Estado:</strong>
+                            <span class="badge 
+                                {% if pedido.Estado == 'pendiente' %}bg-secondary
+                                {% elif pedido.Estado == 'en proceso' %}bg-warning text-dark
+                                {% elif pedido.Estado == 'en reparto' %}bg-primary
+                                {% else %}bg-success{% endif %}">
+                                {{ pedido.Estado }}
+                            </span>
+                        </p>
                     </div>
-
-                    <div class="alert alert-info py-2">
-                        <strong>Dirección:</strong> {{ pedido.Destino or 'No especificada' }}
-                    </div>
-
-                    <p><strong>Tipo de pago:</strong> {{ pedido.pagos[0].MetodoPago if pedido.pagos else 'Por confirmar' }}</p>
-
-                    <p><strong>Estado:</strong> 
-                        <span class="badge 
-                            {% if pedido.Estado == 'pendiente' %}bg-secondary
-                            {% elif pedido.Estado == 'en proceso' %}bg-warning text-dark
-                            {% elif pedido.Estado == 'en reparto' %}bg-primary
-                            {% else %}bg-success{% endif %}">
-                            {{ pedido.Estado }}
-                        </span>
-                    </p>
 
                     <!-- FORM -->
                     <form id="estadoForm"
                           action="{{ url_for('transportista.actualizar_estado', id_pedido=pedido.ID_Pedido) }}"
                           method="POST">
 
-                        <select name="estado" id="estado" class="form-select w-auto form-select-sm">
+                        <select name="estado" id="estado" class="form-select w-auto">
                             <option value="pendiente" {% if pedido.Estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
                             <option value="en proceso" {% if pedido.Estado == 'en proceso' %}selected{% endif %}>En proceso</option>
                             <option value="en reparto" {% if pedido.Estado == 'en reparto' %}selected{% endif %}>En reparto</option>
                             <option value="entregado" {% if pedido.Estado == 'entregado' %}selected{% endif %}>Entregado</option>
                         </select>
 
-                        <div id="entregadoOpciones" style="display:none; margin-top:10px;">
-                            <p style="font-size:0.85rem;"><strong>Confirmar entrega:</strong></p>
+                        <div id="entregadoOpciones" style="display:none;margin-top:15px;">
+                            <p><strong>Confirmar entrega:</strong></p>
                             <button type="button" onclick="mostrarFirma()">🖊 Firma</button>
-                            <button type="button" onclick="enviarCorreo()">📧 Correo</button>
+                            <button type="button" onclick="enviarCorreo()">📧 Confirmación</button>
                         </div>
 
-                        <div id="firmaSection" style="display:none; margin-top:10px;">
-                            <p style="font-size:0.85rem;"><strong>Firma del cliente:</strong></p>
+                        <div id="firmaSection" style="display:none;margin-top:15px;">
+                            <p><strong>Firma del cliente:</strong></p>
                             <canvas id="firmaCanvas"></canvas>
                             <input type="hidden" name="firma" id="firmaInput">
                             <div class="firma-btns mt-2">
@@ -168,17 +173,18 @@
                         <button id="btnActualizar" type="submit" class="mt-3">Actualizar</button>
                     </form>
 
-                    <hr style="margin: 15px 0;">
+                    <hr>
 
                     <div class="text-center">
                         <a href="{{ url_for('transportista.get_registro_fotografico', pedido_id=pedido.ID_Pedido) }}"
                            class="btn btn-outline-primary btn-sm">
-                            📷 Ver registro
+                            📷 Ver registro fotográfico
                         </a>
                     </div>
 
                 </div>
             </div>
+
         </div>
     </div>
 </div>
@@ -218,7 +224,6 @@ function enviarCorreo() {
     .catch(() => alert("⚠️ No se pudo conectar con el servidor."));
 }
 
-// ==== FIRMA ====
 canvas.addEventListener("mousedown", () => dibujando = true);
 canvas.addEventListener("mouseup", () => { dibujando = false; ctx.beginPath(); });
 canvas.addEventListener("mousemove", dibujar);
