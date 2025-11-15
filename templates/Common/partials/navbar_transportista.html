@@ -1,21 +1,73 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-success">
-    <div class="container">
-        <a class="navbar-brand" href="{{ url_for('transportista.dashboard') }}">
-            <i class="bi bi-truck me-1"></i> Transportista
-        </a>
-        <div class="navbar-nav ms-auto">
-            <a class="nav-item nav-link" href="{{ url_for('transportista.dashboard') }}">
-                <i class="bi bi-house me-1"></i> Inicio
-            </a>
-            <a class="nav-item nav-link" href="{{ url_for('transportista.calendario') }}">
-                <i class="bi bi-calendar me-1"></i> Calendario
-            </a>
-            <a class="nav-item nav-link" href="{{ url_for('transportista.actualizacion_datos') }}">
-                <i class="bi bi-person me-1"></i> Perfil
-            </a>
-            <a class="nav-item nav-link" href="{{ url_for('auth.logout') }}">
-                <i class="bi bi-box-arrow-right me-1"></i> Salir
-            </a>
-        </div>
+<style>
+  :root {
+    --celeste: #d1faff;
+    --celeste-claro: #e7fcff;
+    --verde: #57a773;
+    --verde-oscuro: #157145;
+  }
+  .navbar-transp {
+    background-color: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  }
+  .navbar-transp .navbar-brand { color: var(--verde-oscuro); font-weight: 700; }
+  .navbar-transp .nav-link { color: var(--verde-oscuro); }
+  .navbar-transp .nav-link:hover { color: var(--verde); }
+  .user-initials {
+    width: 38px; height: 38px; border-radius: 50%;
+    background-color: var(--celeste); color: var(--verde-oscuro);
+    display:flex; align-items:center; justify-content:center; font-weight:600;
+  }
+  .dropdown-menu { border-radius: 10px; padding: .5rem; }
+  .dropdown-item { border-radius: 6px; }
+  .dropdown-item:hover { background-color: var(--celeste-claro); }
+  @media (max-width: 768px){ .navbar-brand { font-size: 1rem; } }
+  body { padding-top: 64px; }
+  
+</style>
+
+<nav class="navbar navbar-expand-lg navbar-transp fixed-top">
+  <div class="container">
+    <a class="navbar-brand" href="{{ url_for('transportista.dashboard') }}">
+      <i class="bi bi-truck me-1"></i> Transportista
+    </a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarTransp" aria-controls="navbarTransp" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarTransp">
+      <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('transportista.dashboard') }}"><i class="bi bi-house me-1"></i> Inicio</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('transportista.calendario') }}"><i class="bi bi-calendar me-1"></i> Calendario</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('transportista.actualizacion_datos') }}"><i class="bi bi-person-gear me-1"></i> Perfil</a></li>
+
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="dropdownUserTransp" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-person fs-5 me-2" style="color: var(--verde);"></i>
+            {% if current_user.is_authenticated %}
+              <span class="d-none d-lg-inline">{{ current_user.Nombre }}</span>
+            {% endif %}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownUserTransp">
+            {% if current_user.is_authenticated %}
+              <li class="px-3 py-2 d-flex align-items-center">
+                <div class="user-initials me-2">{{ current_user.Nombre[0]|upper }}{{ current_user.Apellido[0]|upper }}</div>
+                <div>
+                  <div class="fw-semibold">{{ current_user.Nombre }} {{ current_user.Apellido }}</div>
+                  <small class="text-muted">Transportista</small>
+                </div>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="{{ url_for('transportista.actualizacion_datos') }}">Mi perfil</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Cerrar sesión</a></li>
+            {% else %}
+              <li><a class="dropdown-item" href="{{ url_for('auth.login') }}">Iniciar sesión</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('auth.register') }}">Registrarse</a></li>
+            {% endif %}
+          </ul>
+        </li>
+      </ul>
     </div>
+  </div>
 </nav>

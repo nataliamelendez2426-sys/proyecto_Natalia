@@ -1,4 +1,7 @@
 {% extends "common/base.html" %}
+{% block navbar %}
+  {% include "common/partials/navbar_admin.html" %}
+{% endblock %}
 {% block content %}
 <h3>Garantía #{{ garantia.ID_Garantia }}</h3>
 <p><strong>Usuario:</strong> {{ garantia.usuario.Nombre }} {{ garantia.usuario.Apellido }}</p>

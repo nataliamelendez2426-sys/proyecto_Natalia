@@ -17,10 +17,12 @@
   position: fixed;
   top: 0;
   width: 100%;
-  z-index: 1050;
+  z-index: 2000;
   padding: 0.8rem 1rem;
   transition: all 0.3s ease;
 }
+/* Asegura que el menú del usuario siempre quede por encima del contenido */
+.navbar .dropdown-menu { z-index: 4000; position: absolute; }
 .navbar.shrink {
   padding: 0.5rem 1rem;
   box-shadow: 0 4px 20px rgba(0,0,0,0.08);
@@ -82,6 +84,19 @@
   color: var(--verde-oscuro) !important;
 }
 
+/* Fallback: mostrar el menú al pasar el mouse si el click no funciona */
+.nav-item.dropdown:hover > .dropdown-menu { display: block; }
+.nav-item.dropdown > .dropdown-toggle:active { pointer-events: none; }
+
+/* Asegurar que el contenedor derecho esté por encima */
+.navbar .position-absolute.end-0 { z-index: 4500; }
+
+/* Desplazar el menú del usuario más a la izquierda */
+.dropdown-menu.user-menu { transform: translateX(-200px); }
+@media (max-width: 991px){
+  .dropdown-menu.user-menu { transform: translateX(-90px); }
+}
+
 /* Iniciales usuario */
 .user-initials {
   width: 45px;
@@ -118,7 +133,6 @@
 }
 </style>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <nav class="navbar navbar-expand-lg">
   <div class="container-fluid d-flex justify-content-center align-items-center">
@@ -135,10 +149,10 @@
     <!-- Usuario Dropdown -->
     <div class="position-absolute end-0">
       <div class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" id="dropdownUser" data-bs-toggle="dropdown" aria-expanded="false">
+        <a class="nav-link dropdown-toggle" href="#" id="dropdownUser" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
           <i class="bi bi-person fs-4"></i>
         </a>
-        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownUser">
+        <ul class="dropdown-menu dropdown-menu-end user-menu" aria-labelledby="dropdownUser">
           {% if current_user.is_authenticated %}
           <li class="px-3 py-2 d-flex align-items-center">
             <div class="user-initials">{{ current_user.Nombre[0]|upper }}{{ current_user.Apellido[0]|upper }}</div>
@@ -170,6 +184,40 @@ window.addEventListener('scroll', function() {
   const navbar = document.querySelector('.navbar');
   if (window.scrollY > 50) navbar.classList.add('shrink');
   else navbar.classList.remove('shrink');
+});
+
+// Asegura que el dropdown se inicialice después de que Bootstrap esté disponible
+window.addEventListener('load', function(){
+  try {
+    document.querySelectorAll('#dropdownUser').forEach(function(el){
+      if (window.bootstrap && bootstrap.Dropdown) new bootstrap.Dropdown(el);
+    });
+    // Fallback si no carga Bootstrap correctamente
+    var du = document.getElementById('dropdownUser');
+    if (du) {
+      var menu = du.parentElement.querySelector('.dropdown-menu');
+      du.addEventListener('click', function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        // Si Bootstrap está disponible, delega el toggle a Bootstrap
+        if (window.bootstrap && bootstrap.Dropdown) {
+          try { new bootstrap.Dropdown(du).toggle(); } catch(e) {}
+        } else {
+          if (menu) {
+            var open = menu.classList.toggle('show');
+            menu.style.display = open ? 'block' : '';
+          }
+        }
+      });
+      // Cerrar al hacer clic fuera
+      document.addEventListener('click', function(){
+        if (menu && menu.classList.contains('show')) {
+          menu.classList.remove('show');
+          menu.style.display = '';
+        }
+      });
+    }
+  } catch(e) {}
 });
 </script>
 

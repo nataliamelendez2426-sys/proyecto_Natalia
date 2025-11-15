@@ -311,15 +311,15 @@ class Garantia(db.Model):
     ComentarioAdmin = db.Column(db.Text)
     FechaResolucion = db.Column(db.DateTime)
 
-    # NUEVO CAMPO
+    
     CitaAgendada = db.Column(db.DateTime, nullable=True)
 
     archivos = db.relationship('GarantiaArchivo', backref='garantia', lazy=True, cascade="all, delete-orphan")
 
-    # Relación con el cliente que solicitó la garantía
+  
     usuario = db.relationship('Usuario', foreign_keys=[ID_Usuario], backref='garantias', lazy=True)
 
-    # Relación con el empleado (instalador) asignado a la garantía
+    
     ID_Empleado = db.Column(db.Integer, db.ForeignKey('Usuario.ID_Usuario'), nullable=True)
     empleado = db.relationship('Usuario', foreign_keys=[ID_Empleado], backref='garantias_asignadas')
 

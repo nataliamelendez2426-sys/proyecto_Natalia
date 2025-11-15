@@ -1,5 +1,7 @@
 {% extends "common/base.html" %}
-
+{% block navbar %}
+  {% include "common/partials/navbar_admin.html" %}
+{% endblock %}
 {% block content %}
 <div class="container mt-4">
     <h2 class="mb-4 text-center"><i class="bi bi-tools me-2"></i>Gestión de Productos Defectuosos</h2>

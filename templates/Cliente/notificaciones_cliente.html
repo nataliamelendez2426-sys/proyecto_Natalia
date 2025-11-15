@@ -61,12 +61,16 @@
         <div class="noti-item" data-fecha="{{ n.Fecha.strftime('%Y-%m-%d') }}">
           <input type="checkbox" name="ids" value="{{ n.ID_Notificacion }}">
           <div style="flex:1;">
-            <p>{{ n.Mensaje | striptags }}</p>
+            {% set _text = (n.Mensaje or '')|striptags %}
+            {% set _msg_lower = _text|lower %}
+            <p>{{ _text }}</p>
             <span class="fecha">{{ n.Fecha.strftime('%d/%m/%Y %H:%M') }}</span>
 
             {% if n.defecto %}
-              {% if n.defecto.Estado == 'resuelto_tecnico' %}
-                {% if not n.defecto.CitaProgramada %}
+              {# Mostrar badge siempre que ya exista cita #}
+              {% if n.defecto.CitaProgramada %}
+                <span class="badge bg-success mt-2 d-block">✅ Cita agendada: {{ n.defecto.CitaProgramada.strftime('%d/%m/%Y %H:%M') }}</span>
+              {% elif n.defecto.Estado == 'resuelto_tecnico' or ('reparado' in _msg_lower) %}
                 <!-- Botón y modal técnico (solo cuando estado = resuelto_tecnico) -->
                 <button type="button" class="btn btn-primary btn-sm mt-2"
                         data-bs-toggle="modal"
@@ -98,11 +102,6 @@
                     </div>
                   </div>
                 </div>
-                {% else %}
-                  <span class="badge bg-success mt-2 d-block">
-                    ✅ Cita programada para {{ n.defecto.CitaProgramada.strftime('%d/%m/%Y %H:%M') }}
-                  </span>
-                {% endif %}
               {% endif %}
             {% endif %}
 

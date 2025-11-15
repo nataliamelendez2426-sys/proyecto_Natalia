@@ -18,7 +18,11 @@
 <body>
 
   
-    {% block navbar %}{% endblock %}
+    {% block navbar %}
+      {% if request.blueprint == 'cliente' %}
+        {% include "common/partials/navbar_cliente.html" %}
+      {% endif %}
+    {% endblock %}
 
     <main class="mt-4">
         {% block content %}{% endblock %}

@@ -78,38 +78,12 @@ def ver_notificaciones_cliente():
             if not m:
                 continue
             gid = int(m.group(1))
-            # 1) Intentar leer CitaAgendada directo de la tabla garantia (si existe la columna)
-            try:
-                row = db.session.execute(text("SELECT CitaAgendada FROM garantia WHERE ID_Garantia = :gid"), {"gid": gid}).first()
-                if row and row[0]:
-                    cita_dt = row[0]
-                    # Para SQLite puede venir como string; intentar parseo
-                    if isinstance(cita_dt, str):
-                        try:
-                            cita_dt = datetime.strptime(cita_dt, "%Y-%m-%d %H:%M:%S")
-                        except Exception:
-                            pass
-                    if hasattr(cita_dt, 'date'):
-                        cita_garantia_por_notif[n.ID_Notificacion] = {
-                            'fecha': cita_dt.strftime('%d/%m/%Y'),
-                            'hora': cita_dt.strftime('%H:%M')
-                        }
-                        continue
-            except Exception:
-                # Si la columna no existe, ignorar y seguir con Calendario
-                pass
-
-            # 2) Fallback: buscar en Calendario con el prefijo en Ubicacion
-            ev = (Calendario.query
-                  .filter(Calendario.ID_Usuario==current_user.ID_Usuario,
-                          Calendario.Tipo=="Garantía",
-                          Calendario.Ubicacion.like(f"G#{gid} - %"))
-                  .order_by(Calendario.Fecha.desc(), Calendario.Hora.desc())
-                  .first())
-            if ev:
+            g = Garantia.query.get(gid)
+            if g and g.ID_Usuario == current_user.ID_Usuario and getattr(g, 'CitaAgendada', None):
+                cita_dt = g.CitaAgendada
                 cita_garantia_por_notif[n.ID_Notificacion] = {
-                    'fecha': ev.Fecha.strftime('%d/%m/%Y'),
-                    'hora': ev.Hora.strftime('%H:%M') if hasattr(ev.Hora,'strftime') else str(ev.Hora)
+                    'fecha': cita_dt.strftime('%d/%m/%Y'),
+                    'hora': cita_dt.strftime('%H:%M')
                 }
     except Exception:
         pass
@@ -129,7 +103,15 @@ def eliminar_notificacion(notificacion_id):
     if notificacion.ID_Usuario != current_user.ID_Usuario:
         flash("No puedes eliminar esta notificación.", "danger")
         return redirect(url_for('cliente.ver_notificaciones_cliente'))
+    try:
+        db.session.delete(notificacion)
+        db.session.commit()
+        flash("Notificación eliminada correctamente.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error al eliminar la notificación: {str(e)}", "danger")
 
+    return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
 @cliente.route('/agendar_cita/<int:notificacion_id>', methods=['POST'])
 @login_required
@@ -1139,44 +1121,13 @@ def agendar_cita_garantia_aprobada(notificacion_id):
         flash("❌ Garantía no válida para agendar.", "danger")
         return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
-    # Crear evento en Calendario y actualizar estado/fecha de Garantia
+    # Guardar cita directamente en la garantía
     try:
-        direccion_envio = None
-        pedido = Pedido.query.get(getattr(garantia, 'ID_Pedido', None)) if hasattr(garantia, 'ID_Pedido') else None
-        if pedido and pedido.Destino:
-            direccion_envio = pedido.Destino
-        evento = Calendario(
-            Fecha=cita_datetime.date(),
-            Hora=cita_datetime.time(),
-            Ubicacion=f"G#{garantia.ID_Garantia} - " + (direccion_envio or "Dirección por confirmar"),
-            Tipo="Garantía",
-            ID_Usuario=current_user.ID_Usuario,
-            ID_Pedido=getattr(garantia, 'ID_Pedido', None)
-        )
+        garantia.CitaAgendada = cita_datetime
         garantia.Estado = 'cita_agendada'
-        db.session.add(evento)
         db.session.commit()
-
-        # Guardar CitaAgendada en tabla garantia (auto-migración si la columna no existe)
-        try:
-            db.session.execute(
-                text("UPDATE garantia SET CitaAgendada = :cita WHERE ID_Garantia = :gid"),
-                {"cita": cita_datetime, "gid": garantia.ID_Garantia}
-            )
-            db.session.commit()
-        except Exception:
-            try:
-                # Intentar crear la columna y reintentar
-                db.session.execute(text("ALTER TABLE garantia ADD COLUMN CitaAgendada DATETIME NULL"))
-                db.session.commit()
-                db.session.execute(
-                    text("UPDATE garantia SET CitaAgendada = :cita WHERE ID_Garantia = :gid"),
-                    {"cita": cita_datetime, "gid": garantia.ID_Garantia}
-                )
-                db.session.commit()
-            except Exception as _:
-                db.session.rollback()
+        flash("✅ Cita de garantía agendada correctamente.", "success")
     except Exception as e:
         db.session.rollback()
-        flash(f"❌ Error al crear el evento: {str(e)}", "danger")
+        flash(f"❌ Error al guardar la cita en la garantía: {str(e)}", "danger")
     return redirect(url_for('cliente.ver_notificaciones_cliente'))
