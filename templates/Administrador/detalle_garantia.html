@@ -3,6 +3,11 @@
   {% include "common/partials/navbar_admin.html" %}
 {% endblock %}
 {% block content %}
+<div class="mb-3">
+  <a href="{{ url_for('admin.ver_garantias') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> Volver
+  </a>
+  </div>
 <h3>Garantía #{{ garantia.ID_Garantia }}</h3>
 <p><strong>Usuario:</strong> {{ garantia.usuario.Nombre }} {{ garantia.usuario.Apellido }}</p>
 <p><strong>Pedido:</strong> {{ garantia.pedido.ID_Pedido }}</p>

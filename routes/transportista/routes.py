@@ -26,14 +26,21 @@ from . import transportista
 @transportista.route("/")
 @login_required
 def dashboard():
-    pedidos = Pedido.query.filter_by(ID_Empleado=current_user.ID_Usuario).all()
-    return render_template('transportista/dashboard.html', pedidos=pedidos)
+    if getattr(current_user, 'Rol', '').lower() == 'instalador':
+        cals = Calendario.query.filter_by(ID_Usuario=current_user.ID_Usuario, Tipo='Instalación').all()
+        pedido_ids = [c.ID_Pedido for c in cals if c.ID_Pedido]
+        pedidos = Pedido.query.filter(Pedido.ID_Pedido.in_(pedido_ids)).all() if pedido_ids else []
+        cal_map = {c.ID_Pedido: c for c in cals if c.ID_Pedido}
+        return render_template('transportista/dashboard.html', pedidos=pedidos, es_instalador=True, calendario_por_pedido=cal_map)
+    else:
+        pedidos = Pedido.query.filter_by(ID_Empleado=current_user.ID_Usuario).all()
+        return render_template('transportista/dashboard.html', pedidos=pedidos, es_instalador=False, calendario_por_pedido={})
 
 # ---------- CALENDARIO ----------
 
 @transportista.route('/api/calendario')
 @login_required
-@role_required("transportista")
+@role_required("transportista", "instalador")
 def api_calendario():
     eventos = []
 
@@ -100,7 +107,7 @@ def api_calendario():
 
 @transportista.route('/calendario')
 @login_required
-@role_required("transportista")
+@role_required("transportista", "instalador")
 def calendario():
     return render_template("transportista/calendario.html")
 
@@ -213,7 +220,7 @@ def seguimiento(id_pedido):
 
 @transportista.route("/actualizar_estado/<int:id_pedido>", methods=["POST"])
 @login_required
-@role_required('transportista')
+@role_required('transportista', 'instalador')
 def actualizar_estado(id_pedido):
     pedido = Pedido.query.get_or_404(id_pedido)
     nuevo_estado = request.form.get("estado")
@@ -247,7 +254,7 @@ def actualizar_estado(id_pedido):
 # ---------- Enviar confirmación por correo ----------
 @transportista.route("/enviar_confirmacion/<int:id_pedido>", methods=["GET", "POST"])
 @login_required
-@role_required('transportista')
+@role_required('transportista', 'instalador')
 def enviar_confirmacion(id_pedido):
     pedido = Pedido.query.get_or_404(id_pedido)
     cliente = pedido.usuario
@@ -329,7 +336,7 @@ def confirmar_entrega(id_pedido):
 # ---------- ACTUALIZACION_DATOS ----------
 @transportista.route("/actualizacion_datos", methods=["GET", "POST"])
 @login_required
-@role_required("transportista")
+@role_required("transportista", "instalador")
 def actualizacion_datos():
     usuario = current_user
     direcciones = Direccion.query.filter_by(ID_Usuario=usuario.ID_Usuario).all()

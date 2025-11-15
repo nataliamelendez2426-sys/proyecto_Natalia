@@ -104,7 +104,8 @@ def login():
                 'admin': 'admin.dashboard',
                 'cliente': 'cliente.dashboard',
                 'transportista': 'transportista.dashboard',
-                'instalador': 'instalador.dashboard'
+                # instalador usa el mismo dashboard de transportista
+                'instalador': 'transportista.dashboard'
             }
             destino = rutas_por_rol.get(usuario.Rol, 'index')
 

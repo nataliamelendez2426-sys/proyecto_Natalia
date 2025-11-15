@@ -7,7 +7,7 @@
         <div class="col-lg-8 mb-4">
             <div class="card border-0 shadow-sm" style="background-color: #f8f9fa;">
                 <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">Mis Pedidos Asignados</h5>
+                    <h5 class="mb-0">{% if es_instalador %}Mis Instalaciones Asignadas{% else %}Mis Pedidos Asignados{% endif %}</h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -18,7 +18,7 @@
                                     <th>Cliente</th>
                                     <th>Dirección</th>
                                     <th>Estado</th>
-                                    <th>Fecha Entrega</th>
+                                    <th>{% if es_instalador %}Fecha/Hora Instalación{% else %}Fecha Entrega{% endif %}</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -37,7 +37,19 @@
                                             {{ pedido.Estado }}
                                         </span>
                                     </td>
-                                    <td>{{ pedido.FechaEntrega.strftime('%d/%m/%Y') if pedido.FechaEntrega else 'Por definir' }}</td>
+                                    <td>
+                                        {% if es_instalador %}
+                                            {% set cal = calendario_por_pedido.get(pedido.ID_Pedido) %}
+                                            {% if cal %}
+                                                {{ cal.Fecha.strftime('%d/%m/%Y') if cal.Fecha.strftime is defined else cal.Fecha }}
+                                                {{ cal.Hora.strftime('%H:%M') if cal.Hora.strftime is defined else cal.Hora }}
+                                            {% else %}
+                                                Por definir
+                                            {% endif %}
+                                        {% else %}
+                                            {{ pedido.FechaEntrega.strftime('%d/%m/%Y') if pedido.FechaEntrega else 'Por definir' }}
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <a href="{{ url_for('transportista.seguimiento', id_pedido=pedido.ID_Pedido) }}" 
                                            class="btn btn-sm btn-success">

@@ -1,33 +1,72 @@
 {% extends "common/base.html" %}
+
 {% block navbar %}
   {% include "common/partials/navbar_admin.html" %}
 {% endblock %}
+
 {% block content %}
-<h2>Gestión de Garantías</h2>
-<table class="table">
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Pedido</th>
-      <th>Usuario</th>
-      <th>Estado</th>
-      <th>Fecha Solicitud</th>
-      <th>Acciones</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for g in garantias %}
-    <tr>
-      <td>{{ g.ID_Garantia }}</td>
-      <td>{{ g.pedido.ID_Pedido }}</td>
-      <td>{{ g.usuario.Nombre }} {{ g.usuario.Apellido }}</td>
-      <td>{{ g.Estado }}</td>
-      <td>{{ g.FechaSolicitud.strftime('%Y-%m-%d') }}</td>
-      <td>
-        <a class="btn btn-primary btn-sm" href="{{ url_for('admin.detalle_garantia', garantia_id=g.ID_Garantia) }}">Ver</a>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+
+<div class="container mt-5 mb-5">  {# ← espacio grande abajo #}
+
+    <div class="card shadow-lg border-0 rounded-4">
+        <div class="card-header bg-success text-white py-3 rounded-top-4">
+            <h3 class="mb-0 text-center">
+                <i class="bi bi-tools me-2"></i>Gestión de Garantías
+            </h3>
+        </div>
+
+        <div class="card-body">
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-success">
+                        <tr>
+                            <th>ID</th>
+                            <th>Pedido</th>
+                            <th>Usuario</th>
+                            <th>Estado</th>
+                            <th>Fecha Solicitud</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for g in garantias %}
+                        <tr>
+                            <td>{{ g.ID_Garantia }}</td>
+                            <td>{{ g.pedido.ID_Pedido }}</td>
+                            <td>{{ g.usuario.Nombre }} {{ g.usuario.Apellido }}</td>
+
+                            <td>
+                                <span class="badge
+                                    {% if g.Estado == 'Pendiente' %} bg-warning text-dark
+                                    {% elif g.Estado == 'Aprobada' %} bg-success
+                                    {% elif g.Estado == 'Rechazada' %} bg-danger
+                                    {% else %} bg-secondary
+                                    {% endif %}
+                                ">
+                                    {{ g.Estado }}
+                                </span>
+                            </td>
+
+                            <td>{{ g.FechaSolicitud.strftime('%Y-%m-%d') }}</td>
+
+                            <td class="text-center">
+                                <a class="btn btn-success btn-sm rounded-pill px-3"
+                                   href="{{ url_for('admin.detalle_garantia', garantia_id=g.ID_Garantia) }}">
+                                    <i class="bi bi-eye-fill me-1"></i>Ver
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
 {% endblock %}
