@@ -19,7 +19,7 @@
 
   
     {% block navbar %}
-      {% if (request.blueprint and request.blueprint.startswith('cliente')) or request.path.startswith('/cliente') %}
+      {% if request.blueprint and request.blueprint.startswith('cliente') %}
         {% include "common/partials/navbar_cliente.html" %}
       {% endif %}
     {% endblock %}
