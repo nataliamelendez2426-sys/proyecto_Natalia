@@ -299,22 +299,60 @@ def get_usuario_actual():
 def ver_pedidos():
     now = datetime.now()
 
- 
-    pedidos_pendientes = Pedido.query.filter_by(Estado='pendiente').all()
-    pedidos_en_proceso = Pedido.query.filter_by(Estado='en proceso').all()
-    pedidos_entregados = Pedido.query.filter_by(Estado='entregado').all()
+    # Filtros
+    estado = (request.args.get('estado') or 'todos').strip()
+    transportista_id = (request.args.get('transportista_id') or '').strip()
+    q = (request.args.get('q') or '').strip()
+    fecha_inicio = request.args.get('fecha_inicio') or ''
+    fecha_fin = request.args.get('fecha_fin') or ''
 
-   
-    for pedido in pedidos_en_proceso:
+    def apply_filters(query):
+        if transportista_id and transportista_id.isdigit():
+            query = query.filter(Pedido.ID_Empleado == int(transportista_id))
+        if q:
+            query = query.filter(
+                (Pedido.NombreComprador.ilike(f"%{q}%")) |
+                (Pedido.Destino.ilike(f"%{q}%"))
+            )
+        if fecha_inicio:
+            try:
+                fi = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+                query = query.filter(Pedido.FechaPedido >= fi)
+            except ValueError:
+                pass
+        if fecha_fin:
+            try:
+                ff = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+                query = query.filter(Pedido.FechaPedido <= ff)
+            except ValueError:
+                pass
+        return query
+
+    # Actualiza estados a entregado si ya pasó la hora de llegada
+    _en_proceso_all = Pedido.query.filter_by(Estado='en proceso').all()
+    for pedido in _en_proceso_all:
         if pedido.HoraLlegada and pedido.HoraLlegada <= now:
             pedido.Estado = 'entregado'
             db.session.add(pedido)
     db.session.commit()
 
-  
-    pedidos_en_proceso = Pedido.query.filter_by(Estado='en proceso').all()
-    pedidos_entregados = Pedido.query.filter_by(Estado='entregado').all()
+    pedidos_pendientes = []
+    pedidos_en_proceso = []
+    pedidos_entregados = []
 
+    if estado in ('pendiente', 'en proceso', 'entregado'):
+        base = Pedido.query.filter_by(Estado=estado)
+        base = apply_filters(base)
+        if estado == 'pendiente':
+            pedidos_pendientes = base.all()
+        elif estado == 'en proceso':
+            pedidos_en_proceso = base.all()
+        else:
+            pedidos_entregados = base.all()
+    else:
+        pedidos_pendientes = apply_filters(Pedido.query.filter_by(Estado='pendiente')).all()
+        pedidos_en_proceso = apply_filters(Pedido.query.filter_by(Estado='en proceso')).all()
+        pedidos_entregados = apply_filters(Pedido.query.filter_by(Estado='entregado')).all()
 
     usuarios_transportistas = Usuario.query.filter_by(Rol='transportista').all()
 
@@ -323,7 +361,14 @@ def ver_pedidos():
         pedidos_pendientes=pedidos_pendientes,
         pedidos_en_proceso=pedidos_en_proceso,
         pedidos_entregados=pedidos_entregados,
-        usuarios_transportistas=usuarios_transportistas
+        usuarios_transportistas=usuarios_transportistas,
+        filtros={
+            'estado': estado,
+            'transportista_id': transportista_id,
+            'q': q,
+            'fecha_inicio': fecha_inicio,
+            'fecha_fin': fecha_fin,
+        }
     )
 
 

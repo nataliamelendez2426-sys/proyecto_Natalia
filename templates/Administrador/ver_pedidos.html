@@ -13,6 +13,48 @@
 <div class="container my-4">
   <h2 class="mb-4 text-center text-success fw-bold"><b></b>Listado de Pedidos</h2>
 
+  <form class="mb-4 p-3 border rounded bg-light" method="get" action="{{ url_for('admin.ver_pedidos') }}">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">Estado</label>
+        <select class="form-select" name="estado">
+          {% set est = (filtros.estado if filtros else 'todos') %}
+          <option value="todos" {{ 'selected' if est == 'todos' else '' }}>Todos</option>
+          <option value="pendiente" {{ 'selected' if est == 'pendiente' else '' }}>Pendiente</option>
+          <option value="en proceso" {{ 'selected' if est == 'en proceso' else '' }}>En proceso</option>
+          <option value="entregado" {{ 'selected' if est == 'entregado' else '' }}>Entregado</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Transportista</label>
+        <select class="form-select" name="transportista_id">
+          {% set tid = (filtros.transportista_id if filtros else '') %}
+          <option value="">Todos</option>
+          {% for u in usuarios_transportistas %}
+            <option value="{{ u.ID_Usuario }}" {{ 'selected' if tid == (u.ID_Usuario|string) else '' }}>{{ u.Nombre }} {{ u.Apellido or '' }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Buscar (nombre/dirección)</label>
+        <input type="text" name="q" class="form-control" value="{{ filtros.q if filtros else '' }}" placeholder="Ej: Juan o Calle 123">
+      </div>
+      <div class="col-md-3"></div>
+      <div class="col-md-3">
+        <label class="form-label">Fecha inicio</label>
+        <input type="date" name="fecha_inicio" class="form-control" value="{{ filtros.fecha_inicio if filtros else '' }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Fecha fin</label>
+        <input type="date" name="fecha_fin" class="form-control" value="{{ filtros.fecha_fin if filtros else '' }}">
+      </div>
+      <div class="col-md-6 d-flex gap-2">
+        <button type="submit" class="btn btn-success me-2">Filtrar</button>
+        <a class="btn btn-outline-secondary" href="{{ url_for('admin.ver_pedidos') }}">Limpiar</a>
+      </div>
+    </div>
+  </form>
+
   <!-- Pedidos Pendientes -->
   <h3 class="mb-3 text-success fw-semibold">Pedidos Pendientes</h3>
   {% if pedidos_pendientes %}

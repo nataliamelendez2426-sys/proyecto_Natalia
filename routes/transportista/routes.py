@@ -309,7 +309,7 @@ def enviar_confirmacion(id_pedido):
 
     mail.send(msg)
     flash("✅ Correo de confirmación enviado y pedido marcado como entregado.", "success")
-    return redirect(url_for("transportista.ver_pedidos_transportista"))
+    return redirect('/transportista/')
 
 # ---------- Confirmar entrega desde el correo ----------
 
