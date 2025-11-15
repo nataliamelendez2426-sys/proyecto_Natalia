@@ -8,14 +8,7 @@
 <div class="container my-5">
   <h2 class="mb-4">Solicitar Garantía</h2>
 
-  {# Mensajes flash #}
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="alert alert-{{ category }} mb-3">{{ message }}</div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
+  
 
   <form action="{{ url_for('cliente.solicitar_garantia', pedido_id=pedido.ID_Pedido) }}" 
         method="POST" enctype="multipart/form-data">

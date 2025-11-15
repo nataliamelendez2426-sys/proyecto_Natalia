@@ -7,11 +7,48 @@
 
  
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 
  
-
     {% block extra_css %}{% endblock %}
+
+    <style>
+      /* Estilo para la línea de progreso en el toast */
+      .toast.flash-small .progress-line {
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        bottom: 6px;
+        height: 4px;
+        border-radius: 3px;
+        background: rgba(0,0,0,0.05);
+        overflow: hidden;
+      }
+      .toast.flash-small .progress-line > span {
+        display: block;
+        height: 100%;
+        width: 100%;
+        background: currentColor;
+        opacity: 0.25;
+        animation: toastProgress 4s linear forwards;
+      }
+      @keyframes toastProgress {
+        from { width: 100%; }
+        to { width: 0%; }
+      }
+      /* Botón X verde y sin fondo */
+      .toast.flash-small .btn-close-custom {
+        color: inherit;
+        background: transparent;
+        border: none;
+        line-height: 1;
+        font-weight: 700;
+        opacity: .7;
+        color: green;
+      }
+      .toast.flash-small .btn-close-custom:hover { opacity: 1; }
+    </style>
 
    
 </head>
@@ -24,6 +61,38 @@
       {% endif %}
     {% endblock %}
 
+    
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 2000;">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            {% set cat = 'warning' if category=='warning' else ('danger' if category in ['error','danger'] else ('success' if category=='success' else 'info')) %}
+            <div class="toast flash-small alert-{{ cat }} border-0 shadow-sm rounded-3 position-relative"
+                 role="alert" aria-live="assertive" aria-atomic="true"
+                 data-bs-delay="4000" data-bs-autohide="true"
+                 style="min-width: 360px;">
+              <div class="d-flex">
+                <div class="toast-body d-flex align-items-center gap-2" style="padding: 10px 16px; font-size: 0.95rem;">
+                  {% if cat == 'success' %}
+                    <i class="bi bi-check-circle-fill"></i>
+                  {% elif cat == 'danger' %}
+                    <i class="bi bi-x-circle-fill"></i>
+                  {% elif cat == 'warning' %}
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                  {% else %}
+                    <i class="bi bi-info-circle-fill"></i>
+                  {% endif %}
+                  <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close-custom me-3 m-auto" data-bs-dismiss="toast" aria-label="Close">&times;</button>
+              </div>
+              <div class="progress-line"><span></span></div>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+
     <main class="mt-4">
         {% block content %}{% endblock %}
     </main>
@@ -34,6 +103,14 @@
 
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function(){
+        var toastElList = [].slice.call(document.querySelectorAll('.toast'));
+        toastElList.forEach(function(el){
+          try { new bootstrap.Toast(el).show(); } catch(e){}
+        });
+      });
+    </script>
 
  
     {% block scripts %}{% endblock %}

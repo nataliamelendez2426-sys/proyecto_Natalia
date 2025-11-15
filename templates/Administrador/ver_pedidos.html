@@ -100,7 +100,13 @@
                   </li>
                 {% endfor %}
               </ul>
-              <p><strong>Transportista asignado:</strong> {{ pedido.TransportistaNombre or 'No asignado' }}</p>
+              <p><strong>Transportista asignado:</strong>
+                {% if pedido.empleado %}
+                  {{ pedido.empleado.Nombre }} {{ pedido.empleado.Apellido or '' }}
+                {% else %}
+                  No asignado
+                {% endif %}
+              </p>
               <p><strong>Hora llegada:</strong> {{ pedido.HoraLlegada.strftime('%Y-%m-%d %H:%M') if pedido.HoraLlegada else 'No asignada' }}</p>
             </div>
           </div>
@@ -142,7 +148,13 @@
                   </li>
                 {% endfor %}
               </ul>
-              <p><strong>Transportista asignado:</strong> {{ pedido.TransportistaNombre or 'No asignado' }}</p>
+              <p><strong>Transportista asignado:</strong>
+                {% if pedido.empleado %}
+                  {{ pedido.empleado.Nombre }} {{ pedido.empleado.Apellido or '' }}
+                {% else %}
+                  No asignado
+                {% endif %}
+              </p>
               <p><strong>Hora llegada:</strong> {{ pedido.HoraLlegada.strftime('%Y-%m-%d %H:%M') if pedido.HoraLlegada else 'No asignada' }}</p>
             </div>
           </div>

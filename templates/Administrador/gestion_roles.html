@@ -52,25 +52,7 @@ form.mb-3 button.btn-primary:hover {
 }
 </style>
 
-<!-- Mensajes flash -->
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="alert alert-{{ category }} flash-small d-flex align-items-center" role="alert">
-        {% if category == 'success' %}
-          <i class="bi bi-check-circle-fill me-2"></i>
-        {% elif category == 'danger' %}
-          <i class="bi bi-x-circle-fill me-2"></i>
-        {% elif category == 'warning' %}
-          <i class="bi bi-exclamation-triangle-fill me-2"></i>
-        {% elif category == 'info' %}
-          <i class="bi bi-info-circle-fill me-2"></i>
-        {% endif %}
-        {{ message }}
-      </div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
+ 
 
 <h2 class="text-center mb-4">Gestión de Roles</h2>
 

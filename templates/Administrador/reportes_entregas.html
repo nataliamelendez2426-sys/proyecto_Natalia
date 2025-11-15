@@ -111,6 +111,12 @@
 <div class="container my-4">
   <h2>Reporte de Entregas Realizadas</h2>
 
+  <div class="mb-3">
+    <a href="{{ url_for('admin.ver_pedidos') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Volver
+    </a>
+  </div>
+
   {% if pedidos_entregados %}
     <button class="btn-exportar" id="btnExportarPDF">
       <i class="fa-solid fa-file-pdf"></i> Exportar a PDF
@@ -135,7 +141,13 @@
                 {{ detalle.producto.NombreProducto }} (x{{ detalle.Cantidad }})<br>
               {% endfor %}
             </td>
-            <td>{{ pedido.TransportistaNombre or 'No asignado' }}</td>
+            <td>
+              {% if pedido.empleado %}
+                {{ pedido.empleado.Nombre }} {{ pedido.empleado.Apellido or '' }}
+              {% else %}
+                No asignado
+              {% endif %}
+            </td>
           </tr>
         {% endfor %}
       </tbody>
