@@ -16,6 +16,24 @@
 
         <div class="card-body">
 
+            <form method="get" action="{{ url_for('admin.admin_productos_defectuosos') }}" class="row g-3 align-items-end mb-3">
+                <div class="col-sm-6 col-md-4 col-lg-3">
+                    <label class="form-label">Estado</label>
+                    {% set est = filtro_estado or 'todos' %}
+                    <select name="estado" class="form-select">
+                        <option value="todos" {{ 'selected' if est == 'todos' else '' }}>Todos</option>
+                        <option value="en_proceso" {{ 'selected' if est == 'en_proceso' else '' }}>En proceso</option>
+                        <option value="resuelto_tecnico" {{ 'selected' if est == 'resuelto_tecnico' else '' }}>Resuelto (técnico)</option>
+                        <option value="resuelto_devolucion" {{ 'selected' if est == 'resuelto_devolucion' else '' }}>Devolución</option>
+                        <option value="rechazadas" {{ 'selected' if est == 'rechazadas' else '' }}>Rechazadas</option>
+                    </select>
+                </div>
+                <div class="col-sm-6 col-md-4 col-lg-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-success">Filtrar</button>
+                    <a href="{{ url_for('admin.admin_productos_defectuosos') }}" class="btn btn-outline-secondary">Limpiar</a>
+                </div>
+            </form>
+
             {# --- Mensajes flash --- #}
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}

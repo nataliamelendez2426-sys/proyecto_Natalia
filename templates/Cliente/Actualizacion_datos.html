@@ -133,8 +133,11 @@
                   </a>
 
                   {% if pedido.Estado == 'entregado' %}
-                 <a href="{{ url_for('cliente.solicitar_garantia', pedido_id=pedido.ID_Pedido) }}">Solicitar garantía</a>
-                {% endif %}
+                  <a href="{{ url_for('cliente.solicitar_garantia', pedido_id=pedido.ID_Pedido) }}" 
+                     class="btn btn-success btn-sm rounded-pill">
+                     Solicitar garantía
+                  </a>
+                  {% endif %}
 
                 </div>
               </div>

@@ -1095,13 +1095,24 @@ def finanzas_ajax():
 @login_required
 @role_required('admin')
 def admin_productos_defectuosos():
-    registros = ProductoDefectuoso.query.order_by(ProductoDefectuoso.FechaRegistro.desc()).all()
+    filtro_estado = (request.args.get('estado') or 'todos').strip()
+
+    query = ProductoDefectuoso.query
+    if filtro_estado and filtro_estado != 'todos':
+        if filtro_estado == 'sin_responder':
+            query = query.filter(ProductoDefectuoso.Estado == 'pendiente')
+        elif filtro_estado == 'rechazadas':
+            query = query.filter(ProductoDefectuoso.Estado == 'rechazada')
+        elif filtro_estado in ('en_proceso', 'resuelto_tecnico', 'resuelto_devolucion'):
+            query = query.filter(ProductoDefectuoso.Estado == filtro_estado)
+    registros = query.order_by(ProductoDefectuoso.FechaRegistro.desc()).all()
     instaladores = Usuario.query.filter_by(Rol='instalador', Activo=True).all()
 
     return render_template(
         'administrador/productos_defectuosos.html',
         registros=registros,
-        instaladores=instaladores
+        instaladores=instaladores,
+        filtro_estado=filtro_estado
     )
 
 
@@ -1109,6 +1120,7 @@ def admin_productos_defectuosos():
 @login_required
 @role_required('admin')
 def solucionar_defecto(id_garantia):
+    # ... (rest of the code remains the same)
     # Obtener el registro de producto defectuoso
     garantia = ProductoDefectuoso.query.get_or_404(id_garantia)
 

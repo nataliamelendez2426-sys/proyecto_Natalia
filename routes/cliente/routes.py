@@ -1011,7 +1011,32 @@ def historial_actividades(usuario_id):
 @login_required
 def historial_actividades_web():
     historial = historial_actividades(current_user.ID_Usuario)
-    return render_template("cliente/historial.html", historial=historial)
+
+    # Filtros por fecha (YYYY-MM-DD)
+    fecha_inicio = (request.args.get('fecha_inicio') or '').strip()
+    fecha_fin = (request.args.get('fecha_fin') or '').strip()
+
+    if fecha_inicio or fecha_fin:
+        filtradas = []
+        for act in historial.get('actividades', []):
+            fecha_str = (act.get('fecha') or '').split('T')[0]
+            ok = True
+            if fecha_inicio and fecha_str < fecha_inicio:
+                ok = False
+            if fecha_fin and fecha_str > fecha_fin:
+                ok = False
+            if ok:
+                filtradas.append(act)
+        historial['actividades'] = filtradas
+
+    return render_template(
+        "cliente/historial.html",
+        historial=historial,
+        filtros={
+            'fecha_inicio': fecha_inicio,
+            'fecha_fin': fecha_fin,
+        }
+    )
 
 
 
