@@ -1026,7 +1026,7 @@ def actualizar_garantia(garantia_id):
         notificacion = Notificaciones(
             Titulo=f"Estado de garantía #{garantia.ID_Garantia}",
             Mensaje=f"Tu garantía #{garantia.ID_Garantia} ha sido aprobada. <a href='/cliente/notificaciones'>Agendar cita</a>",
-            Fecha=datetime.utcnow(),
+            Fecha=datetime.now(),
             Leida=False,
             ID_Usuario=garantia.ID_Usuario
         )
