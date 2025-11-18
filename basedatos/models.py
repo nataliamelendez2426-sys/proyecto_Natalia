@@ -226,7 +226,7 @@ class Notificaciones(db.Model):
     ID_Notificacion = db.Column(db.Integer, primary_key=True, autoincrement=True)
     Titulo = db.Column(db.String(200), nullable=False)
     Mensaje = db.Column(db.Text, nullable=False)
-    Fecha = db.Column(db.DateTime, default=datetime.utcnow)
+    Fecha = db.Column(db.DateTime, default=datetime.now)
     Leida = db.Column(db.Boolean, default=False)
     ID_Usuario = db.Column(db.Integer, db.ForeignKey('Usuario.ID_Usuario'), nullable=False)
 
