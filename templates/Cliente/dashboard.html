@@ -147,8 +147,8 @@
     padding:2rem 1rem;
   }
 
-  /* Icono flotante de Chatbot */
-  .chat#botonSoporte, #botonDefectuoso {
+  /* Botones flotantes */
+  #botonSoporte, #botonDefectuoso {
     position: fixed;
     right: 25px;
     background: linear-gradient(135deg, #1b5e20, #2e7d32);
@@ -166,14 +166,52 @@
     z-index: 9999;
   }
 
+  #botonDefectuoso { bottom: 95px; z-index: 10001; position: fixed; right: 25px; }
   #botonDefectuoso:hover {
     background: linear-gradient(135deg, #0f5132, #1aa87f);
     transform: scale(1.05);
   }
 
-  .chatbot img {
-    width: 30px;
-    height: 30px;
+  /* Botón de chat circular con pulso */
+  #botonSoporte {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    bottom: 25px;
+    justify-content: center;
+    gap: 0;
+    position: fixed;
+  }
+  #botonSoporte i { font-size: 22px; }
+  #botonSoporte.pulse::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 2px solid rgba(46,125,50,0.5);
+    animation: pulse 1.8s ease-out infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(0.9); opacity: 0.6; }
+    70% { transform: scale(1.25); opacity: 0; }
+    100% { transform: scale(1.25); opacity: 0; }
+  }
+  /* Badge no leídos */
+  #chatBadge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 18px;
+    height: 18px;
+    background: #ff4757;
+    color: #fff;
+    font-size: 11px;
+    border-radius: 10px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   }
 
   @media(max-width:768px){
@@ -189,14 +227,14 @@
     position: fixed;
     bottom: 100px;
     right: 30px;
-    width: 330px;
-    max-height: 60vh;
+    width: 400px;
+    max-height: 70vh;
     background: #ffffff;
     border-radius: 16px;
     box-shadow: 0 12px 28px rgba(0,0,0,0.2);
     overflow: hidden;
     display: none;
-    z-index: 1001;
+    z-index: 11000; /* por encima de botones flotantes */
     border: 1px solid #e6f4ea;
   }
   #chatHeader {
@@ -212,7 +250,7 @@
   #chatBody {
     background: #f8fff9;
     padding: 12px;
-    height: 46vh;
+    height: 56vh;
     overflow-y: auto;
   }
   .msg { display: flex; margin-bottom: 10px; }
@@ -222,11 +260,15 @@
   .msg.bot { justify-content: flex-start; }
   .msg.bot .bubble { background: #ffffff; border: 1px solid #e0f0e4; color: #1b5e20; border-bottom-left-radius: 4px; }
   #chatFooter { padding: 10px 12px; border-top: 1px solid #e6f4ea; background: #fff; }
-  #chatInput { width: 100%; border: 1px solid #d7eadb; border-radius: 20px; padding: 10px 12px; outline: none; }
-  #sendBtn { margin-left: 8px; border: none; background: var(--verde); color: #fff; padding: 8px 12px; border-radius: 18px; }
+  #chatInput { width: 100%; border: 1px solid #d7eadb; border-radius: 20px; padding: 12px 14px; outline: none; font-size: 14px; }
+  #sendBtn { margin-left: 8px; border: none; background: var(--verde); color: #fff; padding: 10px 14px; border-radius: 18px; }
   #sendBtn:hover { background: var(--verde-oscuro); }
-  #chatPedidoSelect { min-width: 120px; border: 1px solid #cfe8d1; border-radius: 14px; padding: 6px 8px; margin-right: 6px; font-size: 12px; background: #f6fffa; }
-  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 6px 0 8px 0;
+  }
   .chip { background: #e6f4ea; color: #146c43; border: 1px solid #cfe8d1; padding: 6px 10px; border-radius: 16px; cursor: pointer; font-size: 12px; }
   .chip:hover { background: #dff5e6; }
 
@@ -353,13 +395,13 @@
 </style>
 
 <!-- Botón flotante -->
-<a href="#" id="botonSoporte" title="Chat con CasaBot">
-    <i class="fas fa-headset"></i>
-    Chat Soporte
-</a>
+<a href="#" id="botonSoporte" class="pulse" title="Chat con CasaBot" aria-label="Chat con CasaBot">
+    <i class="bi bi-headset"></i>
+    <span id="chatBadge">0</span>
+  </a>
 <!-- Nuevo botón flotante Registrar Producto Defectuoso -->
 <a href="{{ url_for('cliente.seleccionar_pedido_defectuoso') }}" id="botonDefectuoso">
-    <i class="fas fa-tools"></i>
+    <i class="bi bi-tools"></i>
     Registrar producto defectuoso
 </a>
 
@@ -370,19 +412,19 @@
     <button id="chatClose" aria-label="Cerrar">×</button>
   </div>
   <div id="chatBody">
+    <div id="chatMessages"></div>
     <div class="chips">
       <span class="chip" data-text="ver mis pedidos">ver mis pedidos</span>
+      <span class="chip" data-text="solicitar garantia">solicitar garantia</span>
+      <span class="chip" data-text="ver notificaciones">ver notificaciones</span>
       <span class="chip" data-text="horarios de atencion">horarios de atencion</span>
-      <span class="chip" data-text="estado de mi pedido">estado de mi pedido</span>
+      <span class="chip" data-text="hablar con un asesor">hablar con un asesor</span>
     </div>
-    <div id="chatMessages"></div>
   </div>
-  <div id="chatFooter" class="d-flex align-items-center">
-    <select id="chatPedidoSelect" title="Pedido">
-      <option value="">Pedido...</option>
-    </select>
-    <input id="chatInput" type="text" placeholder="Escribe tu mensaje..." />
+  <div id="chatFooter" class="d-flex align-items-center w-100 gap-2">
+    <input id="chatInput" type="text" class="flex-grow-1" placeholder="Para saber sobre su pedido escriba: 'quiero saber el estado de mi pedido 24'" />
     <button id="sendBtn">Enviar</button>
+    <button id="btnAsesor" class="btn btn-outline-success btn-sm" title="Hablar con un asesor">Asesor</button>
   </div>
   
 </div>
@@ -397,13 +439,14 @@
     send: document.getElementById('sendBtn'),
     msgs: document.getElementById('chatMessages'),
     chips: document.querySelectorAll('.chip'),
-    sel: document.getElementById('chatPedidoSelect')
+    badge: document.getElementById('chatBadge'),
+    btnAsesor: document.getElementById('btnAsesor')
   };
 
   let lastTs = null;
+  let unseen = 0;
   const fetchUrl = "{{ url_for('cliente.api_chat_fetch') }}";
   const sendUrl = "{{ url_for('cliente.api_chat_send') }}";
-  const pedidosUrl = "{{ url_for('cliente.api_chat_pedidos') }}";
 
   function scrollBottom(){ el.msgs.parentElement.scrollTop = el.msgs.parentElement.scrollHeight; }
 
@@ -412,7 +455,13 @@
     wrap.className = 'msg ' + (enviado_admin ? 'bot' : 'client');
     const b = document.createElement('div');
     b.className = 'bubble';
-    b.textContent = contenido;
+    // Convertir URLs a botones verdes
+    const urlRegex = /(https?:\/\/[^\s]+|\/[A-Za-z0-9_\-\/\?=&%\.]+)/g;
+    const safe = (contenido || '').replace(urlRegex, (m) => {
+      const href = m;
+      return `<a href="${href}" class="btn btn-success btn-sm" target="_blank" rel="noopener">Abrir</a>`;
+    });
+    b.innerHTML = safe;
     wrap.appendChild(b);
     el.msgs.appendChild(wrap);
   }
@@ -425,8 +474,17 @@
       if (data && data.ok && Array.isArray(data.mensajes)){
         data.mensajes.forEach(m => {
           renderMessage(m);
+          // contar no leídos si el widget está cerrado y es del bot
+          if (el.widget.style.display !== 'block' && m.enviado_admin) {
+            unseen += 1;
+          }
           lastTs = m.fecha;
         });
+        // actualizar badge
+        if (unseen > 0) {
+          el.badge.textContent = unseen;
+          el.badge.style.display = 'flex';
+        }
         if (data.mensajes.length){ scrollBottom(); }
       }
     } catch(e) { /* silencioso */ }
@@ -434,36 +492,21 @@
 
   async function sendMessage(text){
     if (!text) return;
-    // pinta inmediato lado cliente
-    renderMessage({contenido: text, enviado_admin: false, fecha: new Date().toISOString()});
-    scrollBottom();
+    // no pintar de inmediato para evitar duplicados; esperar a fetch del backend
     el.input.value='';
     try {
-      await fetch(sendUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mensaje: text, pedido_id: el.sel && el.sel.value ? Number(el.sel.value) : null })
-      });
+      await fetch(sendUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mensaje: text }) });
       // pequeño delay y trae respuesta del bot
       setTimeout(fetchMessages, 400);
     } catch(e) { /* silencioso */ }
   }
 
-  async function loadPedidos(){
-    try {
-      const res = await fetch(pedidosUrl);
-      const data = await res.json();
-      if (data && data.ok && Array.isArray(data.pedidos)){
-        el.sel.innerHTML = '<option value="">Pedido...</option>' + data.pedidos.map(p => `<option value="${p.id}">#${p.id} (${p.estado||''})</option>`).join('');
-      }
-    } catch(e) {}
-  }
-
-  el.toggle.addEventListener('click', async (e)=>{ e.preventDefault(); el.widget.style.display = 'block'; await loadPedidos(); fetchMessages(); });
-  el.close.addEventListener('click', ()=>{ el.widget.style.display = 'none'; });
+  el.toggle.addEventListener('click', async (e)=>{ e.preventDefault(); el.widget.style.display = 'block'; const btnDef = document.getElementById('botonDefectuoso'); if (btnDef) btnDef.style.visibility='hidden'; fetchMessages(); unseen = 0; el.badge.style.display='none'; });
+  el.close.addEventListener('click', ()=>{ el.widget.style.display = 'none'; const btnDef = document.getElementById('botonDefectuoso'); if (btnDef) btnDef.style.visibility='visible'; });
   el.send.addEventListener('click', ()=> sendMessage(el.input.value.trim()));
   el.input.addEventListener('keydown', (ev)=>{ if (ev.key === 'Enter') sendMessage(el.input.value.trim()); });
   el.chips.forEach(c => c.addEventListener('click', ()=> sendMessage(c.dataset.text)));
+  el.btnAsesor.addEventListener('click', ()=> sendMessage('hablar con un asesor'));
 
   // Polling ligero cada 5s cuando está abierto
   setInterval(()=>{ if (el.widget.style.display === 'block') fetchMessages(); }, 5000);

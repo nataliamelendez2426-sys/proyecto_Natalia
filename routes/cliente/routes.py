@@ -61,13 +61,41 @@ def api_chat_send():
 
     # Generar respuesta básica de CasaBot según intentos simples
     lower = texto.lower()
+    # Normalizar acentos y espacios para tolerar typos: 'sobre' vs 'obre'
+    try:
+        import unicodedata
+        lower_norm = ''.join(
+            c for c in unicodedata.normalize('NFD', lower)
+            if unicodedata.category(c) != 'Mn'
+        )
+        lower_norm = ' '.join(lower_norm.split())
+    except Exception:
+        lower_norm = lower
+
+    # Extraer numero de pedido si viene en el texto (e.g. 'pedido 61', 'pedido #61', 'orden 61')
+    if not pedido_id:
+        import re
+        m = re.search(r'(pedido|orden|#)\s*#?(\d+)', lower)
+        if m:
+            try:
+                pedido_id = int(m.group(2))
+            except Exception:
+                pedido_id = None
+        else:
+            # Como fallback, si hay un número suelto, tomar el primero
+            m2 = re.search(r'\b(\d{1,6})\b', lower)
+            if m2:
+                try:
+                    pedido_id = int(m2.group(1))
+                except Exception:
+                    pedido_id = None
     respuesta = None
 
-    if 'ver mis pedidos' in lower or 'mis pedidos' in lower:
+    if 'ver mis pedidos' in lower_norm or 'mis pedidos' in lower_norm:
         respuesta = f"Puedes ver tus pedidos aquí: {url_for('cliente.historial')}"
-    elif 'horarios' in lower or 'atencion' in lower:
+    elif 'horarios' in lower_norm or 'atencion' in lower_norm:
         respuesta = "Nuestro horario de atención es L-V 8:00-18:00 y Sáb 9:00-13:00."
-    elif 'estado de mi pedido' in lower or 'estado pedido' in lower:
+    elif 'estado de mi pedido' in lower_norm or 'estado pedido' in lower_norm or ('estado' in lower_norm and 'pedido' in lower_norm):
         consulta = None
         if pedido_id:
             consulta = Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Usuario=current_user.ID_Usuario).first()
@@ -77,14 +105,42 @@ def api_chat_send():
             respuesta = f"El pedido #{consulta.ID_Pedido} está en estado: {consulta.Estado}."
         else:
             respuesta = "Aún no encuentro pedidos en tu cuenta."
-    elif 'hablar con un asesor' in lower or 'asesor' in lower:
+    elif 'ver pedido' in lower_norm or ('pedido' in lower_norm and ('ver' in lower_norm or 'detalle' in lower_norm)):
+        consulta = None
+        if pedido_id:
+            consulta = Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Usuario=current_user.ID_Usuario).first()
+        if consulta:
+            respuesta = f"Aquí tienes el detalle del pedido #{consulta.ID_Pedido}: {url_for('cliente.ver_pedido', pedido_id=consulta.ID_Pedido)}"
+        else:
+            respuesta = f"Puedes ver tus pedidos aquí: {url_for('cliente.historial')}"
+    elif 'hablar con un asesor' in lower_norm or 'asesor' in lower_norm:
         respuesta = "He notificado a un asesor. Te responderá a la brevedad por este chat."
-    elif 'solicitar garantia' in lower or 'garantia' in lower:
+    elif 'solicitar garantia' in lower_norm or 'garantia' in lower_norm:
         respuesta = f"Para solicitar garantía, elige tu pedido aquí: {url_for('cliente.seleccionar_pedido_defectuoso')}"
-    elif 'ver notificaciones' in lower or 'notificaciones' in lower:
+    elif 'ver notificaciones' in lower_norm or 'notificaciones' in lower_norm:
         respuesta = f"Puedes ver tus notificaciones aquí: {url_for('cliente.ver_notificaciones_cliente')}"
-    elif 'registrar producto defectuoso' in lower or 'producto defectuoso' in lower or 'defectuoso' in lower:
+    elif 'registrar producto defectuoso' in lower_norm or 'producto defectuoso' in lower_norm or 'defectuoso' in lower_norm:
         respuesta = f"Registra tu producto defectuoso aquí: {url_for('cliente.seleccionar_pedido_defectuoso')}"
+    # Si hay numero de pedido detectado y el usuario pregunta algo generico como 'saber/ sobre/ info/ detalle'
+    elif pedido_id and ('pedido' in lower_norm) and any(k in lower_norm for k in ['saber','sobre','info','informacion','detalle','ver']):
+        consulta = Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Usuario=current_user.ID_Usuario).first()
+        if consulta:
+            respuesta = (
+                f"Pedido #{consulta.ID_Pedido} - Estado: {consulta.Estado}. "
+                f"Detalle: {url_for('cliente.ver_pedido', pedido_id=consulta.ID_Pedido)}"
+            )
+        else:
+            respuesta = "No encontré ese pedido en tu cuenta. Verifica el número."
+    elif pedido_id:
+        # Fallback: si hay número de pedido, responde con estado y enlace aunque no detecte palabra clave
+        consulta = Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Usuario=current_user.ID_Usuario).first()
+        if consulta:
+            respuesta = (
+                f"Pedido #{consulta.ID_Pedido} - Estado: {consulta.Estado}. "
+                f"Detalle: {url_for('cliente.ver_pedido', pedido_id=consulta.ID_Pedido)}"
+            )
+        else:
+            respuesta = "No encontré ese pedido en tu cuenta. Verifica el número."
     else:
         respuesta = "Gracias por tu mensaje. Un asesor te responderá pronto. También puedes usar las sugerencias."
 
@@ -627,6 +683,16 @@ def enviar_mensaje_cliente():
 
     msg = Mensaje(cliente_id=current_user.ID_Usuario, contenido=contenido, enviado_admin=False)
     db.session.add(msg)
+
+    # Si el cliente pide hablar con un asesor, guardamos también la respuesta del bot
+    if 'asesor' in (contenido or '').lower():
+        ack = Mensaje(
+            cliente_id=current_user.ID_Usuario,
+            contenido='Gracias por tu mensaje. Un asesor te responderá pronto.',
+            enviado_admin=True
+        )
+        db.session.add(ack)
+
     db.session.commit()
     return jsonify({'status': 'ok'})
 

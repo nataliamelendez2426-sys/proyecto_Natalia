@@ -178,9 +178,13 @@ function renderMessage(msg, clienteNombre) {
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble';
 
-    
-    const sender = msg.enviado_admin ? 'Tú (Admin)' : clienteNombre;
-    bubble.textContent = msg.contenido; 
+    // Convertir URLs a botones verdes
+    const urlRegex = /(https?:\/\/[^\s]+|\/[A-Za-z0-9_\-\/\?=&%\.]+)/g;
+    const safe = String(msg.contenido || '').replace(urlRegex, (m) => {
+        const href = m;
+        return `<a href="${href}" class="btn btn-success btn-sm" target="_blank" rel="noopener">Abrir</a>`;
+    });
+    bubble.innerHTML = safe;
 
     container.appendChild(bubble);
     chatBody.appendChild(container);
@@ -271,5 +275,43 @@ setInterval(() => {
         }
     }
 }, 3000);
+</script>
+
+<!-- Modal: acceso restringido -->
+<div class="modal fade" id="noAccessModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-warning-subtle">
+        <h5 class="modal-title">Acceso restringido</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        No tienes acceso a este enlace. Es información personal del cliente.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Entendido</button>
+      </div>
+    </div>
+  </div>
+  </div>
+
+<script>
+// Interceptar clicks en enlaces de mensajes del chat del admin
+document.addEventListener('click', function(e){
+  const a = e.target.closest('a');
+  if (!a) return;
+  const href = a.getAttribute('href') || '';
+  // Bloquear enlaces a rutas del cliente
+  try {
+    // Soporte para rutas relativas y absolutas
+    const rel = href.startsWith('/cliente/');
+    const absCliente = href.includes('/cliente/');
+    if (rel || absCliente) {
+      e.preventDefault();
+      const modal = new bootstrap.Modal(document.getElementById('noAccessModal'));
+      modal.show();
+    }
+  } catch(_) {}
+});
 </script>
 {% endblock %}

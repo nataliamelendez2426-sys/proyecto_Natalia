@@ -18,11 +18,19 @@
                 <i class="far fa-comments" style="font-size: 30px; margin-top: 15px; color: #ccc;"></i>
             </div>
         </div>
+        <div class="chips" style="padding:8px 15px; border-top:1px solid #eee; background:#fff;">
+            <span class="chip" data-text="ver mis pedidos">ver mis pedidos</span>
+            <span class="chip" data-text="solicitar garantia">solicitar garantia</span>
+            <span class="chip" data-text="ver notificaciones">ver notificaciones</span>
+            <span class="chip" data-text="horarios de atencion">horarios de atencion</span>
+            <span class="chip" data-text="hablar con un asesor">hablar con un asesor</span>
+        </div>
         <div id="chatInputContainer">
             <input type="text" id="chatInput" placeholder="Escribe tu mensaje..." disabled>
             <button id="sendChat" disabled>
                 <i class="fas fa-paper-plane"></i>
             </button>
+            <button id="btnAsesor" class="btn btn-outline-success btn-sm" style="margin-left:8px; white-space:nowrap;">Asesor</button>
         </div>
     </div>
 </div>
@@ -113,6 +121,11 @@
 }
 #sendChat:active:not([disabled]) { transform:scale(0.95); }
 #sendChat[disabled], #chatInput[disabled] { opacity:0.6; cursor:not-allowed; }
+
+/* Chips estilo verde */
+.chips { display:flex; gap:8px; flex-wrap:wrap; }
+.chip { background:#e6f4ea; color:#146c43; border:1px solid #cfe8d1; padding:6px 10px; border-radius:16px; cursor:pointer; font-size:12px; }
+.chip:hover { background:#dff5e6; }
 </style>
 
 <script>
@@ -120,6 +133,8 @@ let chatBody = document.getElementById('chatBody');
 let chatInput = document.getElementById('chatInput');
 let sendBtn = document.getElementById('sendChat');
 let initialMessage = document.getElementById('initialMessage');
+let btnAsesor = document.getElementById('btnAsesor');
+let chips = document.querySelectorAll('.chip');
 
 function toggleInput(enabled) {
     chatInput.disabled = !enabled;
@@ -135,7 +150,13 @@ function renderMessage(msg) {
 
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble';
-    bubble.textContent = msg.contenido;
+    // Convertir URLs a botones (abre en nueva pestaña)
+    const urlRegex = /(https?:\/\/[^\s]+|\/[A-Za-z0-9_\-\/\?=&%\.]+)/g;
+    const safeHtml = String(msg.contenido || '').replace(urlRegex, (m) => {
+        const href = m;
+        return `<a href="${href}" class="btn btn-success btn-sm" target="_blank" rel="noopener">Abrir</a>`;
+    });
+    bubble.innerHTML = safeHtml;
 
     bubble.style.opacity = 0;
     container.appendChild(bubble);
@@ -159,12 +180,15 @@ async function enviarMensaje() {
         if(data.status === 'ok') {
             renderMessage({contenido: contenido, enviado_admin:false});
             chatInput.value = '';
+            // El acuse del bot se persistirá desde backend (evita duplicados aquí)
         }
     } catch(err) { console.error('Error enviando mensaje:', err); }
 }
 
 sendBtn.addEventListener('click', enviarMensaje);
 chatInput.addEventListener('keypress', (e) => { if(e.key==='Enter') enviarMensaje(); });
+btnAsesor.addEventListener('click', ()=>{ chatInput.value = 'hablar con un asesor'; enviarMensaje(); });
+chips.forEach(c => c.addEventListener('click', ()=>{ chatInput.value = c.dataset.text; enviarMensaje(); }));
 
 async function cargarMensajes() {
     try {
