@@ -61,9 +61,15 @@
         <div class="noti-item" data-fecha="{{ n.Fecha.strftime('%Y-%m-%d') }}">
           <input type="checkbox" name="ids" value="{{ n.ID_Notificacion }}">
           <div style="flex:1;">
-            {% set _text = (n.Mensaje or '')|striptags %}
+            {% set _raw = (n.Mensaje or '') %}
+            {% set _text = _raw|striptags %}
             {% set _msg_lower = _text|lower %}
             <p>{{ _text }}</p>
+
+            {# Botón explícito para mensajes de devolución con soporte #}
+            {% if 'devolucion del dinero correspondiente' in _msg_lower or 'reembolso' in _msg_lower %}
+              <a href="{{ url_for('cliente.chat_cliente') }}" class="btn btn-primary btn-sm mt-2">Ir al chat de soporte</a>
+            {% endif %}
             <span class="fecha">{{ n.Fecha.strftime('%d/%m/%Y %H:%M') }}</span>
 
             {% if n.defecto %}
