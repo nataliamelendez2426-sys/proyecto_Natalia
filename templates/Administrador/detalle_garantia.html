@@ -46,6 +46,40 @@
         </p>
       </div>
 
+      <!-- Evidencia del defecto -->
+      {% if garantia.archivos and garantia.archivos|length > 0 %}
+      <div class="mb-4">
+        <h5 class="mb-3">Evidencia enviada por el cliente</h5>
+        <div class="d-flex flex-wrap gap-3">
+          {% for arch in garantia.archivos %}
+            {# Normalizar ruta: backslashes -> slashes, quitar prefijo 'static/' si existe #}
+            {% set raw = arch.RutaArchivo or '' %}
+            {% set norm = raw|replace('\\','/') %}
+            {% set parts = norm.split('static/') %}
+            {% if parts|length > 1 %}
+              {% set rel = parts[1] %}
+            {% else %}
+              {% set rel = norm %}
+            {% endif %}
+            {% if rel and rel[0:1] == '/' %}
+              {% set rel = rel[1:] %}
+            {% endif %}
+            {% set url = url_for('static', filename=rel) %}
+            {% set lower = rel|lower %}
+            {% if lower.endswith('.png') or lower.endswith('.jpg') or lower.endswith('.jpeg') or lower.endswith('.gif') or lower.endswith('.webp') %}
+              <a href="{{ url }}" target="_blank" class="d-inline-block">
+                <img src="{{ url }}" alt="Evidencia" style="width:140px;height:140px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb;" onerror="this.style.display='none'">
+              </a>
+            {% elif lower.endswith('.mp4') or lower.endswith('.mov') or lower.endswith('.webm') %}
+              <video src="{{ url }}" controls style="width:220px;max-height:160px;border-radius:10px;border:1px solid #e5e7eb;"></video>
+            {% else %}
+              <a href="{{ url }}" target="_blank" class="btn btn-outline-secondary btn-sm">Descargar archivo</a>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
       <!-- Formulario -->
       <form method="POST" action="{{ url_for('admin.actualizar_garantia', garantia_id=garantia.ID_Garantia) }}">
 

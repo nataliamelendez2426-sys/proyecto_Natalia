@@ -969,6 +969,12 @@ def solicitar_garantia(pedido_id):
             flash('Debes seleccionar al menos un producto.', 'danger')
             return redirect(request.url)
 
+        # Validar que haya al menos un archivo de evidencia
+        tiene_evidencia = any((a and a.filename.strip() != '') for a in archivos)
+        if not tiene_evidencia:
+            flash('Debes adjuntar al menos una imagen o video del defecto.', 'danger')
+            return redirect(request.url)
+
         nueva_garantia = Garantia(
             ID_Pedido=pedido.ID_Pedido,
             ID_Usuario=current_user.ID_Usuario,
@@ -977,16 +983,19 @@ def solicitar_garantia(pedido_id):
         db.session.add(nueva_garantia)
         db.session.flush()
 
-        # Guardar archivos
+        # Guardar archivos: en static/uploads/garantias y almacenar ruta relativa
+        save_dir = os.path.join(current_app.static_folder, 'uploads', 'garantias')
+        os.makedirs(save_dir, exist_ok=True)
         for archivo in archivos:
-            if archivo.filename != '':
+            if archivo and archivo.filename != '':
                 filename = secure_filename(archivo.filename)
-                ruta = os.path.join(UPLOAD_FOLDER, filename)
-                archivo.save(ruta)
+                abs_path = os.path.join(save_dir, filename)
+                archivo.save(abs_path)
+                rel_path = f"uploads/garantias/{filename}"
                 archivo_garantia = GarantiaArchivo(
                     ID_Garantia=nueva_garantia.ID_Garantia,
                     NombreArchivo=filename,
-                    RutaArchivo=ruta
+                    RutaArchivo=rel_path
                 )
                 db.session.add(archivo_garantia)
 
@@ -1001,58 +1010,9 @@ def solicitar_garantia(pedido_id):
 
         db.session.commit()
         flash('Solicitud de garantía enviada correctamente.', 'success')
-        return redirect(url_for('cliente.ver_pedido', pedido_id=pedido.ID_Pedido))
-    # Obtener la notificación
-    notificacion = Notificaciones.query.get_or_404(notificacion_id)
-    
-    # Validar que la notificación tenga un defecto asociado
-    if not notificacion.defecto:
-        flash("Esta notificación no tiene un producto para agendar cita.", "danger")
-        return redirect(url_for('cliente.ver_notificaciones_cliente'))
-    
-    garantia = notificacion.defecto  # ProductoDefectuoso
-
-    # Solo permitir si el estado es resuelto_tecnico y no hay cita previa
-    if garantia.Estado != 'resuelto_tecnico' or garantia.CitaProgramada:
-        flash("No se puede agendar cita para este estado.", "warning")
-        return redirect(url_for('cliente.ver_notificaciones_cliente'))
-
-    # Obtener fecha y hora del formulario
-    fecha = request.form.get('fecha')
-    hora = request.form.get('hora')
-
-    if not fecha or not hora:
-        flash("Debes ingresar fecha y hora válidas.", "danger")
-        return redirect(url_for('cliente.ver_notificaciones_cliente'))
-
-    try:
-        # Combinar fecha y hora en datetime
-        cita_datetime = datetime.strptime(f"{fecha} {hora}", "%Y-%m-%d %H:%M")
-    except ValueError:
-        flash("Formato de fecha u hora inválido.", "danger")
-        return redirect(url_for('cliente.ver_notificaciones_cliente'))
-
-    # Asignar la cita al producto defectuoso
-    garantia.CitaProgramada = cita_datetime
-
-    # Obtener dirección del pedido, si existe
-    pedido = garantia.pedido
-    direccion = pedido.Destino if pedido and pedido.Destino else "Dirección no definida"
-
-    # Registrar en calendario usando la dirección del pedido
-    nuevo_evento = Calendario(
-        Fecha=cita_datetime.date(),
-        Hora=cita_datetime.time(),
-        Ubicacion=direccion,
-        Tipo="Garantía",
-        ID_Usuario=current_user.ID_Usuario,
-        ID_Pedido=garantia.ID_Pedido
-    )
-    db.session.add(nuevo_evento)
-    db.session.commit()
-
-    flash(f"Cita agendada correctamente para {cita_datetime.strftime('%d/%m/%Y %H:%M')} en {direccion}", "success")
-    return redirect(url_for('cliente.ver_notificaciones_cliente'))
+        return redirect(url_for('cliente.actualizacion_datos'))
+    # Render en GET: formulario Solicitar Garantía
+    return render_template('cliente/solicitar_garantia.html', pedido=pedido, productos=productos)
 
 
 @cliente.route('/guardar_preferencias', methods=['POST'])

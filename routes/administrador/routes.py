@@ -852,10 +852,48 @@ def ver_garantias():
         flash("No tienes permisos para acceder a esta sección", "danger")
         return redirect(url_for('cliente.index'))
 
-    # Traer garantías con usuario y productos relacionados
-    garantias = Garantia.query.order_by(Garantia.FechaSolicitud.desc()).all()
-    return render_template('administrador/garantia_lista.html', garantias=garantias)
+    # Filtros
+    estado = (request.args.get('estado') or 'todos').strip().lower()
+    q = (request.args.get('q') or '').strip()
+    fecha_inicio = (request.args.get('fecha_inicio') or '').strip()
+    fecha_fin = (request.args.get('fecha_fin') or '').strip()
 
+    query = Garantia.query.join(Usuario, Garantia.ID_Usuario == Usuario.ID_Usuario).join(Pedido, Garantia.ID_Pedido == Pedido.ID_Pedido)
+
+    if estado in ('pendiente','aprobada','rechazada','completada'):
+        query = query.filter(Garantia.Estado == estado)
+
+    if q:
+        if q.isdigit():
+            # Buscar por ID de garantía o pedido
+            from sqlalchemy import or_
+            query = query.filter(or_(Garantia.ID_Garantia == int(q), Garantia.ID_Pedido == int(q)))
+        else:
+            like = f"%{q}%"
+            query = query.filter(Usuario.Nombre.ilike(like) | Usuario.Apellido.ilike(like))
+
+    if fecha_inicio:
+        try:
+            fi = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            query = query.filter(Garantia.FechaSolicitud >= fi)
+        except ValueError:
+            pass
+    if fecha_fin:
+        try:
+            ff = datetime.strptime(fecha_fin, '%Y-%m-%d')
+            # incluir fin del día
+            ff = ff + timedelta(days=1)
+            query = query.filter(Garantia.FechaSolicitud < ff)
+        except ValueError:
+            pass
+
+    garantias = query.order_by(Garantia.FechaSolicitud.desc()).all()
+    return render_template('administrador/garantia_lista.html', garantias=garantias, filtros={
+        'estado': estado,
+        'q': q,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+    })
 
 @admin.route('/garantia/<int:garantia_id>')
 @login_required

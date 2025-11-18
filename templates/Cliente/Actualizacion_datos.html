@@ -246,4 +246,41 @@
 <script src="{{ url_for('static', filename='js/actualizacion.js') }}"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const openModal = params.get('openModal');
+    const pedidoId = params.get('pedido_id');
+    if (openModal === 'pedido' && pedidoId) {
+      // Asegurar que la sección de pedidos sea visible si hay lógica por secciones
+      const secPedidos = document.getElementById('seccion-pedidos');
+      if (secPedidos) { secPedidos.style.display = ''; }
+
+      // Construir URL a detalle ajax usando patrón de la plantilla
+      const base = "{{ url_for('cliente.detalle_pedido_ajax', pedido_id=0) }}";
+      const url = base.replace(/0$/, String(pedidoId));
+
+      // Cargar contenido y abrir modal
+      fetch(url)
+        .then(r => r.text())
+        .then(html => {
+          const cont = document.getElementById('detalle-pedido-contenido');
+          if (cont) cont.innerHTML = html;
+          const modalEl = document.getElementById('modalPedido');
+          if (modalEl && window.bootstrap) {
+            new bootstrap.Modal(modalEl).show();
+          }
+        })
+        .catch(() => {
+          const cont = document.getElementById('detalle-pedido-contenido');
+          if (cont) cont.innerHTML = '<div class="alert alert-danger">No se pudo cargar el detalle del pedido.</div>';
+          const modalEl = document.getElementById('modalPedido');
+          if (modalEl && window.bootstrap) {
+            new bootstrap.Modal(modalEl).show();
+          }
+        });
+    }
+  });
+</script>
+
 {% endblock %}

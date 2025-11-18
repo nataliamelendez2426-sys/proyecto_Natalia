@@ -6,43 +6,200 @@
 
 {% block content %}
 <div class="container my-5">
-  <h2 class="mb-4">Solicitar Garantía</h2>
 
-  
+  <h2 class="mb-4 text-success fw-bold">
+    <i class="bi bi-shield-check me-2"></i>Solicitar Garantía
+  </h2>
 
-  <form action="{{ url_for('cliente.solicitar_garantia', pedido_id=pedido.ID_Pedido) }}" 
-        method="POST" enctype="multipart/form-data">
+  <style>
+    /* Paleta verde */
+    :root {
+      --green-main: #2e7d32;
+      --green-light: #4caf50;
+      --green-bg: #e8f5e9;
+      --green-border: #c8e6c9;
+      --green-hover: #1b5e20;
+    }
 
-    <div class="mb-3">
-      <label class="form-label">Selecciona los productos</label>
-      {% for detalle in productos %}
-        <div class="form-check d-flex align-items-center mb-2">
-          <input class="form-check-input me-2" type="checkbox" 
+    /* Contenedor general */
+    .garantia-card {
+      background: var(--green-bg);
+      border: 1px solid var(--green-border);
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.08);
+    }
+
+    /* Imagen del producto */
+    .prod-thumb {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 2px solid var(--green-border);
+      background: #fff;
+      transition: 0.2s;
+    }
+    .prod-thumb:hover {
+      transform: scale(1.05);
+      border-color: var(--green-main);
+    }
+
+    /* Checkbox estilo verde */
+    .form-check-input:checked {
+      background-color: var(--green-main) !important;
+      border-color: var(--green-main) !important;
+    }
+
+    .form-check-label {
+      cursor: pointer;
+    }
+
+    /* Estilo del textarea */
+    textarea.form-control {
+      border-radius: 10px;
+      border-color: var(--green-border);
+    }
+    textarea.form-control:focus {
+      border-color: var(--green-main);
+      box-shadow: 0 0 0 0.15rem rgba(46,125,50,0.25);
+    }
+
+    /* Estilo del input de archivos */
+    #archivos {
+      border-radius: 10px;
+      border-color: var(--green-border);
+    }
+    #archivos:focus {
+      border-color: var(--green-main);
+      box-shadow: 0 0 0 0.15rem rgba(46,125,50,0.25);
+    }
+
+    /* Botón principal */
+    #btnEnviarGarantia {
+      background-color: var(--green-main) !important;
+      border-color: var(--green-main) !important;
+      transition: 0.2s;
+    }
+    #btnEnviarGarantia:hover:not(:disabled) {
+      background-color: var(--green-hover) !important;
+      border-color: var(--green-hover) !important;
+      transform: scale(1.02);
+    }
+
+    #previewArchivos img {
+      border: 2px solid var(--green-border);
+      border-radius: 8px;
+    }
+  </style>
+
+  <div class="garantia-card">
+
+    <form action="{{ url_for('cliente.solicitar_garantia', pedido_id=pedido.ID_Pedido) }}" 
+          method="POST" enctype="multipart/form-data">
+
+      <div class="mb-3">
+        <label class="form-label fw-bold text-success">Selecciona los productos</label>
+
+        {% for detalle in productos %}
+        <div class="form-check d-flex align-items-center mb-3 p-2 rounded"
+             style="border:1px solid var(--green-border); background:#fff;">
+          
+          <input class="form-check-input me-3" type="checkbox" 
                  name="productos" value="{{ detalle.ID_Producto }}" 
                  id="prod{{ detalle.ID_Producto }}">
-          
-          <label class="form-check-label d-flex align-items-center" for="prod{{ detalle.ID_Producto }}">
-            {% if detalle.producto.ImagenPrincipal %}
-              <img src="{{ url_for('static', filename='uploads/' ~ detalle.producto.ImagenPrincipal) }}" 
-                   alt="{{ detalle.producto.NombreProducto }}" width="50" class="me-2 rounded">
-            {% endif %}
-            {{ detalle.producto.NombreProducto }} (Cantidad: {{ detalle.Cantidad }})
+
+          <label class="form-check-label d-flex align-items-center w-100" 
+                 for="prod{{ detalle.ID_Producto }}">
+            <img src="{{ url_for('static', filename=detalle.producto.ImagenPrincipal or 'img/catalogo.png') }}" 
+                 class="me-3 prod-thumb"
+                 alt="{{ detalle.producto.NombreProducto }}" 
+                 loading="lazy"
+                 onerror="this.src='{{ url_for('static', filename='img/catalogo.png') }}'">
+
+            <div>
+              <span class="fw-semibold">{{ detalle.producto.NombreProducto }}</span>  
+              <br>
+              <small class="text-muted">Cantidad: {{ detalle.Cantidad }}</small>
+            </div>
           </label>
+
         </div>
-      {% endfor %}
-    </div>
+        {% endfor %}
+      </div>
 
-    <div class="mb-3">
-      <label for="motivo" class="form-label">Motivo de la garantía</label>
-      <textarea class="form-control" name="motivo" id="motivo" rows="4" required></textarea>
-    </div>
+      <div class="mb-3">
+        <label for="motivo" class="form-label fw-bold text-success">Motivo de la garantía</label>
+        <textarea class="form-control" name="motivo" id="motivo" rows="4" required></textarea>
+      </div>
 
-    <div class="mb-3">
-      <label for="archivos" class="form-label">Adjuntar archivos (opcional)</label>
-      <input class="form-control" type="file" name="archivos" id="archivos" multiple>
-    </div>
+      <div class="mb-3">
+        <label for="archivos" class="form-label fw-bold text-success">
+          Adjuntar evidencia del defecto
+        </label>
+        <input class="form-control" type="file" name="archivos" id="archivos" 
+               multiple required accept="image/*,video/*">
+        
+        <div id="previewArchivos" class="d-flex gap-2 mt-2 flex-wrap"></div>
 
-    <button type="submit" class="btn btn-success">Enviar Solicitud</button>
-  </form>
+        <div class="form-text text-success">
+          Adjunta al menos 1 imagen o video donde se vea claramente el defecto.
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-success mt-3" 
+              id="btnEnviarGarantia" disabled>
+        Enviar Solicitud
+      </button>
+
+    </form>
+  </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function(){
+    const input = document.getElementById('archivos');
+    const preview = document.getElementById('previewArchivos');
+    const submit = document.getElementById('btnEnviarGarantia');
+
+    if(!input) return;
+
+    const renderPreview = (files)=>{
+      preview.innerHTML = '';
+      Array.from(files || []).slice(0,6).forEach(f=>{
+        const ext = (f.name||'').toLowerCase();
+
+        if(ext.match(/\.(png|jpg|jpeg|gif|webp)$/)){
+          const url = URL.createObjectURL(f);
+          const img = document.createElement('img');
+          img.src = url;
+          img.width = 80;
+          img.height = 80;
+          img.style.objectFit='cover';
+          img.className='rounded border';
+          preview.appendChild(img);
+
+        } else if (ext.match(/\.(mp4|mov|webm)$/)){
+          const span = document.createElement('span');
+          span.className='badge bg-success';
+          span.textContent = 'Video: '+ (f.name||'');
+          preview.appendChild(span);
+        }
+      });
+    };
+
+    const toggleSubmit = ()=>{
+      submit.disabled = !(input.files && input.files.length > 0);
+    };
+
+    input.addEventListener('change', ()=>{
+      renderPreview(input.files);
+      toggleSubmit();
+    });
+
+    toggleSubmit();
+  })();
+</script>
 {% endblock %}
