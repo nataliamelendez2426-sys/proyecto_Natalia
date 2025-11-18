@@ -1016,7 +1016,7 @@ def actualizar_garantia(garantia_id):
 
     garantia.Estado = nuevo_estado
     garantia.ComentarioAdmin = comentario
-    garantia.FechaResolucion = datetime.utcnow()
+    garantia.FechaResolucion = datetime.now()
 
     # Asignar instalador si el estado es aprobada y hay uno seleccionado
     if nuevo_estado == 'aprobada' and instalador_id:
@@ -1026,7 +1026,7 @@ def actualizar_garantia(garantia_id):
         notificacion = Notificaciones(
             Titulo=f"Estado de garantía #{garantia.ID_Garantia}",
             Mensaje=f"Tu garantía #{garantia.ID_Garantia} ha sido aprobada. <a href='/cliente/notificaciones'>Agendar cita</a>",
-            Fecha=datetime.utcnow(),
+            Fecha=datetime.now(),
             Leida=False,
             ID_Usuario=garantia.ID_Usuario
         )
@@ -1312,7 +1312,7 @@ def solucionar_defecto(id_garantia):
     notificacion = Notificaciones(
         Titulo="Actualización de producto defectuoso",
         Mensaje=mensaje,
-        Fecha=datetime.utcnow(),
+        Fecha=datetime.now(),
         Leida=False,
         ID_Usuario=garantia.ID_Usuario,
         ID_Defecto=garantia.ID
