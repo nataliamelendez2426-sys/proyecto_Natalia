@@ -1254,6 +1254,11 @@ def solucionar_defecto(id_garantia):
     empleado_id = request.form.get('empleado')
     motivo_rechazo = request.form.get('motivo_rechazo', '').strip()
 
+    # No permitir cambios si ya está en un estado final
+    if garantia.Estado in ('rechazada', 'resuelto_tecnico', 'resuelto_devolucion'):
+        flash("Este reporte ya fue resuelto, no puedes cambiar el estado nuevamente.", "warning")
+        return redirect(url_for('admin.admin_productos_defectuosos'))
+
     # Caso: Producto rechazado
     if accion == 'rechazada':
         if not motivo_rechazo:
@@ -1266,6 +1271,16 @@ def solucionar_defecto(id_garantia):
 
         mensaje = f"Tu reporte de producto defectuoso ha sido <strong>rechazado</strong>."
         mensaje += f"<br>Motivo: {motivo_rechazo}"
+
+    elif accion == 'devolucion':
+        # Devolución sin asignar técnico
+        garantia.Estado = 'resuelto_devolucion'
+        garantia.ID_Empleado = None
+        mensaje = (
+            "Tu producto defectuoso ha sido devuelto y se realizará la devolución del dinero correspondiente. "
+            "<br>Por favor, contáctate con el soporte técnico para más detalles sobre tu reembolso. "
+            "<br><a href='/cliente/chat' class='btn btn-sm btn-primary mt-2'>Ir al chat de soporte</a>"
+        )
 
     else:
         # Para otras acciones, se requiere técnico
@@ -1282,8 +1297,7 @@ def solucionar_defecto(id_garantia):
 
         estados = {
             "proceso": "en_proceso",
-            "tecnico": "resuelto_tecnico",
-            "devolucion": "resuelto_devolucion"
+            "tecnico": "resuelto_tecnico"
         }
 
         if accion not in estados:
@@ -1303,12 +1317,6 @@ def solucionar_defecto(id_garantia):
             )
         elif accion == "tecnico":
             mensaje = f"El técnico {tecnico.Nombre} ha reparado tu producto defectuoso."
-        elif accion == "devolucion":
-            mensaje = (
-                "Tu producto defectuoso ha sido devuelto y se realizará la devolución del dinero correspondiente. "
-                "<br>Por favor, contáctate con el soporte técnico para más detalles sobre tu reembolso. "
-                "<br><a href='/cliente/chat' class='btn btn-sm btn-primary mt-2'>Ir al chat de soporte</a>"
-            )
 
     # Guardar cambios y notificación
     db.session.commit()
