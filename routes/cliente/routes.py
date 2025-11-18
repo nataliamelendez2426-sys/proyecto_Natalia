@@ -1297,7 +1297,6 @@ def agendar_cita_garantia_aprobada(notificacion_id):
     # Guardar cita directamente en la garantía
     try:
         garantia.CitaAgendada = cita_datetime
-        garantia.Estado = 'cita_agendada'
         db.session.commit()
         flash("✅ Cita de garantía agendada correctamente.", "success")
     except Exception as e:
