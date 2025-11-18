@@ -190,7 +190,7 @@ function validarForm(form) {
             alert("Debes ingresar el motivo del rechazo.");
             return false;
         }
-    } else {
+    } else if (accion === 'proceso' || accion === 'tecnico') {
         if (!tecnico) {
             alert("Debes seleccionar un técnico para esta acción.");
             return false;
