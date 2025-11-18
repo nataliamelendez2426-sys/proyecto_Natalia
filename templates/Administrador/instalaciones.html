@@ -1,0 +1,119 @@
+{% extends "common/base.html" %}
+
+{% block navbar %}
+  {% include "common/partials/navbar_admin.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+  <div class="card shadow-lg border-0 rounded-4">
+    <div class="card-header bg-success text-white py-3 rounded-top-4">
+      <h3 class="mb-0 text-center">
+        <i class="bi bi-calendar2-check me-2"></i>Instalaciones agendadas
+      </h3>
+    </div>
+
+    <div class="card-body">
+      <form method="get" class="row g-2 align-items-end mb-3">
+        <div class="col-md-3">
+          <label class="form-label">Asignación</label>
+          {% set f = filtros or {} %}
+          <select name="asignado" class="form-select">
+            <option value="todos" {% if f.asignado=='todos' %}selected{% endif %}>Todos</option>
+            <option value="si" {% if f.asignado=='si' %}selected{% endif %}>Con instalador</option>
+            <option value="no" {% if f.asignado=='no' %}selected{% endif %}>Sin instalador</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Desde</label>
+          <input type="date" name="fecha_inicio" class="form-control" value="{{ f.fecha_inicio or '' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Hasta</label>
+          <input type="date" name="fecha_fin" class="form-control" value="{{ f.fecha_fin or '' }}">
+        </div>
+        <div class="col-md-3 d-grid">
+          <button class="btn btn-success">Filtrar</button>
+        </div>
+      </form>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-success">
+            <tr>
+              <th>ID</th>
+              <th>Pedido</th>
+              <th>Cliente</th>
+              <th>Fecha</th>
+              <th>Hora</th>
+              <th>Ubicación</th>
+              <th>Instalador actual</th>
+              <th class="text-center">Asignar</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if instalaciones|length == 0 %}
+              <tr>
+                <td colspan="8" class="text-center text-muted py-4">No hay instalaciones con los filtros seleccionados.</td>
+              </tr>
+            {% endif %}
+
+            {% for cal in instalaciones %}
+            <tr>
+              <td>#{{ cal.ID_Calendario }}</td>
+              <td>
+                {% if cal.pedido %}
+                  #{{ cal.pedido.ID_Pedido }}
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if cal.pedido and cal.pedido.usuario %}
+                  {{ cal.pedido.usuario.Nombre }} {{ cal.pedido.usuario.Apellido }}
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td>{{ cal.Fecha.strftime('%Y-%m-%d') }}</td>
+              <td>{{ cal.Hora.strftime('%H:%M') }}</td>
+              <td>{{ cal.Ubicacion }}</td>
+              <td>
+                {% if cal.usuario %}
+                  {{ cal.usuario.Nombre }} {{ cal.usuario.Apellido }}
+                {% elif cal.pedido and cal.pedido.empleado %}
+                  {{ cal.pedido.empleado.Nombre }} {{ cal.pedido.empleado.Apellido }}
+                {% else %}
+                  <span class="text-muted">No asignado</span>
+                {% endif %}
+              </td>
+              <td>
+                <form action="{{ url_for('admin.asignar_instalador', cal_id=cal.ID_Calendario) }}" method="post" class="row g-2">
+                  <div class="col-md-5">
+                    <select name="instalador_id" class="form-select form-select-sm">
+                      <option value="">Seleccionar</option>
+                      {% for ins in instaladores %}
+                        <option value="{{ ins.ID_Usuario }}" {% if cal.usuario and cal.usuario.ID_Usuario==ins.ID_Usuario %}selected{% endif %}>
+                          {{ ins.Nombre }} {{ ins.Apellido }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-5">
+                    <input type="datetime-local" name="fecha_cita" class="form-control form-control-sm"
+                      value="{{ cal.Fecha.strftime('%Y-%m-%d') }}T{{ cal.Hora.strftime('%H:%M') }}">
+                  </div>
+                  <div class="col-md-2 d-grid">
+                    <button class="btn btn-success btn-sm">Guardar</button>
+                  </div>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

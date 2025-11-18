@@ -3,9 +3,10 @@ import json
 from flask_login import current_user
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify,session
 from flask_login import login_required, current_user
-from datetime import date,datetime, timedelta
+from datetime import datetime, date, timedelta
+
 from flask import current_app
-from basedatos.models import db, Usuario, Notificaciones, Direccion, Producto, Proveedor,Categorias,Resena,Compra,Pedido, Mensaje, Garantia ,Pagos, Categorias ,ProductoDefectuoso 
+from basedatos.models import db, Usuario, Notificaciones, Direccion, Producto, Proveedor,Categorias,Resena,Compra,Pedido, Mensaje, Garantia ,Pagos, Categorias ,ProductoDefectuoso, Calendario 
 from werkzeug.security import generate_password_hash
 from basedatos.decoradores import role_required
 from basedatos.notificaciones import crear_notificacion
@@ -912,6 +913,97 @@ def detalle_garantia(garantia_id):
         garantia=garantia,
         instaladores=instaladores
     )
+
+
+@admin.route('/instalaciones', methods=['GET'])
+@login_required
+def ver_instalaciones():
+    if current_user.Rol != 'admin':
+        flash("No tienes permisos", "danger")
+        return redirect(url_for('cliente.index'))
+
+    asignado = (request.args.get('asignado') or 'todos').strip().lower()  # todos | si | no
+    fecha_inicio = (request.args.get('fecha_inicio') or '').strip()
+    fecha_fin = (request.args.get('fecha_fin') or '').strip()
+
+    query = Calendario.query.filter_by(Tipo='instalacion')
+
+    # rango de fechas opcional
+    if fecha_inicio:
+        try:
+            fi = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+            query = query.filter(Calendario.Fecha >= fi)
+        except ValueError:
+            pass
+    if fecha_fin:
+        try:
+            ff = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+            query = query.filter(Calendario.Fecha <= ff)
+        except ValueError:
+            pass
+
+    # filtro por asignación (Pedido.ID_Empleado)
+    instalaciones = query.order_by(Calendario.Fecha.asc(), Calendario.Hora.asc()).all()
+
+    # Cargar instaladores
+    instaladores = Usuario.query.filter_by(Rol='instalador').all()
+
+    # Enriquecer con pedido/cliente para plantilla
+    def is_asignado(cal):
+        ped = Pedido.query.get(cal.ID_Pedido) if cal.ID_Pedido else None
+        return bool(ped and ped.ID_Empleado)
+
+    if asignado in ('si','no'):
+        instalaciones = [cal for cal in instalaciones if (is_asignado(cal) == (asignado=='si'))]
+
+    return render_template('Administrador/instalaciones.html', instalaciones=instalaciones, instaladores=instaladores,
+                           filtros={
+                               'asignado': asignado,
+                               'fecha_inicio': fecha_inicio,
+                               'fecha_fin': fecha_fin,
+                           })
+
+
+@admin.route('/instalaciones/asignar/<int:cal_id>', methods=['POST'])
+@login_required
+def asignar_instalador(cal_id):
+    if current_user.Rol != 'admin':
+        flash("No tienes permisos", "danger")
+        return redirect(url_for('cliente.index'))
+
+    cal = Calendario.query.get_or_404(cal_id)
+    instalador_id = request.form.get('instalador_id')
+    fecha_cita = request.form.get('fecha_cita')  # 'YYYY-MM-DDTHH:MM'
+
+    if not instalador_id:
+        flash('Selecciona un instalador.', 'warning')
+        return redirect(url_for('admin.ver_instalaciones'))
+
+    instalador = Usuario.query.get(instalador_id)
+    if not instalador or instalador.Rol != 'instalador':
+        flash('Instalador no válido.', 'danger')
+        return redirect(url_for('admin.ver_instalaciones'))
+
+    # actualizar fecha/hora si viene
+    if fecha_cita:
+        try:
+            dt = datetime.strptime(fecha_cita, '%Y-%m-%dT%H:%M')
+            cal.Fecha = dt.date()
+            cal.Hora = dt.time()
+        except ValueError:
+            flash('Formato de fecha/hora no válido.', 'danger')
+            return redirect(url_for('admin.ver_instalaciones'))
+
+    # setear instalador en calendario y en pedido asociado
+    cal.ID_Usuario = int(instalador_id)
+    if cal.ID_Pedido:
+        pedido = Pedido.query.get(cal.ID_Pedido)
+        if pedido:
+            pedido.ID_Empleado = int(instalador_id)
+
+    db.session.commit()
+    flash('Instalación actualizada correctamente.', 'success')
+    return redirect(url_for('admin.ver_instalaciones'))
 
 
 @admin.route('/garantia/<int:garantia_id>/actualizar', methods=['POST'])
