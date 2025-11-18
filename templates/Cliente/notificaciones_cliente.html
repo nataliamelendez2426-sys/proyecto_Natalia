@@ -56,7 +56,7 @@
     <form method="POST" action="{{ url_for('cliente.ver_notificaciones_cliente') }}">
       {% if notificaciones %}
       <div class="noti-list" id="noti-list">
-        {% set hoy = datetime.now().strftime('%Y-%m-%d') %}
+        {% set hoy = datetime.utcnow().strftime('%Y-%m-%d') %}
         {% for n in notificaciones %}
         <div class="noti-item" data-fecha="{{ n.Fecha.strftime('%Y-%m-%d') }}">
           <input type="checkbox" name="ids" value="{{ n.ID_Notificacion }}">
