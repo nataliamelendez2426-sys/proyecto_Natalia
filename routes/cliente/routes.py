@@ -54,14 +54,14 @@ def api_chat_send():
     if not texto:
         return jsonify({"ok": False, "error": "Mensaje vacío"}), 400
 
-    # Guardar mensaje del cliente
+
     msg = Mensaje(cliente_id=current_user.ID_Usuario, contenido=texto, enviado_admin=False)
     db.session.add(msg)
     db.session.commit()
 
-    # Generar respuesta básica de CasaBot según intentos simples
+
     lower = texto.lower()
-    # Normalizar acentos y espacios para tolerar typos: 'sobre' vs 'obre'
+    
     try:
         import unicodedata
         lower_norm = ''.join(
@@ -72,7 +72,7 @@ def api_chat_send():
     except Exception:
         lower_norm = lower
 
-    # Extraer numero de pedido si viene en el texto (e.g. 'pedido 61', 'pedido #61', 'orden 61')
+
     if not pedido_id:
         import re
         m = re.search(r'(pedido|orden|#)\s*#?(\d+)', lower)
@@ -82,7 +82,7 @@ def api_chat_send():
             except Exception:
                 pedido_id = None
         else:
-            # Como fallback, si hay un número suelto, tomar el primero
+          
             m2 = re.search(r'\b(\d{1,6})\b', lower)
             if m2:
                 try:
@@ -121,7 +121,7 @@ def api_chat_send():
         respuesta = f"Puedes ver tus notificaciones aquí: {url_for('cliente.ver_notificaciones_cliente')}"
     elif 'registrar producto defectuoso' in lower_norm or 'producto defectuoso' in lower_norm or 'defectuoso' in lower_norm:
         respuesta = f"Registra tu producto defectuoso aquí: {url_for('cliente.seleccionar_pedido_defectuoso')}"
-    # Si hay numero de pedido detectado y el usuario pregunta algo generico como 'saber/ sobre/ info/ detalle'
+   
     elif pedido_id and ('pedido' in lower_norm) and any(k in lower_norm for k in ['saber','sobre','info','informacion','detalle','ver']):
         consulta = Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Usuario=current_user.ID_Usuario).first()
         if consulta:
@@ -132,7 +132,7 @@ def api_chat_send():
         else:
             respuesta = "No encontré ese pedido en tu cuenta. Verifica el número."
     elif pedido_id:
-        # Fallback: si hay número de pedido, responde con estado y enlace aunque no detecte palabra clave
+       
         consulta = Pedido.query.filter_by(ID_Pedido=pedido_id, ID_Usuario=current_user.ID_Usuario).first()
         if consulta:
             respuesta = (
@@ -157,7 +157,7 @@ def api_chat_fetch():
     after = request.args.get('after')
     q = Mensaje.query.filter_by(cliente_id=current_user.ID_Usuario)
     if after:
-        # formato ISO: 'YYYY-MM-DDTHH:MM:SS'
+   
         try:
             from datetime import datetime
             dt = datetime.fromisoformat(after)
@@ -195,7 +195,7 @@ def api_chat_pedidos():
 @login_required
 def ver_notificaciones_cliente():
     if request.method == "POST":
-        # --- Eliminación múltiple ---
+    
         ids = request.form.getlist("ids")
         if ids:
             try:
@@ -217,7 +217,7 @@ def ver_notificaciones_cliente():
         .all()
     )
 
-    # Construir info de cita para notificaciones de garantía aprobada
+  
     cita_garantia_por_notif = {}
     try:
         for n in notificaciones:
@@ -239,7 +239,7 @@ def ver_notificaciones_cliente():
     return render_template(
         "cliente/notificaciones_cliente.html",
         notificaciones=notificaciones,
-        datetime=datetime,  # para usar datetime en el template
+        datetime=datetime,  
         cita_garantia_por_notif=cita_garantia_por_notif
     )
 
@@ -266,22 +266,22 @@ def eliminar_notificacion(notificacion_id):
 def agendar_cita_tecnico(notificacion_id):
     """Agendar cita del cliente con el técnico asociado a su producto defectuoso."""
 
-    # --- Buscar notificación ---
+   
     notificacion = Notificaciones.query.get_or_404(notificacion_id)
 
-    # Validar que la notificación tenga un defecto asociado
+
     if not notificacion.defecto:
         flash("Esta notificación no tiene un producto para agendar cita.", "danger")
         return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
     defecto = notificacion.defecto
 
-    # Si ya hay cita, no permitir duplicar
+   
     if defecto.CitaProgramada:
         flash("Esta solicitud ya tiene una cita programada.", "warning")
         return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
-    # --- Obtener datos del formulario (nombres únicos por notificación) ---
+
     fecha_str = request.form.get(f'fecha_{notificacion_id}') or request.form.get('fecha')
     hora_str = request.form.get(f'hora_{notificacion_id}') or request.form.get('hora')
 
@@ -289,7 +289,7 @@ def agendar_cita_tecnico(notificacion_id):
         flash("⚠️ Debes seleccionar una fecha y hora para la cita.", "warning")
         return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
-    # Validar rango de hora permitido (08:00-19:00)
+
     try:
         hh, mm = map(int, hora_str.split(':', 1))
         if not (8 <= hh <= 19) or not (0 <= mm <= 59):
@@ -305,7 +305,7 @@ def agendar_cita_tecnico(notificacion_id):
         flash("❌ Formato de fecha u hora inválido.", "danger")
         return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
-    # --- Guardar la cita programada en el defecto ---
+
     defecto.CitaProgramada = cita_datetime
     try:
         db.session.commit()
@@ -314,7 +314,7 @@ def agendar_cita_tecnico(notificacion_id):
         flash(f"❌ Error al guardar la cita: {str(e)}", "danger")
         return redirect(url_for('cliente.ver_notificaciones_cliente'))
 
-    # --- Registrar en calendario usando la dirección del pedido, si existe ---
+   
     try:
         pedido = defecto.pedido
         direccion = pedido.Destino if pedido and pedido.Destino else "Dirección no definida"
@@ -330,8 +330,7 @@ def agendar_cita_tecnico(notificacion_id):
         db.session.commit()
     except Exception:
         db.session.rollback()
-        # No bloquear por error en calendario; continuar
-
+       
     # --- Crear notificación para el técnico ---
     try:
         noti_tecnico = Notificaciones(
@@ -343,7 +342,7 @@ def agendar_cita_tecnico(notificacion_id):
             ),
             Fecha=datetime.now(),
             Leida=False,
-            ID_Usuario=defecto.ID_Empleado  # Técnico asignado
+            ID_Usuario=defecto.ID_Empleado  
         )
         db.session.add(noti_tecnico)
         db.session.commit()

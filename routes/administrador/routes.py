@@ -62,7 +62,7 @@ def gestion_roles():
         usuarios_query = usuarios_query.filter_by(Rol=rol_filter)
 
     usuarios = usuarios_query.all()
-    # -----------------
+  
 
     return render_template(
         "administrador/gestion_roles.html",
@@ -950,8 +950,8 @@ def ver_instalaciones():
 
     # Enriquecer con pedido/cliente para plantilla
     def is_asignado(cal):
-        ped = Pedido.query.get(cal.ID_Pedido) if cal.ID_Pedido else None
-        return bool(ped and ped.ID_Empleado)
+        # Asignación basada solo en Calendario (no tocar pedidos)
+        return bool(cal.ID_Usuario)
 
     if asignado in ('si','no'):
         instalaciones = [cal for cal in instalaciones if (is_asignado(cal) == (asignado=='si'))]
@@ -994,12 +994,8 @@ def asignar_instalador(cal_id):
             flash('Formato de fecha/hora no válido.', 'danger')
             return redirect(url_for('admin.ver_instalaciones'))
 
-    # setear instalador en calendario y en pedido asociado
+    # setear instalador solo en calendario (no modificar pedidos)
     cal.ID_Usuario = int(instalador_id)
-    if cal.ID_Pedido:
-        pedido = Pedido.query.get(cal.ID_Pedido)
-        if pedido:
-            pedido.ID_Empleado = int(instalador_id)
 
     db.session.commit()
     flash('Instalación actualizada correctamente.', 'success')
