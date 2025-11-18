@@ -1304,7 +1304,11 @@ def solucionar_defecto(id_garantia):
         elif accion == "tecnico":
             mensaje = f"El técnico {tecnico.Nombre} ha reparado tu producto defectuoso."
         elif accion == "devolucion":
-            mensaje = "Tu producto defectuoso ha sido devuelto y se procesará el reembolso correspondiente."
+            mensaje = (
+                "Tu producto defectuoso ha sido devuelto y se realizará la devolución del dinero correspondiente. "
+                "<br>Por favor, contáctate con el soporte técnico para más detalles sobre tu reembolso. "
+                "<br><a href='/cliente/chat' class='btn btn-sm btn-primary mt-2'>Ir al chat de soporte</a>"
+            )
 
     # Guardar cambios y notificación
     db.session.commit()
