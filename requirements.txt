@@ -8,6 +8,7 @@ Flask==3.1.1
 Flask-MySQLdb==2.0.0
 Flask-SQLAlchemy==3.1.1
 Flask-SocketIO==5.3.6
+Flask-Login==0.6.3
 greenlet==3.2.4
 itsdangerous==2.2.0
 Jinja2==3.1.6
