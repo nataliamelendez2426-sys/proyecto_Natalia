@@ -24,11 +24,30 @@ from routes.transportista import transportista
 app = Flask(__name__)
 
 # ------------------ CONFIGURACIÓN PRINCIPAL ------------------ #
+# 1. Obtener todas las variables de entorno relevantes
+DB_HOST = os.getenv("MYSQLHOST")
+DB_USER = os.getenv("MYSQLUSER")
+DB_PASS = os.getenv("MYSQLPASSWORD")
+DB_NAME = os.getenv("MYSQLDATABASE")
+DB_PORT = os.getenv("MYSQLPORT") # Aunque generalmente es 3306
+
+# 2. Definir la URL final
+if DB_HOST:
+    # Estamos en Railway: Construir la URI usando el formato mysql+pymysql y las variables
+    FINAL_DATABASE_URI = (
+        f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
+    print(f"🔗 Usando URI de Railway: {FINAL_DATABASE_URI}")
+else:
+    # Estamos en desarrollo local (o no se cargaron las variables de Railway)
+    FINAL_DATABASE_URI = "mysql+pymysql://root:2426@127.0.0.1:3306/Tienda_db"
+    print("🔗 Usando URI Local por defecto.")
+
+
 app.config.update(
     SECRET_KEY=os.getenv("SECRET_KEY", "mi_clave_super_secreta_y_unica"),
-    SQLALCHEMY_DATABASE_URI=os.getenv(
-        "DATABASE_URI", "mysql+pymysql://root:2426@127.0.0.1:3306/Tienda_db"
-    ),
+    # Usamos la URI que acabamos de definir
+    SQLALCHEMY_DATABASE_URI=FINAL_DATABASE_URI, 
     SQLALCHEMY_TRACK_MODIFICATIONS=False,
     SQLALCHEMY_ENGINE_OPTIONS={"pool_pre_ping": True},
 )
