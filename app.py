@@ -106,11 +106,11 @@ def inject_user():
 
 @app.route("/")
 def index():
-    return render_template("common/index.html")
+    return render_template("Common/index.html")
 
 @app.route("/nosotros")
 def nosotros():
-    return render_template("common/nosotros.html")
+    return render_template("Common/nosotros.html")
 
 @app.route('/catalogo')
 @login_required
