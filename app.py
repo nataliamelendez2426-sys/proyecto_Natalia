@@ -23,25 +23,35 @@ from routes.transportista import transportista
 # ------------------ APP ------------------ #
 app = Flask(__name__)
 
-# ------------------ CONFIGURACIÓN PRINCIPAL ------------------ #
-# 1. Obtener todas las variables de entorno relevantes
-DB_HOST = os.getenv("MYSQLHOST")
-DB_USER = os.getenv("MYSQLUSER")
-DB_PASS = os.getenv("MYSQLPASSWORD")
-DB_NAME = os.getenv("MYSQLDATABASE")
-DB_PORT = os.getenv("MYSQLPORT") # Aunque generalmente es 3306
+# ------------------ CONFIGURACIÓN PRINCIPAL - DB ------------------ #
+# 1. Intentar obtener la URL completa proporcionada por Railway (MYSQL_URL)
+FINAL_DATABASE_URI = os.getenv("MYSQL_URL")
 
-# 2. Definir la URL final
-if DB_HOST:
-    # Estamos en Railway: Construir la URI usando el formato mysql+pymysql y las variables
+if FINAL_DATABASE_URI:
+    # 2. Si existe MYSQL_URL, úsala directamente. Reemplazamos 'mysql://' por 'mysql+pymysql://'
+    # Esto es necesario porque SQLAlchemy necesita el controlador 'pymysql' para conectarse.
+    if FINAL_DATABASE_URI.startswith("mysql://"):
+        FINAL_DATABASE_URI = FINAL_DATABASE_URI.replace("mysql://", "mysql+pymysql://", 1)
+        
+    print(f"🔗 Usando URI de Railway (MYSQL_URL): {FINAL_DATABASE_URI}")
+
+elif os.getenv("MYSQLHOST"):
+    # 3. Opción de fallback: Si no hay MYSQL_URL, construir la URI con las partes individuales.
+    DB_HOST = os.getenv("MYSQLHOST")
+    DB_USER = os.getenv("MYSQLUSER")
+    DB_PASS = os.getenv("MYSQLPASSWORD")
+    DB_NAME = os.getenv("MYSQLDATABASE")
+    DB_PORT = os.getenv("MYSQLPORT", "3306") # Default port in case it's missing
+    
     FINAL_DATABASE_URI = (
         f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
-    print(f"🔗 Usando URI de Railway: {FINAL_DATABASE_URI}")
+    print(f"🔗 Usando URI de Railway (Partes individuales): {FINAL_DATABASE_URI}")
+    
 else:
-    # Estamos en desarrollo local (o no se cargaron las variables de Railway)
+    # 4. Fallback final: Desarrollo local o si no hay variables de entorno (causa del error original)
     FINAL_DATABASE_URI = "mysql+pymysql://root:2426@127.0.0.1:3306/Tienda_db"
-    print("🔗 Usando URI Local por defecto.")
+    print("⚠️ Usando URI Local por defecto. Esto fallará en Railway.")
 
 
 app.config.update(
@@ -51,7 +61,6 @@ app.config.update(
     SQLALCHEMY_TRACK_MODIFICATIONS=False,
     SQLALCHEMY_ENGINE_OPTIONS={"pool_pre_ping": True},
 )
-
 # ------------------ CONFIGURACIÓN MAIL ------------------ #
 app.config.update(
     MAIL_SERVER="smtp.gmail.com",
