@@ -106,7 +106,8 @@ def inject_user():
 
 @app.route("/")
 def index():
-    return render_template("common/index.html")
+    # TEMPORAL: Esto prueba si Flask y Gunicorn están operativos.
+    return "<h1>¡El servidor funciona correctamente!</h1>"
 
 @app.route("/nosotros")
 def nosotros():
